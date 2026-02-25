@@ -1,0 +1,78 @@
+experiment:
+  name: gnn_rl_traffic_control_quick_demo
+  seed: 42
+  output_dir: outputs/phase1
+
+# SUMO Configuration
+sumo:
+  net_file: data/raw/grid_3x3.net.xml
+  route_file: data/raw/grid_3x3.rou.xml
+  config_file: data/raw/grid_3x3.sumocfg
+  step_length: 1.0
+  simulation_steps: 3600  # 1 hour simulation
+  gui: false  # Set to true for visualization
+  sumo_binary: "C:/Program Files (x86)/Eclipse/Sumo/bin/sumo.exe"
+
+# Model Configuration
+model:
+  use_gnn: true  # Set to false for ablation (MLP encoder instead of GNN)
+  feature_dim: 12  # Signal phase (4) + phase duration (1) + queues (2) + waiting (1) + vehicles (4)
+  hidden_dim: 64
+  embedding_dim: 32
+  gnn_layers: 2
+  gnn_type: gat  # Options: gcn, gat
+  gat_heads: 2
+  dropout: 0.1
+
+# Reinforcement Learning Configuration
+rl:
+  algorithm: DQN
+  learning_rate: 0.001  # 1e-3 as float
+  buffer_size: 10000  # Smaller buffer for quick demo (was 50000)
+  batch_size: 32
+  gamma: 0.99
+  tau: 1.0  # Hard update
+  target_update_interval: 500  # More frequent for quick demo (was 1000)
+  exploration_initial_eps: 1.0
+  exploration_final_eps: 0.05
+  exploration_fraction: 0.3  # Explore for first 30% (was 0.1)
+  learning_starts: 200  # Start learning earlier (was 1000)
+  train_freq: 4
+  gradient_steps: 1
+  use_double_dqn: true   # SOTA: Double DQN (reduce overestimation)
+  dueling: true         # SOTA: Dueling DQN architecture
+
+# Reward Configuration (multi-objective: waiting, queue, speed, pressure, optional throughput)
+reward:
+  waiting_time_weight: 0.1
+  queue_length_weight: 0.05
+  anomaly_weight: 0.0  # Will be set when Phase 2 is integrated
+  throughput_weight: 0.0  # Set > 0 (e.g. 0.01) to reward flow; requires SUMO
+  pressure_weight: 0.0002   # Vehicle count on controlled lanes
+  speed_reward_weight: 0.5  # Mean speed bonus (GUARANTEES differentiation; large weight)
+  max_throughput_per_step: 20.0  # Normalization for throughput bonus
+  normalize: true  # Normalize so reward is in reasonable range (-100 to +100 per episode)
+  time_penalty_per_step: 0.01  # Per-step cost (scaled for normalized reward)
+
+# Training Configuration
+training:
+  total_timesteps: 5000  # QUICK DEMO (2-3 min); use 100k+ for publication
+  eval_freq: 2500  # Eval halfway
+  eval_episodes: 3  # Quick eval
+  save_freq: 5000  # Save at end
+  log_interval: 5  # Log more often for quick feedback
+  device: auto  # Options: auto, cpu, cuda
+
+# Evaluation Configuration
+evaluation:
+  num_episodes: 5  # Quick evaluation (was 100)
+  deterministic: true
+  render: false
+  seeds: [42, 43, 44]  # 3 seeds for mean ± std
+
+# Output Configuration
+output:
+  checkpoint_dir: outputs/phase1/checkpoints
+  log_dir: outputs/phase1/logs
+  best_model_dir: outputs/phase1/best_models
+  final_model_path: outputs/phase1/dqn_traffic_final.zip
