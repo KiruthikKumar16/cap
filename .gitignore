@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Build / outputs / logs
+outputs/
+logs/
+*.log
+
+# Data and heavy artifacts
+data/
+*.zip
+*.tar
+*.tar.gz
+*.pt
+*.pth
+*.bin
+
+# OS
+.DS_Store
+Thumbs.db
+
