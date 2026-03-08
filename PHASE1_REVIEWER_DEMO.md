@@ -9,7 +9,7 @@ This guide is for **testing Phase 1**, **running evaluation**, and **presenting 
 **Phase 1** implements **adaptive traffic signal control** using:
 
 1. **Traffic network as a graph**  
-   Intersections are **nodes**; road links between them are **edges**. The system builds this graph from a SUMO network (or a placeholder 2x2 grid when SUMO is not installed).
+   Intersections are **nodes**; road links between them are **edges**. The system builds this graph from SUMO networks (3×3 for research baseline, 6×6 for scalability proof).
 
 2. **Per-intersection features**  
    At each node we extract features: current signal phase, phase duration, queue lengths, waiting times, vehicle counts, etc. (12 features per intersection).
@@ -20,10 +20,10 @@ This guide is for **testing Phase 1**, **running evaluation**, and **presenting 
 4. **DQN agent**  
    A **Deep Q-Network (DQN)** receives that observation and outputs **one action per intersection**: which signal phase (0–3) to set. So the agent controls all intersections jointly.
 
-5. **Environment and reward**  
-   The **environment** (SUMO or placeholder) applies the actions, advances the simulation by one step, and returns a **reward** based on total waiting time and queue length (lower is better). The agent is trained to maximize cumulative reward (i.e. reduce congestion).
+5. **SUMO environment and reward**  
+   The **SUMO traffic simulation** applies the actions, advances the simulation by one step, and returns a **reward** based on total waiting time and queue length (lower is better). The agent is trained to maximize cumulative reward (i.e. reduce congestion).
 
-**In one sentence:** Phase 1 learns a **policy** that, at each time step, observes the traffic graph and features, and chooses signal phases for all intersections to minimize waiting time and queues.
+**In one sentence:** Phase 1 learns a **policy** that observes the real traffic graph and features from SUMO simulation, and chooses signal phases for all intersections to minimize waiting time and queues.
 
 ---
 
@@ -34,7 +34,7 @@ You can **generate figures** that match the style of **Smartcities_final.pdf** (
 | Figure | What it shows | Output file |
 |--------|----------------|-------------|
 | **Fig 4.0 – Proposed System Architecture** | SUMO → TraCI API → Graph Construction → Feature Extraction & Normalization → GNN Encoder → DQN → RL Loop → Assessment | `phase1_architecture.png` |
-| **Fig 5.1 – 2×2 Grid Traffic Network** | SUMO simulation environment: nodes = intersections (J0–J3), edges = road links (the graph the GNN uses) | `phase1_traffic_network_graph.png` |
+| **Fig 5.1 – 3×3 Grid Traffic Network** | SUMO simulation environment: nodes = intersections (A0–C2), edges = road links (the graph the GNN uses) | `phase1_traffic_network_graph.png` |
 | **Fig 7.1 – Reward per episode** | Mean reward during training / evaluation | `phase1_reward_per_episode.png` |
 | **Fig 7.2 – Average queue length** | Average queue length per episode (trend) | `phase1_queue_length_per_episode.png` |
 | **Fig 7.3 – Average waiting time** | Average waiting time per episode (trend) | `phase1_waiting_time_per_episode.png` |
@@ -45,7 +45,7 @@ You can **generate figures** that match the style of **Smartcities_final.pdf** (
 python scripts/phase1_generate_figures.py
 ```
 
-Outputs are saved to **`outputs/phase1/figures/`**. Reward (7.1) uses your evaluation log (`outputs/phase1/logs/evaluations.npz`) when available; queue and waiting (7.2, 7.3) use placeholder trends unless you add env logging.
+Outputs are saved to **`outputs/phase1/figures/`**. Reward (7.1) uses your SUMO evaluation log (`outputs/phase1/logs/evaluations.npz`) when available; queue and waiting (7.2, 7.3) use real SUMO metrics when env logging is enabled.
 
 **Use these in your report or slides:** insert the images and refer to “What Phase 1 does” (Section 1). This gives your guide/reviewers **proof** in the same style as Smartcities_final.pdf (architecture, traffic graph, and performance curves).
 
@@ -54,7 +54,7 @@ Outputs are saved to **`outputs/phase1/figures/`**. Reward (7.1) uses your evalu
 ## 3. What Phase 1 Delivers (Checklist)
 
 - **GNN-RL traffic control**: Graph Neural Network encodes the traffic network; a DQN agent chooses signal phases at each intersection.
-- **Training pipeline**: Trains on a 4-intersection (2x2) setup; works in **placeholder mode** (no SUMO required) or with SUMO when installed.
+- **SUMO Training pipeline**: Trains on 3×3 (9-intersection) setup with real SUMO simulation (mandatory, no placeholder fallback). Scales to 6×6 (36-intersection).
 - **Evaluation**: Compares the trained DQN agent against a **fixed-time baseline** (same phase duration for all intersections).
 - **Ablation**: Option to train **without GNN** (MLP encoder) via config for comparison.
 
@@ -72,7 +72,7 @@ Outputs are saved to **`outputs/phase1/figures/`**. Reward (7.1) uses your evalu
   ```powershell
   pip install torch torch-geometric stable-baselines3[extra] gymnasium pyyaml numpy
   ```
-- **SUMO** is optional; without it, the project runs in placeholder mode (synthetic rewards/features). To use SUMO: install SUMO, add it to PATH, and ensure `data/raw/` has the network files or run `scripts/create_sumo_network.py`.
+- **SUMO** is **MANDATORY** (no placeholder fallback). Install SUMO, add to PATH, and ensure `data/raw/` has the 3×3 and 6×6 network files. Generate networks with `scripts/create_sumo_network.py` if needed.
 
 ---
 

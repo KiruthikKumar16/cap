@@ -17,12 +17,8 @@ import gymnasium.utils.seeding as seeding
 # Suppress TraCI deprecation UserWarning (getAllProgramLogics) when we call getCompleteRedYellowGreenDefinition
 warnings.filterwarnings("ignore", message=".*getAllProgramLogics.*", category=UserWarning)
 
-try:
-    import traci
-    TRACI_AVAILABLE = True
-except ImportError:
-    TRACI_AVAILABLE = False
-    print("Warning: traci not available. Environment will use placeholder mode.")
+import traci  # SUMO/TraCI is mandatory - no fallback
+TRACI_AVAILABLE = True
 
 from src.phase1.graph_builder import TrafficGraphBuilder
 from src.phase1.feature_extractor import TrafficFeatureExtractor
@@ -209,10 +205,7 @@ class SUMOTrafficEnv(gym.Env):
     
     def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """
-        Execute one step in the environment.
-
-        In placeholder mode (no SUMO), we still allow stepping so that
-        RL training can proceed using synthetic rewards and features.
+        Execute one step in the environment using SUMO simulation.
         
         Args:
             action: Action array [num_intersections] with phase selections
@@ -262,33 +255,19 @@ class SUMOTrafficEnv(gym.Env):
         return name  # rely on PATH
     
     def _start_sumo(self) -> None:
-        """Start SUMO simulation."""
-        if not TRACI_AVAILABLE:
-            self.sumo_running = False
-            return
+        """Start SUMO simulation. SUMO is mandatory (no placeholder fallback)."""
+        sumo_bin = self._resolve_sumo_binary()
+        sumo_cmd = [sumo_bin]
         
-        try:
-            sumo_bin = self._resolve_sumo_binary()
-            sumo_cmd = [sumo_bin]
-            
-            if self.config_file:
-                sumo_cmd.extend(["-c", self.config_file])
-            else:
-                sumo_cmd.extend(["-n", self.net_file, "-r", self.route_file])
-            
-            sumo_cmd.extend(["--step-length", str(self.step_length)])
-            sumo_cmd.append("--no-warnings")
-            # Do not add --remote-port here; traci.start(..., port=...) adds it
-            traci.start(sumo_cmd, port=self.traci_port)
-            self.sumo_running = True
-        except Exception as e:
-            print(f"Warning: Could not start SUMO: {e}")
-            print("Using placeholder mode.")
-            self.sumo_running = False
-            try:
-                traci.close()
-            except Exception:
-                pass
+        if self.config_file:
+            sumo_cmd.extend(["-c", self.config_file])
+        else:
+            sumo_cmd.extend(["-n", self.net_file, "-r", self.route_file])
+        
+        sumo_cmd.extend(["--step-length", str(self.step_length)])
+        sumo_cmd.append("--no-warnings")
+        traci.start(sumo_cmd, port=self.traci_port)
+        self.sumo_running = True
     
     def _close_sumo(self) -> None:
         """Close SUMO simulation."""

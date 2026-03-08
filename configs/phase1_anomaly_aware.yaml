@@ -3,11 +3,11 @@ experiment:
   seed: 42
   output_dir: outputs/phase1
 
-# SUMO Configuration
+# SUMO Configuration (3x3 grid - required, no placeholder mode)
 sumo:
-  net_file: data/raw/grid_2x2.net.xml
-  route_file: data/raw/grid_2x2.rou.xml
-  config_file: data/raw/grid_2x2.sumocfg
+  net_file: data/raw/grid_3x3.net.xml
+  route_file: data/raw/grid_3x3.rou.xml
+  config_file: data/raw/grid_3x3.sumocfg
   step_length: 1.0
   simulation_steps: 1800  # 30 minutes simulation (shorter for anomaly testing)
   gui: false  # Set to true for visualization

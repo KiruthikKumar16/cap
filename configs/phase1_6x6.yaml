@@ -1,0 +1,60 @@
+experiment:
+  name: gnn_rl_traffic_control_6x6
+  seed: 42
+  output_dir: outputs/phase1_6x6
+
+# SUMO Configuration (6x6 grid - production scale, no placeholder mode)
+sumo:
+  net_file: data/raw/grid_6x6.net.xml
+  route_file: data/raw/grid_6x6.rou.xml
+  config_file: data/raw/grid_6x6.sumocfg
+  step_length: 1.0
+  simulation_steps: 3600  # 1 hour simulation
+  gui: false  # Set to true for visualization
+
+# Model Configuration
+model:
+  use_gnn: true  # GNN encoder for spatial relationships
+  feature_dim: 12  # Signal phase (4) + phase duration (1) + queues (2) + waiting (1) + vehicles (4)
+  hidden_dim: 64
+  embedding_dim: 32
+  gnn_layers: 2
+  gnn_type: gat  # Graph Attention Network for adaptive weights
+  gat_heads: 2
+  dropout: 0.1
+
+# Reinforcement Learning Configuration
+rl:
+  algorithm: DQN
+  learning_rate: 0.001
+  buffer_size: 100000  # Larger buffer for larger networks
+  batch_size: 32
+  gamma: 0.99
+  tau: 1.0  # Hard update
+  target_update_interval: 1000
+  exploration_initial_eps: 1.0
+  exploration_final_eps: 0.05
+  exploration_fraction: 0.1
+  learning_starts: 1000
+  train_freq: 4
+  gradient_steps: 1
+  use_double_dqn: true   # Double DQN reduces overestimation
+  dueling: true         # Dueling architecture
+
+# Reward Configuration (multi-objective)
+reward:
+  waiting_time_weight: 0.1
+  queue_length_weight: 0.05
+  anomaly_weight: 0.0  # Set > 0 when Phase 2 anomaly detection is integrated
+
+# Training Configuration
+training:
+  total_timesteps: 200000  # Longer training for larger network
+  eval_episodes: 10
+  eval_freq: 5000
+  save_freq: 5000
+
+# Anomaly Awareness (Phase 3 integration)
+phase3:
+  enable_anomaly_awareness: false  # Set to true to integrate Phase 2 anomaly detection
+  anomaly_model_path: outputs/phase2/st_gnn_anomaly_detector.pt

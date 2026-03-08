@@ -53,7 +53,7 @@ python -m src.phase1.evaluate --config configs/phase1.yaml --checkpoint outputs/
 ```
 Show the evaluation table output and artifacts in `outputs/phase1/` to reviewers.
 
-**Optional:** See [`PHASE1_IMPLEMENTATION_GUIDE.md`](PHASE1_IMPLEMENTATION_GUIDE.md) for implementation details. SUMO is optional (placeholder mode works without it).
+**Optional:** See [`PHASE1_IMPLEMENTATION_GUIDE.md`](PHASE1_IMPLEMENTATION_GUIDE.md) for implementation details. **SUMO is mandatory** (3×3 minimum, test on 6×6 for scalability).
 
 ### Quick Reference
 
@@ -95,10 +95,11 @@ See [`QUICK_START_CHECKLIST.md`](QUICK_START_CHECKLIST.md) for a complete checkl
 
 ## Notes
 
-- **Phase 2**: SUMO is optional for the synthetic example; real runs require SUMO installed and on `PATH`.
-- **Phase 1**: Requires SUMO and TraCI for traffic simulation and control.
+- **Phase 1 (MANDATORY SUMO)**: Requires SUMO installed and on PATH. No placeholder fallback. Uses 3×3 for research baseline, 6×6 for scalability tests.
+- **Phase 2**: Can use synthetic data or real SUMO runs for training ST-GNN anomaly detector.
 - OSMnx requires `GEOS`/`GDAL` stack; prefer Colab/Conda for fewer issues.
-- Adjust `configs/default.yaml` for dataset paths, model depth, and thresholds.
+- Adjust `configs/default.yaml` and network configs for dataset paths, model depth, and thresholds.
+- Removed: 2×2 grid and all placeholder/synthetic fallback modes (use 3×3 minimum for research credibility).
 
 ## References
 
