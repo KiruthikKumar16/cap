@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" minGap="2.5" maxSpeed="13.89" guiShape="passenger"/>
+    <route id="h_r0_lr" edges="A0B0 B0C0"/>
+    <route id="h_r0_rl" edges="B0C0 A0B0"/>
+    <route id="h_r1_lr" edges="A1B1 B1C1"/>
+    <route id="h_r1_rl" edges="B1C1 A1B1"/>
+    <route id="h_r2_lr" edges="A2B2 B2C2"/>
+    <route id="h_r2_rl" edges="B2C2 A2B2"/>
+    <route id="v_c0_tb" edges="A0A1 A1A2"/>
+    <route id="v_c0_bt" edges="A1A2 A0A1"/>
+    <route id="v_c1_tb" edges="B0B1 B1B2"/>
+    <route id="v_c1_bt" edges="B1B2 B0B1"/>
+    <route id="v_c2_tb" edges="C0C1 C1C2"/>
+    <route id="v_c2_bt" edges="C1C2 C0C1"/>
+    <flow id="flow_0" type="car" route="h_r0_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_1" type="car" route="h_r0_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_2" type="car" route="h_r1_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_3" type="car" route="h_r1_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_4" type="car" route="h_r2_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_5" type="car" route="h_r2_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_6" type="car" route="v_c0_tb" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_7" type="car" route="v_c0_bt" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_8" type="car" route="v_c1_tb" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_9" type="car" route="v_c1_bt" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_10" type="car" route="v_c2_tb" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_11" type="car" route="v_c2_bt" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+</routes>
