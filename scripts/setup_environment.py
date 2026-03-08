@@ -36,7 +36,7 @@ def check_package(package_name: str, import_name: str = None) -> bool:
 
 
 def check_sumo():
-    """Check if SUMO is installed and accessible."""
+    """Check if SUMO is installed and accessible. SUMO is now MANDATORY."""
     try:
         result = subprocess.run(['sumo', '--version'], 
                               capture_output=True, 
@@ -49,8 +49,9 @@ def check_sumo():
     except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
         pass
     
-    print("[FAIL] SUMO is NOT installed or not in PATH")
+    print("[ERROR] SUMO is NOT installed or not in PATH - MANDATORY REQUIREMENT")
     print("   Install SUMO from: https://sumo.dlr.de/docs/Installing/index.html")
+    print("   After installation, add to PATH or set SUMO_HOME environment variable")
     return False
 
 
@@ -91,7 +92,7 @@ def main():
     python_ok = check_python_version()
     if not python_ok:
         print("\n⚠️  Please upgrade Python to 3.10+")
-        return
+        return False
     
     print("\n" + "=" * 60)
     print("Checking Python Packages")
@@ -134,30 +135,28 @@ def main():
         
         response = input("\nWould you like to install requirements now? (y/n): ")
         if response.lower() == 'y':
-            install_requirements()
+            if not install_requirements():
+                return False
     else:
         print("\n[OK] All Python packages are installed")
     
+    # SUMO is now MANDATORY
     if not sumo_ok:
-        print("\n[WARN] SUMO is not installed")
-        print("   For testing, you can use placeholder mode")
-        print("   For full functionality, install SUMO:")
-        print("   https://sumo.dlr.de/docs/Installing/index.html")
+        print("\n[ERROR] SUMO is REQUIRED (no placeholder mode)")
+        print("   Install SUMO from: https://sumo.dlr.de/docs/Installing/index.html")
+        print("   Then verify with: sumo --version")
+        print("\n   Without SUMO, the project will not run.")
+        return False
     
     if not sumo_python_ok and sumo_ok:
         print("\n[WARN] SUMO Python libraries not found")
         print("   Install with: pip install sumolib traci")
+        return False
     
-    print("\n" + "=" * 60)
-    print("Setup Check Complete")
-    print("=" * 60)
-    
-    if not missing_packages and sumo_ok:
-        print("\n[SUCCESS] Environment is ready!")
-    else:
-        print("\n[INFO] Some components are missing, but you can still proceed")
-        print("   The code includes placeholder modes for testing without SUMO")
+    print("\n[OK] Environment setup complete! Ready to run training.")
+    return True
 
 
 if __name__ == "__main__":
-    main()
+    success = main()
+    sys.exit(0 if success else 1)
