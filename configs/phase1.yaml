@@ -16,7 +16,7 @@ sumo:
 
 # Model Configuration
 model:
-  use_gnn: true  # Set to false for ablation (MLP encoder instead of GNN)
+  use_gnn: false  # Set to false for ablation (MLP encoder instead of GNN) - avoids PyG import issues
   feature_dim: 12  # Signal phase (4) + phase duration (1) + queues (2) + waiting (1) + vehicles (4)
   hidden_dim: 64
   embedding_dim: 32

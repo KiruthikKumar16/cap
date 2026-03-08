@@ -10,7 +10,13 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 import networkx as nx
 import torch
-from torch_geometric.data import Data
+
+try:
+    from torch_geometric.data import Data
+    TORCH_GEOMETRIC_AVAILABLE = True
+except ImportError:
+    TORCH_GEOMETRIC_AVAILABLE = False
+    print("Warning: torch_geometric not available, graph building will be limited")
 
 try:
     import sumolib

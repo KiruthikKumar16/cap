@@ -1,0 +1,102 @@
+experiment:
+  name: gnn_rl_traffic_control_with_anomaly_awareness
+  seed: 42
+  output_dir: outputs/phase1
+
+# SUMO Configuration
+sumo:
+  net_file: data/raw/grid_2x2.net.xml
+  route_file: data/raw/grid_2x2.rou.xml
+  config_file: data/raw/grid_2x2.sumocfg
+  step_length: 1.0
+  simulation_steps: 1800  # 30 minutes simulation (shorter for anomaly testing)
+  gui: false  # Set to true for visualization
+  # Let the code resolve SUMO from SUMO_HOME/bin or PATH
+
+# Model Configuration
+model:
+  use_gnn: false  # Set to false for ablation (MLP encoder instead of GNN) - avoids PyG import issues
+  feature_dim: 12  # Signal phase (4) + phase duration (1) + queues (2) + waiting (1) + vehicles (4)
+  hidden_dim: 64
+  embedding_dim: 32
+  gnn_layers: 2
+  gnn_type: gat  # Options: gcn, gat
+  gat_heads: 2
+  dropout: 0.1
+
+# Reinforcement Learning Configuration
+rl:
+  algorithm: DQN
+  learning_rate: 0.001  # 1e-3 as float
+  buffer_size: 50000
+  batch_size: 32
+  gamma: 0.99
+  tau: 1.0  # Hard update
+  target_update_interval: 1000
+  exploration_initial_eps: 1.0
+  exploration_final_eps: 0.05
+  exploration_fraction: 0.1
+  learning_starts: 1000
+  train_freq: 4
+  gradient_steps: 1
+  use_double_dqn: true   # SOTA: Double DQN (reduce overestimation)
+  dueling: true         # SOTA: Dueling DQN architecture
+
+# Reward Configuration (multi-objective: waiting, queue, anomaly awareness)
+reward:
+  waiting_time_weight: 0.1
+  queue_length_weight: 0.05
+  anomaly_weight: 0.1  # Enable anomaly penalty for Phase 3 integration
+  throughput_weight: 0.0  # Set > 0 (e.g. 0.01) to reward flow; requires SUMO
+  pressure_weight: 0.0002   # Vehicle count on controlled lanes
+  speed_reward_weight: 0.5  # Mean speed bonus (GUARANTEES differentiation; large weight for visibility)
+  max_throughput_per_step: 20.0  # Normalization for throughput bonus
+  normalize: true  # Normalize so reward is in reasonable range (-100 to +100 per episode)
+  time_penalty_per_step: 0.01  # Per-step cost (scaled for normalized reward) when traffic metrics are 0
+
+# Phase 3: Anomaly-Aware Integration (Enhanced)
+phase3:
+  enable_anomaly_awareness: true
+  anomaly_model_path: outputs/phase2/st_gnn_anomaly_detector.pt
+  anomaly_threshold: 0.5  # Initial threshold for anomaly detection
+  anomaly_weight: 0.1  # Base weight for anomaly penalty in reward
+
+  # Enhanced Features
+  adaptive_threshold: true  # Adapt threshold based on historical scores
+  smoothing_window: 5  # Window size for temporal smoothing of scores
+  confidence_interval: true  # Compute confidence intervals for uncertainty
+  multi_anomaly_types: true  # Classify different types of anomalies
+
+  # Anomaly Type Weights (multipliers for different anomaly severities)
+  anomaly_type_weights:
+    congestion: 1.2
+    accident: 1.5
+    unusual_flow: 1.0
+    normal: 0.0
+
+  # Logging and Explainability
+  log_anomalies: true  # Log anomaly detections for analysis
+  explanation_history_size: 100  # Number of explanations to keep in memory
+
+# Training Configuration
+training:
+  total_timesteps: 50000  # Shorter for anomaly testing
+  eval_freq: 2500  # Eval every 2.5k
+  eval_episodes: 5  # Quick eval
+  save_freq: 5000  # Save more frequently
+  log_interval: 10
+  device: auto  # Options: auto, cpu, cuda
+
+# Evaluation Configuration
+evaluation:
+  num_episodes: 50
+  deterministic: true
+  render: false
+  seeds: [42, 43, 44, 45, 46]  # SOTA: multiple seeds for mean ± std
+
+# Output Configuration
+output:
+  checkpoint_dir: outputs/phase1/checkpoints
+  log_dir: outputs/phase1/logs
+  best_model_dir: outputs/phase1/best_models
+  final_model_path: outputs/phase1/dqn_traffic_anomaly_aware.zip

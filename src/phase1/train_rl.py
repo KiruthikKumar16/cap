@@ -18,6 +18,7 @@ from src.phase1.traffic_env import SUMOTrafficEnv
 from src.phase1.gnn_encoder import TrafficGNNEncoder, MLPEncoder
 from src.phase1.reward_calculator import RewardCalculator
 from src.phase1.dqn_agent import create_dqn_agent, TrainingCallback
+from src.phase3.integration import init_anomaly_controller
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -39,6 +40,22 @@ def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTr
     sumo_cfg = config["sumo"]
     model_cfg = config["model"]
     reward_cfg = config["reward"]
+    
+    # Initialize anomaly controller if anomaly awareness is enabled
+    enable_anomaly_awareness = config.get("phase3", {}).get("enable_anomaly_awareness", False)
+    if enable_anomaly_awareness:
+        phase3_cfg = config["phase3"]
+        init_anomaly_controller(
+            model_path=phase3_cfg.get("anomaly_model_path", "outputs/phase2/st_gnn_anomaly_detector.pt"),
+            anomaly_threshold=phase3_cfg.get("anomaly_threshold", 0.5),
+            anomaly_weight=phase3_cfg.get("anomaly_weight", 0.1),
+            enable_anomaly_awareness=True,
+            adaptive_threshold=phase3_cfg.get("adaptive_threshold", True),
+            smoothing_window=phase3_cfg.get("smoothing_window", 5),
+            confidence_interval=phase3_cfg.get("confidence_interval", True),
+            multi_anomaly_types=phase3_cfg.get("multi_anomaly_types", True),
+        )
+        print("[OK] Enhanced anomaly controller initialized for Phase 3 integration")
     
     # Create state encoder (GNN or MLP for ablation)
     use_gnn = model_cfg.get("use_gnn", True)
@@ -87,6 +104,7 @@ def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTr
         traci_port=traci_port,
         sumo_binary=sumo_cfg.get("sumo_binary"),
         time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
+        enable_anomaly_awareness=enable_anomaly_awareness,
     )
     
     return env

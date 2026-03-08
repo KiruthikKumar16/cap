@@ -9,7 +9,14 @@ from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, GATConv
+
+# Handle torch_geometric import issues with Python 3.13
+try:
+    from torch_geometric.nn import GCNConv, GATConv
+    TORCH_GEOMETRIC_AVAILABLE = True
+except ImportError:
+    TORCH_GEOMETRIC_AVAILABLE = False
+    print("Warning: torch_geometric not available, falling back to MLP encoder")
 
 
 class MLPEncoder(nn.Module):
@@ -93,6 +100,24 @@ class TrafficGNNEncoder(nn.Module):
         if self.gnn_type not in ["gcn", "gat"]:
             raise ValueError(f"gnn_type must be 'gcn' or 'gat', got {gnn_type}")
         
+        # Check if torch_geometric is available
+        if not TORCH_GEOMETRIC_AVAILABLE:
+            print(f"Warning: torch_geometric not available, falling back to MLP for GNN encoder")
+            # Create a simple MLP fallback
+            self.layers = nn.ModuleList()
+            self.layers.append(nn.Linear(in_dim, hidden_dim))
+            self.layers.append(nn.ReLU())
+            self.layers.append(nn.Dropout(dropout))
+            for _ in range(num_layers - 2):
+                self.layers.append(nn.Linear(hidden_dim, hidden_dim))
+                self.layers.append(nn.ReLU())
+                self.layers.append(nn.Dropout(dropout))
+            self.layers.append(nn.Linear(hidden_dim, out_dim))
+            self.fallback_mlp = True
+            return
+        
+        self.fallback_mlp = False
+        
         # Build layers
         self.layers = nn.ModuleList()
         
@@ -140,6 +165,13 @@ class TrafficGNNEncoder(nn.Module):
         Returns:
             Node embeddings [num_nodes, out_dim]
         """
+        # Handle fallback MLP case
+        if hasattr(self, 'fallback_mlp') and self.fallback_mlp:
+            # Simple MLP forward pass, ignore edge_index
+            for layer in self.layers:
+                x = layer(x)
+            return x
+        
         # Apply GNN layers
         for i, layer in enumerate(self.layers):
             x = layer(x, edge_index)

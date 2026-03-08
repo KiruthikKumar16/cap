@@ -28,6 +28,7 @@ from src.phase1.graph_builder import TrafficGraphBuilder
 from src.phase1.feature_extractor import TrafficFeatureExtractor
 from src.phase1.gnn_encoder import TrafficGNNEncoder
 from src.phase1.reward_calculator import RewardCalculator
+from src.phase3.integration import get_anomaly_controller
 
 
 class SUMOTrafficEnv(gym.Env):
@@ -55,6 +56,7 @@ class SUMOTrafficEnv(gym.Env):
         traci_port: Optional[int] = None,
         sumo_binary: Optional[str] = None,
         time_penalty_per_step: float = 0.0,
+        enable_anomaly_awareness: bool = False,
     ):
         """
         Initialize SUMO traffic environment.
@@ -71,6 +73,7 @@ class SUMOTrafficEnv(gym.Env):
             traci_port: Port for TraCI (default 8813). Use different ports for train vs eval envs.
             sumo_binary: Full path to sumo/sumo-gui executable. If not set, uses PATH or SUMO_HOME/bin.
             time_penalty_per_step: Small per-step cost (standard RL) so baseline reward is non-zero when traffic metrics are 0.
+            enable_anomaly_awareness: Whether to use Phase 2 anomaly detection for reward shaping.
         """
         super().__init__()
         
@@ -83,6 +86,7 @@ class SUMOTrafficEnv(gym.Env):
         self.traci_port = traci_port if traci_port is not None else 8813
         self.sumo_binary = sumo_binary
         self.time_penalty_per_step = float(time_penalty_per_step)
+        self.enable_anomaly_awareness = enable_anomaly_awareness
         
         # Initialize components
         self.graph_builder = TrafficGraphBuilder(net_file)
@@ -190,6 +194,12 @@ class SUMOTrafficEnv(gym.Env):
         self._waiting_time_step = 0.0
         self._queue_length_step = 0.0
         self._veh_depart_times = {}
+
+        # Reset anomaly controller if enabled
+        if self.enable_anomaly_awareness:
+            anomaly_controller = get_anomaly_controller()
+            if anomaly_controller is not None:
+                anomaly_controller.reset()
 
         # Get initial observation
         observation = self._get_observation()
@@ -433,12 +443,24 @@ class SUMOTrafficEnv(gym.Env):
     
     def _calculate_reward(self) -> float:
         """Calculate reward from current traffic state."""
+        # Get anomaly scores if anomaly awareness is enabled
+        anomaly_scores = None
+        if self.enable_anomaly_awareness:
+            anomaly_controller = get_anomaly_controller()
+            if anomaly_controller is not None:
+                # Get current features for anomaly detection
+                current_features = self.feature_extractor.extract()
+                anomaly_scores = anomaly_controller.get_anomaly_scores(
+                    current_features.numpy() if hasattr(current_features, 'numpy') else current_features,
+                    self.edge_index
+                )
+
         if self.sumo_running:
-            reward = self.reward_calculator.calculate_from_sumo(self.intersections)
+            reward = self.reward_calculator.calculate_from_sumo(self.intersections, anomaly_scores)
         else:
             # Placeholder reward
-            reward = self.reward_calculator._calculate_placeholder(self.intersections)
-        
+            reward = self.reward_calculator._calculate_placeholder(self.intersections, anomaly_scores)
+
         return reward
     
     def _is_terminated(self) -> bool:

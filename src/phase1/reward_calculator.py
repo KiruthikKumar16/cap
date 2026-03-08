@@ -70,7 +70,7 @@ class RewardCalculator:
         self,
         waiting_times: Dict[str, float],
         queue_lengths: Dict[str, float],
-        anomaly_scores: Optional[Dict[str, float]] = None,
+        anomaly_info: Optional[Dict[str, Dict]] = None,
     ) -> float:
         """
         Calculate reward from traffic metrics.
@@ -78,7 +78,8 @@ class RewardCalculator:
         Args:
             waiting_times: Dict mapping intersection_id to waiting time
             queue_lengths: Dict mapping intersection_id to queue length
-            anomaly_scores: Optional dict mapping intersection_id to anomaly score
+            anomaly_info: Optional dict mapping intersection_id to anomaly info dict
+                        (contains 'score', 'smoothed_score', 'anomaly_type', etc.)
             
         Returns:
             Reward value (negative, to be maximized)
@@ -95,10 +96,14 @@ class RewardCalculator:
         # Calculate base reward
         reward = -self.waiting_time_weight * total_waiting - self.queue_length_weight * total_queue
         
-        # Add anomaly penalty if provided
-        if anomaly_scores is not None and self.anomaly_weight > 0:
-            total_anomaly = sum(anomaly_scores.values())
-            reward -= self.anomaly_weight * total_anomaly
+        # Add enhanced anomaly penalty if provided
+        if anomaly_info is not None and self.anomaly_weight > 0:
+            # Use the controller's penalty calculation for consistency
+            from src.phase3.integration import get_anomaly_controller
+            controller = get_anomaly_controller()
+            if controller is not None:
+                anomaly_penalty = controller.get_anomaly_penalty(anomaly_info)
+                reward -= anomaly_penalty
         
         return float(reward)
     
@@ -112,14 +117,14 @@ class RewardCalculator:
     def calculate_from_sumo(
         self,
         intersections: list,
-        anomaly_scores: Optional[Dict[str, float]] = None,
+        anomaly_info: Optional[Dict[str, Dict]] = None,
     ) -> float:
         """
         Calculate reward directly from SUMO via TraCI.
         
         Args:
             intersections: List of intersection IDs
-            anomaly_scores: Optional dict mapping intersection_id to anomaly score
+            anomaly_info: Optional dict mapping intersection_id to anomaly info
             
         Returns:
             Reward value
@@ -183,7 +188,7 @@ class RewardCalculator:
             except Exception:
                 pass
 
-        reward = self.calculate(waiting_times, queue_lengths, anomaly_scores)
+        reward = self.calculate(waiting_times, queue_lengths, anomaly_info)
         # Pressure penalty: vehicle count on controlled lanes (non-zero when traffic present; differentiates policies)
         if self.pressure_weight > 0:
             try:
@@ -219,12 +224,13 @@ class RewardCalculator:
                 pass
         return reward
     
-    def _calculate_placeholder(self, intersections: list) -> float:
+    def _calculate_placeholder(self, intersections: list, anomaly_info: Optional[Dict[str, Dict]] = None) -> float:
         """
         Calculate placeholder reward for testing.
         
         Args:
             intersections: List of intersection IDs
+            anomaly_info: Optional dict mapping intersection_id to anomaly info
             
         Returns:
             Placeholder reward value
@@ -239,13 +245,22 @@ class RewardCalculator:
             total_queue = total_queue / self.max_queue
         
         reward = -self.waiting_time_weight * total_waiting - self.queue_length_weight * total_queue
+        
+        # Add anomaly penalty if provided
+        if anomaly_info is not None and self.anomaly_weight > 0:
+            from src.phase3.integration import get_anomaly_controller
+            controller = get_anomaly_controller()
+            if controller is not None:
+                anomaly_penalty = controller.get_anomaly_penalty(anomaly_info)
+                reward -= anomaly_penalty
+        
         return float(reward)
     
     def get_reward_components(
         self,
         waiting_times: Dict[str, float],
         queue_lengths: Dict[str, float],
-        anomaly_scores: Optional[Dict[str, float]] = None,
+        anomaly_info: Optional[Dict[str, Dict]] = None,
     ) -> Dict[str, float]:
         """
         Get individual reward components for analysis.
@@ -253,7 +268,7 @@ class RewardCalculator:
         Args:
             waiting_times: Dict mapping intersection_id to waiting time
             queue_lengths: Dict mapping intersection_id to queue length
-            anomaly_scores: Optional dict mapping intersection_id to anomaly score
+            anomaly_info: Optional dict mapping intersection_id to anomaly info
             
         Returns:
             Dictionary with reward components
@@ -270,9 +285,11 @@ class RewardCalculator:
             "queue_length_penalty": -self.queue_length_weight * total_queue,
         }
         
-        if anomaly_scores is not None and self.anomaly_weight > 0:
-            total_anomaly = sum(anomaly_scores.values())
-            components["anomaly_penalty"] = -self.anomaly_weight * total_anomaly
+        if anomaly_info is not None and self.anomaly_weight > 0:
+            from src.phase3.integration import get_anomaly_controller
+            controller = get_anomaly_controller()
+            if controller is not None:
+                components["anomaly_penalty"] = -controller.get_anomaly_penalty(anomaly_info)
         
         components["total_reward"] = sum(components.values())
         
