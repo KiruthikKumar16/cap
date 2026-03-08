@@ -29,62 +29,44 @@ def find_sumo_bin():
             return str(bin_path)
     # PATH
     nc = shutil.which("netconvert")
-    print(f"DEBUG: shutil.which('netconvert') = {nc}")
     if nc:
-        bin_path = Path(nc).parent
-        print(f"DEBUG: bin_path = {bin_path}")
-        return str(bin_path)
+        return str(Path(nc).parent)
     return None
 
 
 def create_net_generic(data_dir: Path, grid_size: int, net_file: Path) -> bool:
     """Generate grid_NxN.net.xml via netgenerate and netconvert. Return True on success."""
     bin_dir = find_sumo_bin()
-    print(f"DEBUG: bin_dir = {bin_dir}")
     if not bin_dir:
         return False
     netconvert = os.path.join(bin_dir, "netconvert.exe" if os.name == "nt" else "netconvert")
     netgenerate = os.path.join(bin_dir, "netgenerate.exe" if os.name == "nt" else "netgenerate")
-    print(f"DEBUG: netconvert = {netconvert}, exists = {os.path.isfile(netconvert)}")
-    print(f"DEBUG: netgenerate = {netgenerate}, exists = {os.path.isfile(netgenerate)}")
     if not os.path.isfile(netconvert) or not os.path.isfile(netgenerate):
         return False
     gen_net = data_dir / f"grid_{grid_size}x{grid_size}_gen.net.xml"
-    print(f"DEBUG: gen_net = {gen_net}, data_dir = {data_dir}")
     try:
-        cmd1 = [netgenerate, "--grid", f"--grid.number={grid_size}", "--grid.length=100", "-o", str(gen_net)]
-        print(f"DEBUG: Running {cmd1}")
-        result1 = subprocess.run(
-            cmd1,
+        subprocess.run(
+            [netgenerate, "--grid", f"--grid.number={grid_size}", "--grid.length=100", "-o", str(gen_net)],
             cwd=str(data_dir),
             capture_output=True,
             check=True,
             timeout=30,
         )
-        print(f"DEBUG: netgenerate succeeded")
         # Create TLS ID list for all intersections
         tls_ids = ",".join([f"{chr(65+i)}{j}" for i in range(grid_size) for j in range(grid_size)])
-        cmd2 = [netconvert, "-s", str(gen_net), "-o", str(net_file), "--tls.set", tls_ids]
-        print(f"DEBUG: Running {cmd2}")
-        result2 = subprocess.run(
-            cmd2,
+        subprocess.run(
+            [netconvert, "-s", str(gen_net), "-o", str(net_file), "--tls.set", tls_ids],
             cwd=str(data_dir),
             capture_output=True,
             check=True,
             timeout=30,
         )
-        print(f"DEBUG: netconvert succeeded")
         if gen_net.exists():
             gen_net.unlink()
         # Patch net to add 4 phases for RL control
         _patch_net_four_phases(net_file)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError) as e:
-        print(f"DEBUG: Failed with {type(e).__name__}: {e}")
-        if hasattr(e, 'stdout') and e.stdout:
-            print(f"DEBUG: stdout: {e.stdout.decode()}")
-        if hasattr(e, 'stderr') and e.stderr:
-            print(f"DEBUG: stderr: {e.stderr.decode()}")
+    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
         if gen_net.exists():
             try:
                 gen_net.unlink()
