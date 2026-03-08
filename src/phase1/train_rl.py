@@ -5,11 +5,16 @@ Main training script for Phase 1: GNN-enhanced DQN agent.
 """
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Dict, Any
 import yaml
 import numpy as np
 import torch
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback

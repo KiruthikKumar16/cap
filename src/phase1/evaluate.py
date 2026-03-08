@@ -8,10 +8,15 @@ Use --save-summary to write results to JSON for comparison charts.
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
 import yaml
 import numpy as np
+
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import DQN
 from gymnasium import spaces
