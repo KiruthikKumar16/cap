@@ -54,8 +54,7 @@ class TrafficGraphBuilder:
         if SUMO_AVAILABLE:
             self._load_network()
         else:
-            print("Warning: SUMO not available. Using placeholder graph.")
-            self._create_placeholder_graph()
+            raise RuntimeError("SUMO is mandatory for this project. Install SUMO and ensure sumolib is available.")
     
     def _load_network(self) -> None:
         """Load SUMO network and extract intersections."""
@@ -90,9 +89,7 @@ class TrafficGraphBuilder:
             self._build_graph(net)
             
         except Exception as e:
-            print(f"Error loading SUMO network: {e}")
-            print("Creating placeholder graph instead.")
-            self._create_placeholder_graph()
+            raise RuntimeError(f"Failed to load SUMO network from {self.net_file}: {e}. Ensure SUMO is installed and the network file exists.") from e
     
     def _build_graph(self, net) -> None:
         """Build NetworkX graph from SUMO network."""
@@ -113,27 +110,7 @@ class TrafficGraphBuilder:
                 if not self.graph.has_edge(from_node, to_node):
                     self.graph.add_edge(from_node, to_node)
     
-    def _create_placeholder_graph(self) -> None:
-        """Create placeholder graph for testing without SUMO."""
-        # Create a simple 2x2 grid
-        self.intersections = ["J0", "J1", "J2", "J3"]
-        self.node_to_idx = {node_id: idx for idx, node_id in enumerate(self.intersections)}
-        self.idx_to_node = {idx: node_id for node_id, idx in self.node_to_idx.items()}
-        
-        self.graph = nx.DiGraph()
-        for node_id in self.intersections:
-            self.graph.add_node(node_id)
-        
-        # 2x2 grid connections
-        self.graph.add_edge("J0", "J1")
-        self.graph.add_edge("J0", "J2")
-        self.graph.add_edge("J1", "J0")
-        self.graph.add_edge("J1", "J3")
-        self.graph.add_edge("J2", "J0")
-        self.graph.add_edge("J2", "J3")
-        self.graph.add_edge("J3", "J1")
-        self.graph.add_edge("J3", "J2")
-    
+
     def get_edge_index(self) -> torch.Tensor:
         """
         Get edge index tensor for PyTorch Geometric.

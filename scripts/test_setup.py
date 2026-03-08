@@ -53,8 +53,8 @@ def test_graph_builder():
     try:
         from src.phase1.graph_builder import TrafficGraphBuilder
         
-        # Test with placeholder
-        builder = TrafficGraphBuilder("dummy.net.xml")
+        # Test with 3x3 grid network
+        builder = TrafficGraphBuilder("data/raw/grid_3x3.net.xml")
         assert builder.get_num_nodes() > 0, "Should have nodes"
         edge_index = builder.get_edge_index()
         assert edge_index.shape[0] == 2, "Edge index should have 2 rows"
