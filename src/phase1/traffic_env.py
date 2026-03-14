@@ -246,11 +246,13 @@ class SUMOTrafficEnv(gym.Env):
             candidate = Path(sumo_home) / "bin" / (name + (".exe" if os.name == "nt" else ""))
             if candidate.exists():
                 return str(candidate)
-        # Common Windows install
-        if os.name == "nt":
-            for prefix in [r"C:\Program Files (x86)\Eclipse\Sumo", r"C:\Program Files\Eclipse\Sumo"]:
-                candidate = Path(prefix) / "bin" / (name + ".exe")
+        # Common Linux install (Google Colab / Ubuntu)
+        if os.name != "nt":
+            for prefix in ["/usr/share/sumo", "/usr/bin"]:
+                candidate = Path(prefix) / "bin" / name if prefix == "/usr/share/sumo" else Path(prefix) / name
                 if candidate.exists():
+                    if "SUMO_HOME" not in os.environ:
+                        os.environ["SUMO_HOME"] = prefix if prefix == "/usr/share/sumo" else "/usr/share/sumo"
                     return str(candidate)
         return name  # rely on PATH
     

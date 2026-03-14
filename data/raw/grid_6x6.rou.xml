@@ -2,29 +2,29 @@
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
     <vType id="car" accel="2.6" decel="4.5" sigma="0.5" length="5.0" minGap="2.5" maxSpeed="13.89" guiShape="passenger"/>
     <route id="h_r0_lr" edges="A0B0 B0C0 C0D0 D0E0 E0F0"/>
-    <route id="h_r0_rl" edges="E0F0 D0E0 C0D0 B0C0 A0B0"/>
+    <route id="h_r0_rl" edges="F0E0 E0D0 D0C0 C0B0 B0A0"/>
     <route id="h_r1_lr" edges="A1B1 B1C1 C1D1 D1E1 E1F1"/>
-    <route id="h_r1_rl" edges="E1F1 D1E1 C1D1 B1C1 A1B1"/>
+    <route id="h_r1_rl" edges="F1E1 E1D1 D1C1 C1B1 B1A1"/>
     <route id="h_r2_lr" edges="A2B2 B2C2 C2D2 D2E2 E2F2"/>
-    <route id="h_r2_rl" edges="E2F2 D2E2 C2D2 B2C2 A2B2"/>
+    <route id="h_r2_rl" edges="F2E2 E2D2 D2C2 C2B2 B2A2"/>
     <route id="h_r3_lr" edges="A3B3 B3C3 C3D3 D3E3 E3F3"/>
-    <route id="h_r3_rl" edges="E3F3 D3E3 C3D3 B3C3 A3B3"/>
+    <route id="h_r3_rl" edges="F3E3 E3D3 D3C3 C3B3 B3A3"/>
     <route id="h_r4_lr" edges="A4B4 B4C4 C4D4 D4E4 E4F4"/>
-    <route id="h_r4_rl" edges="E4F4 D4E4 C4D4 B4C4 A4B4"/>
+    <route id="h_r4_rl" edges="F4E4 E4D4 D4C4 C4B4 B4A4"/>
     <route id="h_r5_lr" edges="A5B5 B5C5 C5D5 D5E5 E5F5"/>
-    <route id="h_r5_rl" edges="E5F5 D5E5 C5D5 B5C5 A5B5"/>
+    <route id="h_r5_rl" edges="F5E5 E5D5 D5C5 C5B5 B5A5"/>
     <route id="v_c0_tb" edges="A0A1 A1A2 A2A3 A3A4 A4A5"/>
-    <route id="v_c0_bt" edges="A4A5 A3A4 A2A3 A1A2 A0A1"/>
+    <route id="v_c0_bt" edges="A5A4 A4A3 A3A2 A2A1 A1A0"/>
     <route id="v_c1_tb" edges="B0B1 B1B2 B2B3 B3B4 B4B5"/>
-    <route id="v_c1_bt" edges="B4B5 B3B4 B2B3 B1B2 B0B1"/>
+    <route id="v_c1_bt" edges="B5B4 B4B3 B3B2 B2B1 B1B0"/>
     <route id="v_c2_tb" edges="C0C1 C1C2 C2C3 C3C4 C4C5"/>
-    <route id="v_c2_bt" edges="C4C5 C3C4 C2C3 C1C2 C0C1"/>
+    <route id="v_c2_bt" edges="C5C4 C4C3 C3C2 C2C1 C1C0"/>
     <route id="v_c3_tb" edges="D0D1 D1D2 D2D3 D3D4 D4D5"/>
-    <route id="v_c3_bt" edges="D4D5 D3D4 D2D3 D1D2 D0D1"/>
+    <route id="v_c3_bt" edges="D5D4 D4D3 D3D2 D2D1 D1D0"/>
     <route id="v_c4_tb" edges="E0E1 E1E2 E2E3 E3E4 E4E5"/>
-    <route id="v_c4_bt" edges="E4E5 E3E4 E2E3 E1E2 E0E1"/>
+    <route id="v_c4_bt" edges="E5E4 E4E3 E3E2 E2E1 E1E0"/>
     <route id="v_c5_tb" edges="F0F1 F1F2 F2F3 F3F4 F4F5"/>
-    <route id="v_c5_bt" edges="F4F5 F3F4 F2F3 F1F2 F0F1"/>
+    <route id="v_c5_bt" edges="F5F4 F4F3 F3F2 F2F1 F1F0"/>
     <flow id="flow_0" type="car" route="h_r0_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
     <flow id="flow_1" type="car" route="h_r0_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
     <flow id="flow_2" type="car" route="h_r1_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>

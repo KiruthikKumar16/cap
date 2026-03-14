@@ -428,7 +428,7 @@ def main():
     parser.add_argument("--phase-duration", type=int, default=30, help="Fixed-time/actuated phase duration in steps")
     parser.add_argument("--seeds", type=int, default=None, help="Number of seeds for mean +/- std (default: 1, use config evaluation.seeds)")
     parser.add_argument("--actuated", action="store_true", help="Also evaluate actuated baseline")
-    parser.add_argument("--save-summary", type=str, default=None, help="Save evaluation summary to JSON for comparison charts (e.g. outputs/phase1/evaluation_summary.json)")
+    parser.add_argument("--save-summary", type=str, nargs="?", const="outputs/phase1/evaluation_summary.json", default=None, help="Save evaluation summary to JSON for comparison charts (default: outputs/phase1/evaluation_summary.json if flag present)")
     parser.add_argument("--debug-actions", type=int, default=0, metavar="N", help="Log first N step actions (DQN vs fixed-time) for episode 0 to verify policies differ (e.g. 20)")
     args = parser.parse_args()
 

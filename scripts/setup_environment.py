@@ -51,8 +51,9 @@ def check_sumo():
     
     print("[ERROR] SUMO is NOT installed or not in PATH - MANDATORY REQUIREMENT")
     print("\n   ┌─ INSTALLATION INSTRUCTIONS ─────────────────────────────────┐")
-    print("   │ Linux/Ubuntu:                                               │")
+    print("   │ Linux/Ubuntu (Google Colab):                                │")
     print("   │   sudo apt-get update && apt-get install -y sumo sumo-tools│")
+    print("   │   export SUMO_HOME=/usr/share/sumo                      │")
     print("   │                                                             │")
     print("   │ macOS (Homebrew):                                          │")
     print("   │   brew install sumo                                         │")

@@ -99,7 +99,7 @@ def create_route_file_generic(output_path: str, grid_size: int):
     # Horizontal routes (left to right and right to left)
     for row in range(grid_size):
         edges_lr = [f"{chr(65+col)}{row}{chr(65+col+1)}{row}" for col in range(grid_size-1)]
-        edges_rl = list(reversed(edges_lr))
+        edges_rl = [f"{chr(65+col+1)}{row}{chr(65+col)}{row}" for col in range(grid_size-2, -1, -1)]
         if edges_lr:
             routes.append(f'    <route id="h_r{row}_lr" edges="{" ".join(edges_lr)}"/>')
             flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_lr" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
@@ -112,7 +112,7 @@ def create_route_file_generic(output_path: str, grid_size: int):
     # Vertical routes (top to bottom and bottom to top)
     for col in range(grid_size):
         edges_tb = [f"{chr(65+col)}{row}{chr(65+col)}{row+1}" for row in range(grid_size-1)]
-        edges_bt = list(reversed(edges_tb))
+        edges_bt = [f"{chr(65+col)}{row+1}{chr(65+col)}{row}" for row in range(grid_size-2, -1, -1)]
         if edges_tb:
             routes.append(f'    <route id="v_c{col}_tb" edges="{" ".join(edges_tb)}"/>')
             flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_tb" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
