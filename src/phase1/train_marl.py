@@ -65,20 +65,38 @@ def main():
 
     # Create the multi-agent environment
     def make_env():
-        return MARLTrafficEnv(config, model=model, reward_calculator=reward_calculator)
+        env = MARLTrafficEnv(config, model=model, reward_calculator=reward_calculator)
+        return env
+    
+    # Check for CUDA
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+    
+    # Move custom model to device
+    model = model.to(device)
     
     # Create a vectorized environment for parallel processing
-    vec_env = make_vec_env(make_env, n_envs=1) # Start with 1 for stability
+    vec_env = make_vec_env(make_env, n_envs=1)
     
     model = PPO(
         "MlpPolicy",
         vec_env,
         verbose=1,
+        device=device,
         tensorboard_log="./marl_ppo_tensorboard/",
-        **config.get("ppo", {}), # Add PPO specific params to config
+        **config.get("ppo", {}),
     )
 
-    model.learn(total_timesteps=config["training"]["total_timesteps"])
+    print("\n" + "="*60)
+    print("Starting Training (10x10 City Scale)")
+    print(f"Total Timesteps: {config['training']['total_timesteps']}")
+    print("="*60 + "\n")
+
+    # Use SB3 progress bar for better visibility in Colab
+    model.learn(
+        total_timesteps=config["training"]["total_timesteps"],
+        progress_bar=True
+    )
 
     model.save("marl_ppo_traffic")
 

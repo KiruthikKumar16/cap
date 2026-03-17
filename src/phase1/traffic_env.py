@@ -216,6 +216,12 @@ class SUMOTrafficEnv(gym.Env):
         # Advance simulation
         self._advance_simulation()
         
+        # Log progress occasionally for visibility in Colab/Terminals
+        if self.current_step % 100 == 0:
+            departed = traci.simulation.getDepartedNumber()
+            running = traci.vehicle.getIDCount()
+            print(f"  Step #{self.current_step}.00 (vehicles TOT {departed} ACT {running})")
+        
         # Calculate reward (real SUMO metrics) + optional per-step time penalty (standard RL)
         reward = self._calculate_reward() - self.time_penalty_per_step
         self._last_reward = reward
@@ -416,10 +422,12 @@ class SUMOTrafficEnv(gym.Env):
         else:
             history = list(self.state_history)
         
-        x_seq = torch.stack(history, dim=0).unsqueeze(0)  # Add batch dimension
+        x_seq = torch.stack(history, dim=0).unsqueeze(0) # Add batch dimension
 
         with torch.no_grad():
-            embedding = self.model(x_seq, self.edge_index)
+            embedding, forecast = self.model(x_seq, self.edge_index)
+            # Store forecast for reward calculation to avoid double-computing
+            self.last_forecast = forecast
         
         return embedding.flatten().cpu().numpy()
     

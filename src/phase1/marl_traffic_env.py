@@ -50,20 +50,8 @@ class MARLTrafficEnv(gym.Env):
     def step(self, actions):
         obs, reward, terminated, truncated, info = self.env.step(actions)
 
-        # Calculate risk-aware penalty using the forecasted state
-        import torch
-        # Get history from inner env
-        history = list(self.env.state_history)
-        if len(history) < self.env.state_history.maxlen:
-            # Pad if needed (shouldn't happen often as deque has maxlen)
-            padding = [torch.zeros_like(history[0])] * (self.env.state_history.maxlen - len(history))
-            history = padding + history
-            
-        x_seq = torch.stack(history, dim=0).unsqueeze(0)
-        
-        # model.forecaster returns (reconstruction, forecast)
-        with torch.no_grad():
-            _, forecasted_state = self.env.model.forecaster(x_seq, self.env.edge_index)
+        # Use the cached forecast from the inner environment
+        forecasted_state = self.env.last_forecast
         
         # Calculate risk penalty
         risk_penalty = self.env.reward_calculator.risk_model.calculate_risk(forecasted_state)

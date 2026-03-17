@@ -22,13 +22,13 @@ rl:
   algorithm: PPO
   policy: MlpPolicy
   learning_rate: 0.0003
-  n_steps: 4096
-  batch_size: 128
+  n_steps: 2048  # Reduced for more frequent updates
+  batch_size: 256 # Increased for more stable gradients on large grid
   n_epochs: 10
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.0
+  ent_coef: 0.01 # Add some exploration
   vf_coef: 0.5
   max_grad_norm: 0.5
 
