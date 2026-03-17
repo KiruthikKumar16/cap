@@ -820,5 +820,54 @@ def main():
     print("  - phase1_comparison_improvement.png     (SOTA: % improvement over fixed-time)")
 
 
+def plot_benchmarks(out_dir: Path):
+    """Plot benchmark comparison figures from benchmark_results.json."""
+    import json
+    results_path = project_root / "outputs" / "phase1" / "benchmark_results.json"
+    if not results_path.exists():
+        print(f"[INFO] Benchmark results file not found at {results_path}. Skipping benchmark plot.")
+        return
+
+    print(f"\n[INFO] Plotting benchmark results from {results_path}")
+    try:
+        with open(results_path, 'r', encoding="utf-8") as f:
+            results = json.load(f)
+
+        labels = list(results.keys())
+        if not labels:
+            print("[WARNING] No models found in benchmark results. Skipping plot.")
+            return
+
+        # Assuming metrics like 'mean_reward', 'mean_travel_time', etc.
+        metrics = list(next(iter(results.values())).keys())
+
+        for metric in metrics:
+            if "mean" not in metric:
+                continue
+
+            values = [results[model].get(metric, 0) for model in labels]
+
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.bar(labels, values, color=['#2ecc71', '#3498db', '#95a5a6', '#e74c3c'][:len(labels)])
+
+            title_metric = metric.replace("_", " ").title()
+            ax.set_ylabel(title_metric)
+            ax.set_title(f'Benchmark Comparison: {title_metric}')
+            ax.set_xlabel('Control Strategy')
+            ax.grid(True, axis='y', alpha=0.3)
+            plt.tight_layout()
+
+            metric_path = out_dir / f"phase1_benchmark_{metric}.png"
+            plt.savefig(metric_path, dpi=150, bbox_inches="tight")
+            plt.close()
+            print(f"[OK] Saved: {metric_path}")
+
+    except Exception as e:
+        print(f"[WARNING] Could not plot benchmarks from {results_path}: {e}")
+
+
 if __name__ == "__main__":
     main()
+    # Also generate benchmark plots if the result file exists
+    benchmark_out_dir = project_root / "outputs" / "phase1" / "figures"
+    plot_benchmarks(benchmark_out_dir)

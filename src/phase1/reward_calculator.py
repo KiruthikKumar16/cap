@@ -5,8 +5,9 @@ Calculates rewards for reinforcement learning based on traffic metrics.
 Supports multi-objective rewards including waiting time, queue length, and anomaly scores.
 """
 
-from typing import Dict, Optional
 import numpy as np
+from typing import Dict, List, Optional
+from src.phase3.risk_model import CongestionRiskModel
 import torch
 
 
@@ -37,6 +38,8 @@ class RewardCalculator:
         max_queue: float = 100.0,
         max_throughput_per_step: float = 20.0,
         max_speed: float = 13.89,
+        risk_density_threshold: float = 0.8,
+        risk_penalty_factor: float = 1.0,
     ):
         """
         Initialize reward calculator.
@@ -53,6 +56,8 @@ class RewardCalculator:
             max_queue: Maximum queue length for normalization
             max_throughput_per_step: Maximum departed per step for throughput normalization
             max_speed: Maximum speed for normalization (m/s)
+            risk_density_threshold: Density threshold for congestion risk model
+            risk_penalty_factor: Penalty factor for congestion risk model
         """
         self.waiting_time_weight = waiting_time_weight
         self.queue_length_weight = queue_length_weight
@@ -65,47 +70,46 @@ class RewardCalculator:
         self.max_queue = max_queue
         self.max_throughput_per_step = max_throughput_per_step
         self.max_speed = max_speed
+        self.risk_model = CongestionRiskModel(
+            density_threshold=risk_density_threshold,
+            risk_penalty_factor=risk_penalty_factor,
+        )
     
     def calculate(
         self,
         waiting_times: Dict[str, float],
         queue_lengths: Dict[str, float],
         anomaly_info: Optional[Dict[str, Dict]] = None,
+        forecasted_state: Optional[torch.Tensor] = None
     ) -> float:
-        """
-        Calculate reward from traffic metrics.
-        
-        Args:
-            waiting_times: Dict mapping intersection_id to waiting time
-            queue_lengths: Dict mapping intersection_id to queue length
-            anomaly_info: Optional dict mapping intersection_id to anomaly info dict
-                        (contains 'score', 'smoothed_score', 'anomaly_type', etc.)
-            
-        Returns:
-            Reward value (negative, to be maximized)
-        """
-        # Sum metrics across all intersections
+        """Calculate the reward based on the provided metrics and optional forecasted state."""
+        reward = 0.0
+
+        # Calculate total metrics
         total_waiting = sum(waiting_times.values())
         total_queue = sum(queue_lengths.values())
-        
-        # Normalize if requested
+
         if self.normalize:
-            total_waiting = total_waiting / self.max_waiting
-            total_queue = total_queue / self.max_queue
-        
-        # Calculate base reward
-        reward = -self.waiting_time_weight * total_waiting - self.queue_length_weight * total_queue
-        
-        # Add enhanced anomaly penalty if provided
+            total_waiting = total_waiting / max(1e-6, self.max_waiting * len(waiting_times))
+            total_queue = total_queue / max(1e-6, self.max_queue * len(queue_lengths))
+
+        reward -= self.waiting_time_weight * total_waiting
+        reward -= self.queue_length_weight * total_queue
+
+        # Add anomaly penalty if provided
         if anomaly_info is not None and self.anomaly_weight > 0:
-            # Use the controller's penalty calculation for consistency
             from src.phase3.integration import get_anomaly_controller
             controller = get_anomaly_controller()
             if controller is not None:
                 anomaly_penalty = controller.get_anomaly_penalty(anomaly_info)
-                reward -= anomaly_penalty
-        
-        return float(reward)
+                reward -= self.anomaly_weight * anomaly_penalty
+
+        # Risk-aware penalty
+        if forecasted_state is not None:
+            congestion_risk = self.risk_model.calculate_risk(forecasted_state)
+            reward -= congestion_risk
+
+        return reward
     
     def add_throughput_bonus(self, reward: float, departed_count: float) -> float:
         """Add throughput bonus to reward (call when throughput_weight > 0)."""

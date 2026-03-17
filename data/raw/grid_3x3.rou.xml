@@ -13,16 +13,16 @@
     <route id="v_c1_bt" edges="B2B1 B1B0"/>
     <route id="v_c2_tb" edges="C0C1 C1C2"/>
     <route id="v_c2_bt" edges="C2C1 C1C0"/>
-    <flow id="flow_0" type="car" route="h_r0_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_1" type="car" route="h_r0_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_2" type="car" route="h_r1_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_3" type="car" route="h_r1_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_4" type="car" route="h_r2_lr" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_5" type="car" route="h_r2_rl" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_6" type="car" route="v_c0_tb" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_7" type="car" route="v_c0_bt" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_8" type="car" route="v_c1_tb" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_9" type="car" route="v_c1_bt" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_10" type="car" route="v_c2_tb" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
-    <flow id="flow_11" type="car" route="v_c2_bt" begin="0" end="3600" vehsPerHour="300" departLane="best" departSpeed="max"/>
+    <flow id="flow_0" type="car" route="h_r0_lr" begin="0" end="3600" vehsPerHour="500"/>
+    <flow id="flow_1" type="car" route="h_r0_rl" begin="0" end="3600" vehsPerHour="200"/>
+    <flow id="flow_2" type="car" route="h_r1_lr" begin="0" end="3600" vehsPerHour="700"/>
+    <flow id="flow_3" type="car" route="h_r1_rl" begin="0" end="3600" vehsPerHour="300"/>
+    <flow id="flow_4" type="car" route="h_r2_lr" begin="0" end="3600" vehsPerHour="400"/>
+    <flow id="flow_5" type="car" route="h_r2_rl" begin="0" end="3600" vehsPerHour="400"/>
+    <flow id="flow_6" type="car" route="v_c0_tb" begin="0" end="3600" vehsPerHour="600"/>
+    <flow id="flow_7" type="car" route="v_c0_bt" begin="0" end="3600" vehsPerHour="250"/>
+    <flow id="flow_8" type="car" route="v_c1_tb" begin="0" end="3600" vehsPerHour="550"/>
+    <flow id="flow_9" type="car" route="v_c1_bt" begin="0" end="3600" vehsPerHour="350"/>
+    <flow id="flow_10" type="car" route="v_c2_tb" begin="0" end="3600" vehsPerHour="450"/>
+    <flow id="flow_11" type="car" route="v_c2_bt" begin="0" end="3600" vehsPerHour="300"/>
 </routes>

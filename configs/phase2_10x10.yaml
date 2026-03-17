@@ -1,0 +1,46 @@
+
+# Configuration for 10x10 Grid (Phase 2)
+
+sumo:
+  net_file: data/raw/grid_10x10.net.xml
+  route_file: data/raw/grid_10x10.rou.xml
+  simulation_steps: 10000
+  step_length: 0.5
+  gui: false
+
+model:
+  use_gnn: true
+  gnn_type: GAT
+  feature_dim: 12
+  hidden_dim: 128
+  embedding_dim: 64
+  gnn_layers: 3
+  gat_heads: 4
+  dropout: 0.1
+
+rl:
+  algorithm: PPO
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  n_steps: 4096
+  batch_size: 128
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+reward:
+  waiting_time_weight: 0.2
+  queue_length_weight: 0.1
+  speed_bonus_weight: 0.4
+  pressure_weight: 0.0001
+  risk_density_threshold: 0.7
+  risk_penalty_factor: 1.5
+
+training:
+  total_timesteps: 500000
+  checkpoint_freq: 50000
+  eval_freq: 25000

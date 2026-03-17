@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
 import yaml
 import numpy as np
+import torch
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -420,6 +421,82 @@ def _run_single_seed(
     return dqn_r, dqn_l, dqn_tput, dqn_tt, dqn_wt, dqn_q, ft_r, ft_l, ft_tput, ft_tt, ft_wt, ft_q, act_r, act_l, act_tput, act_tt, act_wt, act_q, placeholder_mode
 
 
+from src.baselines.presslight import PresslightAgent
+from src.baselines.colight import CoLightAgent
+
+def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
+    """
+    Evaluates a specific model type and returns mean metrics.
+    """
+    env = create_environment(config)
+    num_episodes = config.get("evaluation", {}).get("num_episodes", 10)
+    max_steps = config.get("sumo", {}).get("simulation_steps", 3600)
+    
+    if model_type == "PPO":
+        from stable_baselines3 import PPO
+        checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
+        model = PPO.load(checkpoint, env=env)
+        results = evaluate_dqn(model, env, num_episodes, max_steps_per_episode=max_steps)
+    elif model_type == "PressLight":
+        agent = PresslightAgent(num_actions=4)
+        # Custom evaluation loop for PressLight
+        results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
+    elif model_type == "CoLight":
+        agent = CoLightAgent(
+            in_dim=config["model"]["feature_dim"],
+            hidden_dim=config["model"]["hidden_dim"],
+            out_dim=config["model"]["embedding_dim"],
+            num_layers=config["model"]["gnn_layers"]
+        )
+        results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
+    else:
+        results = evaluate_fixed_time(env, num_episodes, max_steps_per_episode=max_steps)
+    
+    env.close()
+    
+    # Return mean metrics
+    return {
+        "mean_reward": float(np.mean(results[0])),
+        "mean_throughput": float(np.mean(results[2])),
+        "mean_travel_time": float(np.mean(results[3])),
+        "mean_waiting_time": float(np.mean(results[4])),
+        "mean_queue_length": float(np.mean(results[5]))
+    }
+
+def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
+    """Generic evaluation loop for baseline agents."""
+    episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths = [], [], [], [], [], []
+    
+    for _ in range(num_episodes):
+        obs, info = env.reset()
+        total_reward, total_departed, total_travel_time, total_waiting_time, total_queue_length = 0, 0, 0, 0, 0
+        for step in range(max_steps):
+            if hasattr(agent, "predict"):
+                if isinstance(agent, CoLightAgent):
+                    # CoLight needs edge_index
+                    action = agent.predict(torch.tensor(obs, dtype=torch.float32), env.edge_index).numpy()
+                else:
+                    action = agent.predict(obs)
+            else:
+                action = env.action_space.sample()
+                
+            obs, reward, terminated, truncated, info = env.step(action)
+            total_reward += reward
+            total_departed += info.get("departed", 0)
+            total_travel_time += info.get("travel_time", 0)
+            total_waiting_time += info.get("waiting_time", 0)
+            total_queue_length += info.get("queue_length", 0)
+            if terminated or truncated:
+                break
+        
+        episode_rewards.append(total_reward)
+        episode_throughputs.append(total_departed)
+        episode_travel_times.append(total_travel_time)
+        episode_waiting_times.append(total_waiting_time / (step + 1))
+        episode_queue_lengths.append(total_queue_length / (step + 1))
+        
+    return episode_rewards, None, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, False
+ 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Phase 1 DQN, fixed-time, and actuated baselines")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml", help="Path to configuration file")

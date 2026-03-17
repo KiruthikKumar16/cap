@@ -1,7 +1,10 @@
 import argparse
 from pathlib import Path
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+import seaborn as sns
 import streamlit as st
 import torch
 import yaml
@@ -114,6 +117,20 @@ def main():
         st.success("No anomalies detected in the demo window.")
     else:
         st.error(f"Detected {len(alert_indices)} anomalies at windows: {alert_indices.tolist()}")
+
+    st.header("Congestion Risk Map")
+    # Placeholder for risk map visualization
+    risk_data = np.random.rand(10, 10)
+    fig, ax = plt.subplots()
+    sns.heatmap(risk_data, ax=ax, cmap="Reds", annot=True)
+    st.pyplot(fig)
+
+    st.header("Forecast vs. Actual Traffic Flow")
+    # Placeholder for forecast chart
+    chart_data = pd.DataFrame(
+        np.random.randn(20, 2),
+        columns=['Forecast', 'Actual'])
+    st.line_chart(chart_data)
 
     st.caption("Adjust thresholds and retrain for deployment scenarios.")
 

@@ -20,7 +20,7 @@ from stable_baselines3 import DQN
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
 
 from src.phase1.traffic_env import SUMOTrafficEnv
-from src.phase1.gnn_encoder import TrafficGNNEncoder, MLPEncoder
+from src.models.predictive_gnn_rl import PredictiveGNNRL
 from src.phase1.reward_calculator import RewardCalculator
 from src.phase1.dqn_agent import create_dqn_agent, TrainingCallback
 from src.phase3.integration import init_anomaly_controller
@@ -62,26 +62,22 @@ def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTr
         )
         print("[OK] Enhanced anomaly controller initialized for Phase 3 integration")
     
-    # Create state encoder (GNN or MLP for ablation)
-    use_gnn = model_cfg.get("use_gnn", True)
-    if use_gnn:
-        gnn_encoder = TrafficGNNEncoder(
-            in_dim=model_cfg["feature_dim"],
-            hidden_dim=model_cfg["hidden_dim"],
-            out_dim=model_cfg["embedding_dim"],
-            num_layers=model_cfg["gnn_layers"],
-            gnn_type=model_cfg["gnn_type"],
-            gat_heads=model_cfg.get("gat_heads", 2),
-            dropout=model_cfg["dropout"],
-        )
-    else:
-        gnn_encoder = MLPEncoder(
-            in_dim=model_cfg["feature_dim"],
-            hidden_dim=model_cfg["hidden_dim"],
-            out_dim=model_cfg["embedding_dim"],
-            num_layers=model_cfg["gnn_layers"],
-            dropout=model_cfg["dropout"],
-        )
+    # Create the Predictive GNN-RL model
+    model = PredictiveGNNRL(
+        st_gnn_in_dim=model_cfg["feature_dim"],
+        st_gnn_hidden_dim=model_cfg["hidden_dim"],
+        st_gnn_heads=model_cfg.get("gat_heads", 2),
+        st_gnn_layers=model_cfg["gnn_layers"],
+        st_gnn_dropout=model_cfg["dropout"],
+        st_gnn_horizon=config.get("data", {}).get("window", {}).get("history", 3),
+        rl_gnn_in_dim=model_cfg["feature_dim"],
+        rl_gnn_hidden_dim=model_cfg["hidden_dim"],
+        rl_gnn_embedding_dim=model_cfg["embedding_dim"],
+        rl_gnn_layers=model_cfg["gnn_layers"],
+        rl_gnn_type=model_cfg["gnn_type"],
+        rl_gnn_heads=model_cfg.get("gat_heads", 2),
+        rl_gnn_dropout=model_cfg["dropout"],
+    )
     
     # Create reward calculator (multi-objective: waiting, queue, speed, pressure, throughput)
     reward_calculator = RewardCalculator(
@@ -103,7 +99,7 @@ def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTr
         config_file=sumo_cfg.get("config_file"),
         step_length=sumo_cfg["step_length"],
         max_steps=sumo_cfg["simulation_steps"],
-        gnn_encoder=gnn_encoder,
+        model=model,
         reward_calculator=reward_calculator,
         use_gui=sumo_cfg.get("gui", False),
         traci_port=traci_port,

@@ -12,66 +12,86 @@ Active: 3x3 (baseline for publication) and 6x6 (scalability proof)
 import os
 import shutil
 import subprocess
+import argparse
 from pathlib import Path
 
 
 def find_sumo_bin():
     """Return path to SUMO bin directory, or None if not found."""
+    # First try PATH
+    nc = shutil.which("netconvert")
+    if nc:
+        return str(Path(nc).parent)
+    
+    # Then try SUMO_HOME
     sumo_home = os.environ.get("SUMO_HOME", "").strip()
     if sumo_home:
         bin_path = Path(sumo_home) / "bin"
         if (bin_path / "netconvert.exe").exists() or (bin_path / "netconvert").exists():
             return str(bin_path)
+    
     # Common Windows install
     for prefix in [r"C:\Program Files (x86)\Eclipse\Sumo", r"C:\Program Files\Eclipse\Sumo"]:
         bin_path = Path(prefix) / "bin"
         if (bin_path / "netconvert.exe").exists():
             return str(bin_path)
-    # PATH
-    nc = shutil.which("netconvert")
-    if nc:
-        return str(Path(nc).parent)
+    
     return None
 
 
 def create_net_generic(data_dir: Path, grid_size: int, net_file: Path) -> bool:
-    """Generate grid_NxN.net.xml via netgenerate and netconvert. Return True on success."""
+    """Generate grid_NxN.net.xml by manually creating nod and edg files."""
     bin_dir = find_sumo_bin()
     if not bin_dir:
         return False
     netconvert = os.path.join(bin_dir, "netconvert.exe" if os.name == "nt" else "netconvert")
-    netgenerate = os.path.join(bin_dir, "netgenerate.exe" if os.name == "nt" else "netgenerate")
-    if not os.path.isfile(netconvert) or not os.path.isfile(netgenerate):
-        return False
-    gen_net = data_dir / f"grid_{grid_size}x{grid_size}_gen.net.xml"
+    
+    nod_file = data_dir / f"grid_{grid_size}x{grid_size}.nod.xml"
+    edg_file = data_dir / f"grid_{grid_size}x{grid_size}.edg.xml"
+    
+    # Generate nodes
+    nodes = ['<nodes>']
+    for row in range(grid_size):
+        for col in range(grid_size):
+            node_id = f"{chr(65+col)}{row}"
+            x = col * 100
+            y = row * 100
+            # Internal nodes are traffic lights, boundary nodes are priority
+            node_type = "traffic_light" if 0 < row < grid_size-1 and 0 < col < grid_size-1 else "priority"
+            nodes.append(f'    <node id="{node_id}" x="{x}" y="{y}" type="{node_type}"/>')
+    nodes.append('</nodes>')
+    nod_file.write_text('\n'.join(nodes), encoding="utf-8")
+    
+    # Generate edges
+    edges = ['<edges>']
+    for row in range(grid_size):
+        for col in range(grid_size):
+            curr = f"{chr(65+col)}{row}"
+            # Horizontal
+            if col < grid_size - 1:
+                nxt = f"{chr(65+col+1)}{row}"
+                edges.append(f'    <edge id="{curr}{nxt}" from="{curr}" to="{nxt}" priority="1" numLanes="2" speed="13.89"/>')
+                edges.append(f'    <edge id="{nxt}{curr}" from="{nxt}" to="{curr}" priority="1" numLanes="2" speed="13.89"/>')
+            # Vertical
+            if row < grid_size - 1:
+                nxt = f"{chr(65+col)}{row+1}"
+                edges.append(f'    <edge id="{curr}{nxt}" from="{curr}" to="{nxt}" priority="1" numLanes="2" speed="13.89"/>')
+                edges.append(f'    <edge id="{nxt}{curr}" from="{nxt}" to="{curr}" priority="1" numLanes="2" speed="13.89"/>')
+    edges.append('</edges>')
+    edg_file.write_text('\n'.join(edges), encoding="utf-8")
+    
     try:
         subprocess.run(
-            [netgenerate, "--grid", f"--grid.number={grid_size}", "--grid.length=100", "-o", str(gen_net)],
-            cwd=str(data_dir),
-            capture_output=True,
+            [netconvert, "-n", str(nod_file), "-e", str(edg_file), "-o", str(net_file)],
             check=True,
-            timeout=30,
-        )
-        # Create TLS ID list for all intersections
-        tls_ids = ",".join([f"{chr(65+i)}{j}" for i in range(grid_size) for j in range(grid_size)])
-        subprocess.run(
-            [netconvert, "-s", str(gen_net), "-o", str(net_file), "--tls.set", tls_ids],
-            cwd=str(data_dir),
             capture_output=True,
-            check=True,
-            timeout=30,
         )
-        if gen_net.exists():
-            gen_net.unlink()
-        # Patch net to add 4 phases for RL control
-        _patch_net_four_phases(net_file)
+        # Cleanup
+        nod_file.unlink()
+        edg_file.unlink()
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError, OSError):
-        if gen_net.exists():
-            try:
-                gen_net.unlink()
-            except OSError:
-                pass
+    except Exception as e:
+        print(f"Error during network generation: {e}")
         return False
 
 
@@ -161,74 +181,71 @@ def create_config_file_generic(output_path: str, net_file: str, route_file: str,
     print(f"[OK] Created config file: {output_path}")
 
 
-def main():
-    """Create SUMO files for 3x3 and 6x6 grids (no placeholder 2x2). SUMO mandatory."""
-    print("=" * 70)
-    print("SUMO Network Generation: 3x3 (Publication) + 6x6 (Scalability)")
-    print("=" * 70)
-    print("NOTE: SUMO is MANDATORY. Placeholder mode has been removed.")
-    print()
-    
-    data_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
-    data_dir.mkdir(parents=True, exist_ok=True)
-    
-    # Create 3x3 grid
-    print("Creating 3x3 grid network (baseline for research/patent)...")
-    grid_size = 3
-    net_file_3x3 = data_dir / "grid_3x3.net.xml"
-    route_file_3x3 = data_dir / "grid_3x3.rou.xml"
-    config_file_3x3 = data_dir / "grid_3x3.sumocfg"
-    
-    if create_net_generic(data_dir, grid_size, net_file_3x3):
-        print(f"[OK] Created 3x3 network file (netgenerate+netconvert): {net_file_3x3}")
+def create_grid_network(grid_size: int, data_dir: Path):
+    """Creates all SUMO files for a grid of a given size."""
+    print(f"Creating {grid_size}x{grid_size} grid network...")
+
+    net_file = data_dir / f"grid_{grid_size}x{grid_size}.net.xml"
+    route_file = data_dir / f"grid_{grid_size}x{grid_size}.rou.xml"
+    config_file = data_dir / f"grid_{grid_size}x{grid_size}.sumocfg"
+
+    if create_net_generic(data_dir, grid_size, net_file):
+        print(f"[OK] Created {grid_size}x{grid_size} network file: {net_file}")
     else:
-        if net_file_3x3.exists():
-            print(f"[INFO] Leaving existing 3x3 network file as-is: {net_file_3x3}")
+        if net_file.exists():
+            print(f"[INFO] Leaving existing {grid_size}x{grid_size} network file as-is: {net_file}")
         else:
-            print("[WARN] Could not create 3x3 network with netgenerate/netconvert.")
+            print(f"[WARN] Could not create {grid_size}x{grid_size} network with netgenerate/netconvert.")
             print("       Install SUMO or set SUMO_HOME, then run this script again.")
-    
-    create_route_file_generic(str(route_file_3x3), grid_size)
-    create_config_file_generic(str(config_file_3x3), "grid_3x3.net.xml", "grid_3x3.rou.xml", grid_size)
+            return  # Can't proceed without a net file
+
+    create_route_file_generic(str(route_file), grid_size)
+    create_config_file_generic(
+        str(config_file), f"grid_{grid_size}x{grid_size}.net.xml", f"grid_{grid_size}x{grid_size}.rou.xml", grid_size
+    )
     print()
-    
-    # Create 6x6 grid
-    print("Creating 6x6 grid network (scalability proof for real-world deployment)...")
-    grid_size = 6
-    net_file_6x6 = data_dir / "grid_6x6.net.xml"
-    route_file_6x6 = data_dir / "grid_6x6.rou.xml"
-    config_file_6x6 = data_dir / "grid_6x6.sumocfg"
-    
-    if create_net_generic(data_dir, grid_size, net_file_6x6):
-        print(f"[OK] Created 6x6 network file (netgenerate+netconvert): {net_file_6x6}")
-    else:
-        if net_file_6x6.exists():
-            print(f"[INFO] Leaving existing 6x6 network file as-is: {net_file_6x6}")
-        else:
-            print("[WARN] Could not create 6x6 network with netgenerate/netconvert.")
-            print("       Install SUMO or set SUMO_HOME, then run this script again.")
-    
-    create_route_file_generic(str(route_file_6x6), grid_size)
-    create_config_file_generic(str(config_file_6x6), "grid_6x6.net.xml", "grid_6x6.rou.xml", grid_size)
-    print()
-    
-    print("=" * 70)
-    print("SUMO Network Files Ready (3x3 + 6x6)")
-    print("=" * 70)
-    print(f"3x3 Network:  {net_file_3x3}")
-    print(f"3x3 Routes:   {route_file_3x3}")
-    print(f"3x3 Config:   {config_file_3x3}")
-    print()
-    print(f"6x6 Network:  {net_file_6x6}")
-    print(f"6x6 Routes:   {route_file_6x6}")
-    print(f"6x6 Config:   {config_file_6x6}")
+
+    print(f"--- {grid_size}x{grid_size} Files Ready ---")
+    print(f"Network:  {net_file}")
+    print(f"Routes:   {route_file}")
+    print(f"Config:   {config_file}")
     print()
     print("Test with:")
-    print("  sumo -n data/raw/grid_3x3.net.xml -r data/raw/grid_3x3.rou.xml")
-    print("  sumo -n data/raw/grid_6x6.net.xml -r data/raw/grid_6x6.rou.xml")
+    print(f"  sumo-gui -c {config_file.relative_to(data_dir.parent.parent)}")
     print()
-    print("REMOVED: 2x2 grid (use 3x3 minimum for research/patent credibility)")
+
+
+def main():
+    """Create SUMO files for a configurable grid size."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Create SUMO grid network files.")
+    parser.add_argument(
+        "--grid-size", type=int, default=10, help="Size of the grid (e.g., 10 for a 10x10 grid)"
+    )
+    args = parser.parse_args()
+
+    print("=" * 70)
+    print(f"SUMO Network Generation: {args.grid_size}x{args.grid_size}")
+    print("=" * 70)
+    print("NOTE: SUMO is MANDATORY. This script uses netgenerate/netconvert.")
+    print()
+
+    data_dir = Path(__file__).resolve().parent.parent / "data" / "raw"
+    data_dir.mkdir(parents=True, exist_ok=True)
+
+    create_grid_network(args.grid_size, data_dir)
+
+    print("=" * 70)
+    print("SUMO Network Files Generation Complete")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Create SUMO network files.")
+    parser.add_argument("--grid-size", type=int, default=10, help="Size of the grid (e.g., 10 for a 10x10 grid)")
+    parser.add_argument("--veh-per-hour", type=int, default=300, help="Vehicles per hour per flow")
+    parser.add_argument("--output-dir", type=str, default="data/raw", help="Output directory for network files")
+    args = parser.parse_args()
+    
+    create_grid_network(args.grid_size, Path(args.output_dir))

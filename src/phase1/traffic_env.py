@@ -22,7 +22,8 @@ TRACI_AVAILABLE = True
 
 from src.phase1.graph_builder import TrafficGraphBuilder
 from src.phase1.feature_extractor import TrafficFeatureExtractor
-from src.phase1.gnn_encoder import TrafficGNNEncoder
+from src.models.predictive_gnn_rl import PredictiveGNNRL
+from collections import deque
 from src.phase1.reward_calculator import RewardCalculator
 from src.phase3.integration import get_anomaly_controller
 
@@ -43,10 +44,11 @@ class SUMOTrafficEnv(gym.Env):
         self,
         net_file: str,
         route_file: str,
+        model: PredictiveGNNRL,
         config_file: Optional[str] = None,
         step_length: float = 1.0,
         max_steps: int = 3600,
-        gnn_encoder: Optional[TrafficGNNEncoder] = None,
+        st_gnn_horizon: int = 5,
         reward_calculator: Optional[RewardCalculator] = None,
         use_gui: bool = False,
         traci_port: Optional[int] = None,
@@ -60,10 +62,11 @@ class SUMOTrafficEnv(gym.Env):
         Args:
             net_file: Path to SUMO network file (.net.xml)
             route_file: Path to SUMO route file (.rou.xml)
+            model: The PredictiveGNNRL model for observation generation.
             config_file: Optional path to SUMO config file (.sumocfg)
             step_length: Simulation step length in seconds
             max_steps: Maximum simulation steps per episode
-            gnn_encoder: GNN encoder for observations (optional, will create if None)
+            st_gnn_horizon: Number of historical steps for the ST-GNN.
             reward_calculator: Reward calculator (optional, will create if None)
             use_gui: Whether to use SUMO GUI
             traci_port: Port for TraCI (default 8813). Use different ports for train vs eval envs.
@@ -91,19 +94,10 @@ class SUMOTrafficEnv(gym.Env):
         
         self.feature_extractor = TrafficFeatureExtractor(self.intersections)
         
-        # GNN encoder (create if not provided)
-        if gnn_encoder is None:
-            self.gnn_encoder = TrafficGNNEncoder(
-                in_dim=12,  # Feature dimension
-                hidden_dim=64,
-                out_dim=32,
-                num_layers=2,
-                gnn_type="gat",
-                gat_heads=2,
-                dropout=0.1
-            )
-        else:
-            self.gnn_encoder = gnn_encoder
+        # Predictive GNN model and state history
+        self.model = model
+        self.state_history = deque(maxlen=st_gnn_horizon)
+
         
         # Reward calculator (create if not provided)
         if reward_calculator is None:
@@ -120,7 +114,7 @@ class SUMOTrafficEnv(gym.Env):
         self.edge_index = self.graph_builder.get_edge_index()
         
         # Observation space: flattened GNN embeddings
-        embedding_dim = self.gnn_encoder.out_dim
+        embedding_dim = self.model.controller.out_dim
         obs_dim = self.num_intersections * embedding_dim
         self.observation_space = spaces.Box(
             low=-np.inf,
@@ -198,6 +192,9 @@ class SUMOTrafficEnv(gym.Env):
                 anomaly_controller.reset()
 
         # Get initial observation
+        self.state_history.clear()
+        # Get initial observation
+        self.state_history.append(self._get_raw_observation())
         observation = self._get_observation()
         info = self._get_info()
         
@@ -228,6 +225,7 @@ class SUMOTrafficEnv(gym.Env):
         truncated = self.current_step >= self.max_steps
         
         # Get observation
+        self.state_history.append(self._get_raw_observation())
         observation = self._get_observation()
         info = self._get_info()
         
@@ -402,25 +400,28 @@ class SUMOTrafficEnv(gym.Env):
             pass
         return 3
     
+    def _get_raw_observation(self) -> torch.Tensor:
+        """Get the raw feature observation from the feature extractor."""
+        features = self.feature_extractor.extract()
+        if torch.is_tensor(features):
+            return features.detach().clone().to(torch.float32)
+        return torch.tensor(features, dtype=torch.float32)
+
     def _get_observation(self) -> np.ndarray:
-        """
-        Get current observation (GNN embeddings).
+        """Get observation from GNN encoder."""
+        if len(self.state_history) < self.state_history.maxlen:
+            # Pad with zeros if we don't have enough history
+            padding = [torch.zeros_like(self.state_history[0])] * (self.state_history.maxlen - len(self.state_history))
+            history = padding + list(self.state_history)
+        else:
+            history = list(self.state_history)
         
-        Returns:
-            Flattened GNN embeddings
-        """
-        # Extract features
-        features = self.feature_extractor.extract()  # [num_nodes, feature_dim]
-        
-        # Encode with GNN
-        self.gnn_encoder.eval()
+        x_seq = torch.stack(history, dim=0).unsqueeze(0)  # Add batch dimension
+
         with torch.no_grad():
-            embeddings = self.gnn_encoder(features, self.edge_index)  # [num_nodes, embedding_dim]
+            embedding = self.model(x_seq, self.edge_index)
         
-        # Flatten
-        observation = embeddings.numpy().flatten().astype(np.float32)
-        
-        return observation
+        return embedding.flatten().cpu().numpy()
     
     def _calculate_reward(self) -> float:
         """Calculate reward from current traffic state."""
