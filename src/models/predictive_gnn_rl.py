@@ -8,6 +8,7 @@ with a GNN-based DQN for reinforcement learning-based control.
 
 import torch
 import torch.nn as nn
+from typing import Tuple
 
 from src.models.st_gnn import SpatialTemporalAutoencoder
 from src.phase1.gnn_encoder import TrafficGNNEncoder
