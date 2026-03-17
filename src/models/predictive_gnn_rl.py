@@ -69,6 +69,11 @@ class PredictiveGNNRL(nn.Module):
         Returns:
             A tuple of (control_embeddings, forecasted_state)
         """
+        # Ensure inputs are on the same device as the model
+        device = next(self.parameters()).device
+        x_seq = x_seq.to(device)
+        edge_index = edge_index.to(device)
+
         # We only need the forecasted state, not the reconstruction
         _, forecast = self.forecaster(x_seq, edge_index)
 
