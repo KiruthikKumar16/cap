@@ -87,7 +87,17 @@ def install_requirements():
         print("[OK] Requirements installed successfully")
         return True
     except subprocess.CalledProcessError:
-        print("[FAIL] Failed to install requirements")
+        print("\n[FAIL] Failed to install requirements")
+        print("\n   ┌─ TROUBLESHOOTING (WINDOWS) ──────────────────────────────────┐")
+        print("   │ 1. Install Microsoft C++ Build Tools (Required for wheels):  │")
+        print("   │    https://visualstudio.microsoft.com/visual-cpp-build-tools/│")
+        print("   │                                                              │")
+        print("   │ 2. Try updating pip and setuptools first:                   │")
+        print("   │    python -m pip install --upgrade pip setuptools wheel      │")
+        print("   │                                                              │")
+        print("   │ 3. If torch-geometric fails, install it manually:            │")
+        print("   │    pip install torch-scatter torch-sparse -f https://data.pyg.org/whl/torch-2.2.0+cpu.html │")
+        print("   └──────────────────────────────────────────────────────────────┘")
         return False
 
 
