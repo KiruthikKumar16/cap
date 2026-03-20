@@ -97,7 +97,83 @@ class AnomalyPredictor:
 
         return predictions
 
-    def should_preempt_anomaly(
+    def should_preempt_anomaly(self, intersection_id: str, current_threshold: float) -> bool:
+        """Check if we should preemptively act on a predicted anomaly."""
+        if intersection_id not in self.predictions:
+            return False
+        
+        predicted_score = self.predictions[intersection_id]
+        return predicted_score > current_threshold
+
+
+class CongestionWaveForecaster:
+    """
+    Predicts spatial-temporal congestion wave propagation.
+    (Patent Angle: Proactive traffic signal control using spatio-temporal congestion forecasting)
+    """
+    def __init__(self, propagation_speed: float = 0.5, dissipation_rate: float = 0.1):
+        """
+        Args:
+            propagation_speed: Speed at which congestion spreads to neighbors (0 to 1)
+            dissipation_rate: Rate at which congestion clears over time
+        """
+        self.propagation_speed = propagation_speed
+        self.dissipation_rate = dissipation_rate
+        self.wave_history: List[torch.Tensor] = []
+
+    def forecast_wave_propagation(
+        self, 
+        current_density: torch.Tensor, 
+        edge_index: torch.Tensor,
+        steps: int = 5
+    ) -> torch.Tensor:
+        """
+        Predict future congestion zones by simulating wave propagation on the graph.
+        
+        Args:
+            current_density: Current normalized density per node [N]
+            edge_index: Graph connectivity
+            steps: How many steps ahead to forecast
+            
+        Returns:
+            Forecasted density map [steps, N]
+        """
+        num_nodes = current_density.shape[0]
+        forecasts = []
+        
+        state = current_density.clone()
+        
+        for _ in range(steps):
+            # 1. Local Dissipation
+            state = state * (1.0 - self.dissipation_rate)
+            
+            # 2. Spatial Propagation (Wave spreading to neighbors)
+            new_state = state.clone()
+            row, col = edge_index
+            
+            # For each edge (u, v), u transfers some "congestion wave" to v
+            propagation = state[row] * self.propagation_speed
+            new_state.index_add_(0, col, propagation)
+            
+            # Clip to [0, 1]
+            state = torch.clamp(new_state, 0.0, 1.0)
+            forecasts.append(state)
+            
+        return torch.stack(forecasts)
+
+    def identify_future_bottlenecks(
+        self, 
+        forecasted_waves: torch.Tensor, 
+        threshold: float = 0.7
+    ) -> List[int]:
+        """Identify node indices that will become bottlenecks within the forecast horizon."""
+        # Max density reached over the horizon for each node
+        max_density, _ = torch.max(forecasted_waves, dim=0)
+        bottlenecks = (max_density > threshold).nonzero().squeeze().tolist()
+        
+        if isinstance(bottlenecks, int):
+            return [bottlenecks]
+        return bottlenecks or []
         self, intersection_id: str, threshold: float = 0.5
     ) -> bool:
         """

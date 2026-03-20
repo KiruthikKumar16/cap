@@ -19,7 +19,7 @@ import torch
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from stable_baselines3 import DQN
+from stable_baselines3 import DQN, PPO
 from gymnasium import spaces
 
 from src.phase1.train_rl import load_config, create_environment
@@ -46,15 +46,15 @@ def _unwrap_info(info):
     return info
 
 
-def evaluate_dqn(
-    model: DQN,
+def evaluate_sb3_agent(
+    model,
     env,
     num_episodes: int,
     deterministic: bool = True,
     max_steps_per_episode: int = 3600,
 ) -> Tuple[List[float], List[int], List[float], List[float], List[float], List[float], bool]:
     """
-    Run evaluation episodes with the DQN agent.
+    Run evaluation episodes with an SB3 agent (DQN, PPO, etc.).
 
     Returns:
         episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, placeholder_mode
@@ -105,9 +105,7 @@ def evaluate_dqn(
             total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
             total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
             step_count += 1
-            term = bool(np.asarray(terminated).flatten()[0]) if np.ndim(terminated) > 0 else bool(terminated)
-            trun = bool(np.asarray(truncated).flatten()[0]) if np.ndim(truncated) > 0 else bool(truncated)
-            done = term or trun
+            done = np.any(terminated) or np.any(truncated)
         # Prefer our accumulated total_reward; use Monitor episode["r"] only when present and non-zero (or when total_reward is 0)
         ep_reward = total_reward
         if last_info and isinstance(last_info, dict):
@@ -126,6 +124,16 @@ def evaluate_dqn(
         episode_queue_lengths.append(avg_queue)
 
     return episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, placeholder_mode
+
+def evaluate_dqn(
+    model: DQN,
+    env,
+    num_episodes: int,
+    deterministic: bool = True,
+    max_steps_per_episode: int = 3600,
+) -> Tuple[List[float], List[int], List[float], List[float], List[float], List[float], bool]:
+    """Alias for evaluate_sb3_agent for backward compatibility."""
+    return evaluate_sb3_agent(model, env, num_episodes, deterministic, max_steps_per_episode)
 
 
 def evaluate_fixed_time(
@@ -173,7 +181,64 @@ def evaluate_fixed_time(
             total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
             total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
             step_count += 1
-            done = terminated or truncated
+            done = np.any(terminated) or np.any(truncated)
+        ep_reward = total_reward
+        if last_info and isinstance(last_info, dict) and last_info.get("episode") and "r" in last_info["episode"]:
+            mon_r = float(last_info["episode"]["r"])
+            if mon_r != 0 or total_reward == 0:
+                ep_reward = mon_r
+        episode_rewards.append(ep_reward)
+        episode_lengths.append(step_count)
+        episode_throughputs.append(total_departed)
+        episode_travel_times.append(total_travel_time)
+        avg_waiting = total_waiting_time / step_count if step_count > 0 else 0.0
+        episode_waiting_times.append(avg_waiting)
+        avg_queue = total_queue_length / step_count if step_count > 0 else 0.0
+        episode_queue_lengths.append(avg_queue)
+
+    return episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, placeholder_mode
+
+
+def evaluate_random(
+    env,
+    num_episodes: int,
+    max_steps_per_episode: int = 3600,
+) -> Tuple[List[float], List[int], List[float], List[float], List[float], List[float], bool]:
+    """Run evaluation episodes with a random agent."""
+    episode_rewards: List[float] = []
+    episode_lengths: List[int] = []
+    episode_throughputs: List[float] = []
+    episode_travel_times: List[float] = []
+    episode_waiting_times: List[float] = []
+    episode_queue_lengths: List[float] = []
+    placeholder_mode = True
+
+    for ep in range(num_episodes):
+        reset_out = env.reset()
+        obs = reset_out[0] if isinstance(reset_out, (tuple, list)) else reset_out
+        total_reward = 0.0
+        total_departed = 0.0
+        total_travel_time = 0.0
+        total_waiting_time = 0.0
+        total_queue_length = 0.0
+        step_count = 0
+        done = False
+        last_info = None
+        while not done and step_count < max_steps_per_episode:
+            action = env.action_space.sample()
+            obs, reward, terminated, truncated, info = env.step(action)
+            info = _unwrap_info(info)
+            last_info = info
+            if step_count == 0 and ep == 0:
+                placeholder_mode = info.get("placeholder_mode", not info.get("sumo_running", False))
+            r = float(np.asarray(reward).flatten()[0]) if np.ndim(reward) > 0 else float(reward)
+            total_reward += r
+            total_departed += float(np.asarray(info.get("departed", 0)).flatten()[0]) if np.ndim(info.get("departed", 0)) > 0 else float(info.get("departed", 0))
+            total_travel_time += float(np.asarray(info.get("travel_time", 0.0)).flatten()[0]) if np.ndim(info.get("travel_time", 0.0)) > 0 else float(info.get("travel_time", 0.0))
+            total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
+            total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
+            step_count += 1
+            done = np.any(terminated) or np.any(truncated)
         ep_reward = total_reward
         if last_info and isinstance(last_info, dict) and last_info.get("episode") and "r" in last_info["episode"]:
             mon_r = float(last_info["episode"]["r"])
@@ -297,7 +362,7 @@ def evaluate_actuated(
             total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
             total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
             step_count += 1
-            done = terminated or truncated
+            done = np.any(terminated) or np.any(truncated)
 
         ep_reward = total_reward
         if last_info and isinstance(last_info, dict) and last_info.get("episode") and "r" in last_info["episode"]:
@@ -486,7 +551,7 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
             total_travel_time += info.get("travel_time", 0)
             total_waiting_time += info.get("waiting_time", 0)
             total_queue_length += info.get("queue_length", 0)
-            if terminated or truncated:
+            if np.any(terminated) or np.any(truncated):
                 break
         
         episode_rewards.append(total_reward)
@@ -505,6 +570,8 @@ def main():
     parser.add_argument("--phase-duration", type=int, default=30, help="Fixed-time/actuated phase duration in steps")
     parser.add_argument("--seeds", type=int, default=None, help="Number of seeds for mean +/- std (default: 1, use config evaluation.seeds)")
     parser.add_argument("--actuated", action="store_true", help="Also evaluate actuated baseline")
+    parser.add_argument("--random", action="store_true", help="Also evaluate random baseline")
+    parser.add_argument("--fixed-time", action="store_true", help="Also evaluate fixed-time baseline")
     parser.add_argument("--save-summary", type=str, nargs="?", const="outputs/phase1/evaluation_summary.json", default=None, help="Save evaluation summary to JSON for comparison charts (default: outputs/phase1/evaluation_summary.json if flag present)")
     parser.add_argument("--debug-actions", type=int, default=0, metavar="N", help="Log first N step actions (DQN vs fixed-time) for episode 0 to verify policies differ (e.g. 20)")
     args = parser.parse_args()
@@ -537,26 +604,75 @@ def main():
     all_dqn_r, all_dqn_l, all_dqn_tput, all_dqn_tt, all_dqn_wt, all_dqn_q = [], [], [], [], [], []
     all_ft_r, all_ft_l, all_ft_tput, all_ft_tt, all_ft_wt, all_ft_q = [], [], [], [], [], []
     all_act_r, all_act_l, all_act_tput, all_act_tt, all_act_wt, all_act_q = [], [], [], [], [], []
+    all_rand_r, all_rand_l, all_rand_tput, all_rand_tt, all_rand_wt, all_rand_q = [], [], [], [], [], []
 
     used_sumo = False
     for seed in seeds_to_use:
-        dqn_r, dqn_l, dqn_tput, dqn_tt, dqn_wt, dqn_q, ft_r, ft_l, ft_tput, ft_tt, ft_wt, ft_q, act_r, act_l, act_tput, act_tt, act_wt, act_q, placeholder_mode = _run_single_seed(
-            config, checkpoint_path, num_episodes, max_steps, args.phase_duration, seed, run_actuated
+        # Determine model class and wrapping
+        rl_algo = config.get("rl", {}).get("algorithm", "DQN")
+        
+        np.random.seed(seed)
+        env = create_environment(config)
+        
+        if rl_algo == "PPO":
+            # For PPO/MARL, create_environment already returns a MARLTrafficEnv (VecEnv)
+            model_class = PPO
+        else:
+            # Default to DQN with wrappers
+            env = wrap_env_for_dqn(env)
+            model_class = DQN
+            
+        print(f"  Loading {rl_algo} model from {checkpoint_path}...")
+        model = model_class.load(str(checkpoint_path), env=env)
+        
+        r, l, tput, tt, wt, q, placeholder_mode = evaluate_sb3_agent(
+            model, env, num_episodes, deterministic=True, max_steps_per_episode=max_steps
         )
+        env.close()
+        
         used_sumo = used_sumo or (not placeholder_mode)
-        all_dqn_r.extend(dqn_r)
-        all_dqn_l.extend(dqn_l)
-        all_dqn_tput.extend(dqn_tput)
-        all_dqn_tt.extend(dqn_tt)
-        all_dqn_wt.extend(dqn_wt)
-        all_dqn_q.extend(dqn_q)
-        all_ft_r.extend(ft_r)
-        all_ft_l.extend(ft_l)
-        all_ft_tput.extend(ft_tput)
-        all_ft_tt.extend(ft_tt)
-        all_ft_wt.extend(ft_wt)
-        all_ft_q.extend(ft_q)
-        if act_r is not None:
+        all_dqn_r.extend(r)
+        all_dqn_l.extend(l)
+        all_dqn_tput.extend(tput)
+        all_dqn_tt.extend(tt)
+        all_dqn_wt.extend(wt)
+        all_dqn_q.extend(q)
+
+        # Update labels for printing/summary if needed
+        model_label = rl_algo
+
+        if args.fixed_time:
+            env_ft = create_environment(config)
+            ft_r, ft_l, ft_tput, ft_tt, ft_wt, ft_q, _ = evaluate_fixed_time(
+                env_ft, num_episodes, phase_duration=args.phase_duration, max_steps_per_episode=max_steps
+            )
+            env_ft.close()
+            all_ft_r.extend(ft_r)
+            all_ft_l.extend(ft_l)
+            all_ft_tput.extend(ft_tput)
+            all_ft_tt.extend(ft_tt)
+            all_ft_wt.extend(ft_wt)
+            all_ft_q.extend(ft_q)
+
+        if args.random:
+            env_rand = create_environment(config)
+            rand_r, rand_l, rand_tput, rand_tt, rand_wt, rand_q, _ = evaluate_random(
+                env_rand, num_episodes, max_steps_per_episode=max_steps
+            )
+            env_rand.close()
+            all_rand_r.extend(rand_r)
+            all_rand_l.extend(rand_l)
+            all_rand_tput.extend(rand_tput)
+            all_rand_tt.extend(rand_tt)
+            all_rand_wt.extend(rand_wt)
+            all_rand_q.extend(rand_q)
+
+        if run_actuated:
+            env_act = create_environment(config)
+            act_r, act_l, act_tput, act_tt, act_wt, act_q, _ = evaluate_actuated(
+                env_act, num_episodes, phase_duration=args.phase_duration, max_steps_per_episode=max_steps
+            )
+            env_act.close()
             all_act_r.extend(act_r)
             all_act_l.extend(act_l)
             all_act_tput.extend(act_tput)
@@ -564,59 +680,57 @@ def main():
             all_act_wt.extend(act_wt)
             all_act_q.extend(act_q)
 
-    dqn_rewards, ft_rewards = np.array(all_dqn_r), np.array(all_ft_r)
-    dqn_mean_rew = float(np.mean(dqn_rewards))
-    dqn_std_rew = float(np.std(dqn_rewards))
-    dqn_mean_len = float(np.mean(all_dqn_l))
-    ft_mean_rew = float(np.mean(ft_rewards))
-    ft_std_rew = float(np.std(ft_rewards))
-    ft_mean_len = float(np.mean(all_ft_l))
-    dqn_mean_throughput = float(np.mean(all_dqn_tput))
-    ft_mean_throughput = float(np.mean(all_ft_tput))
-    dqn_mean_tt = float(np.mean(all_dqn_tt))
-    ft_mean_tt = float(np.mean(all_ft_tt))
+    def print_results(name, r, l, tput, tt, wt, q, has_throughput, has_travel_time):
+        if not r:
+            return
+        mean_rew, std_rew = float(np.mean(r)), float(np.std(r))
+        mean_len = float(np.mean(l))
+        print(f"  {name:<17} mean_reward = {mean_rew:+.2f} +/- {std_rew:.2f}  |  mean_length = {mean_len:.1f}")
+        if has_throughput:
+            print(f"  {'':<17} throughput (departed/episode) = {float(np.mean(tput)):.1f}")
+        if has_travel_time:
+            print(f"  {'':<17} travel_time (sum/episode) = {float(np.mean(tt)):.1f}")
+
+    dqn_rewards = np.array(all_dqn_r)
+    dqn_mean_rew = float(np.mean(all_dqn_r)) if all_dqn_r else 0.0
+    dqn_std_rew = float(np.std(all_dqn_r)) if all_dqn_r else 0.0
+    dqn_mean_throughput = float(np.mean(all_dqn_tput)) if all_dqn_tput else 0.0
+    dqn_mean_tt = float(np.mean(all_dqn_tt)) if all_dqn_tt else 0.0
+    
+    ft_mean_rew = float(np.mean(all_ft_r)) if all_ft_r else 0.0
+    ft_std_rew = float(np.std(all_ft_r)) if all_ft_r else 0.0
+    ft_mean_throughput = float(np.mean(all_ft_tput)) if all_ft_tput else 0.0
+    ft_mean_tt = float(np.mean(all_ft_tt)) if all_ft_tt else 0.0
     has_throughput = dqn_mean_throughput > 0 or ft_mean_throughput > 0
     has_travel_time = dqn_mean_tt > 0 or ft_mean_tt > 0
 
     print("\n" + "=" * 60)
-    print("Phase 1 Evaluation Results (SOTA)")
+    print("Phase 1 Evaluation Results")
     print("=" * 60)
     if not used_sumo:
         print("  [Note] Placeholder mode (no SUMO): throughput and travel_time are 0; not reported as results.")
-    print(f"  Episodes: {num_episodes} x {len(seeds_to_use)} seeds = {len(dqn_rewards)} total")
+    print(f"  Episodes: {num_episodes} x {len(seeds_to_use)} seeds")
     print(f"  Checkpoint: {checkpoint_path}")
     print("-" * 60)
-    print(f"  DQN (GNN-RL):     mean_reward = {dqn_mean_rew:+.2f} +/- {dqn_std_rew:.2f}  |  mean_length = {dqn_mean_len:.1f}")
-    print(f"  Fixed-time:       mean_reward = {ft_mean_rew:+.2f} +/- {ft_std_rew:.2f}  |  mean_length = {ft_mean_len:.1f}")
-    if run_actuated and all_act_r:
-        act_mean_rew = float(np.mean(all_act_r))
-        act_std_rew = float(np.std(all_act_r))
-        print(f"  Actuated:         mean_reward = {act_mean_rew:+.2f} +/- {act_std_rew:.2f}")
-    if has_throughput:
-        print(f"  DQN (GNN-RL):     throughput (departed/episode) = {dqn_mean_throughput:.1f}")
-        print(f"  Fixed-time:      throughput (departed/episode) = {ft_mean_throughput:.1f}")
-    if has_travel_time:
-        print(f"  DQN (GNN-RL):     travel_time (sum/episode) = {dqn_mean_tt:.1f}")
-        print(f"  Fixed-time:      travel_time (sum/episode) = {ft_mean_tt:.1f}")
+
+    print_results(f"{model_label} (GNN-RL):", all_dqn_r, all_dqn_l, all_dqn_tput, all_dqn_tt, all_dqn_wt, all_dqn_q, has_throughput, has_travel_time)
+    if args.fixed_time:
+        print_results("Fixed-time:", all_ft_r, all_ft_l, all_ft_tput, all_ft_tt, all_ft_wt, all_ft_q, has_throughput, has_travel_time)
+    if args.random:
+        print_results("Random:", all_rand_r, all_rand_l, all_rand_tput, all_rand_tt, all_rand_wt, all_rand_q, has_throughput, has_travel_time)
+    if run_actuated:
+        print_results("Actuated:", all_act_r, all_act_l, all_act_tput, all_act_tt, all_act_wt, all_act_q, has_throughput, has_travel_time)
+
     print("-" * 60)
-    if ft_mean_rew != 0:
-        pct = 100 * (dqn_mean_rew - ft_mean_rew) / abs(ft_mean_rew)
-        print(f"  DQN vs Fixed-time: {pct:+.1f}% reward change (positive = DQN better)")
-    if has_throughput and ft_mean_throughput > 0:
-        pct_t = 100 * (dqn_mean_throughput - ft_mean_throughput) / ft_mean_throughput
-        print(f"  DQN vs Fixed-time: {pct_t:+.1f}% throughput change (positive = DQN better)")
-    if HAS_SCIPY and len(dqn_rewards) >= 2 and len(ft_rewards) >= 2:
-        t_stat, p_value = scipy_stats.ttest_ind(dqn_rewards, ft_rewards)
-        print(f"  Statistical test (t-test DQN vs Fixed-time): p = {p_value:.4f}" + (" (significant at 0.05)" if p_value < 0.05 else ""))
-    if run_actuated and all_act_r and HAS_SCIPY and len(all_dqn_r) >= 2:
-        t_stat, p_act = scipy_stats.ttest_ind(dqn_rewards, np.array(all_act_r))
-        print(f"  Statistical test (t-test DQN vs Actuated): p = {p_act:.4f}" + (" (significant at 0.05)" if p_act < 0.05 else ""))
-    if dqn_mean_rew == ft_mean_rew and (dqn_mean_throughput == ft_mean_throughput or not has_throughput):
-        print("-" * 60)
-        print("  [Hint] DQN and Fixed-time metrics are identical. To verify policies differ, run with:")
-        print("    --debug-actions 20")
-        print("  To try a weaker baseline (longer fixed phases), run with e.g.:")
-        print("    --phase-duration 60")
+    if args.fixed_time and all_ft_r:
+        ft_mean_rew = np.mean(all_ft_r)
+        if ft_mean_rew != 0:
+            pct = 100 * (np.mean(all_dqn_r) - ft_mean_rew) / abs(ft_mean_rew)
+            print(f"  {model_label} vs Fixed-time: {pct:+.1f}% reward change (positive = {model_label} better)")
+        if HAS_SCIPY and len(all_dqn_r) >= 2 and len(all_ft_r) >= 2:
+            t_stat, p_value = scipy_stats.ttest_ind(all_dqn_r, all_ft_r)
+            print(f"  Statistical test (t-test {model_label} vs Fixed-time): p = {p_value:.4f}" + (" (significant at 0.05)" if p_value < 0.05 else ""))
+
     print("=" * 60)
     print("[OK] Evaluation complete.")
 

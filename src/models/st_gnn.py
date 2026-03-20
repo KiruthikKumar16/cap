@@ -97,36 +97,101 @@ class SpatialTemporalAutoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, in_dim),
         )
-        self.forecast_head = nn.Sequential(
+        self.mean_head = nn.Sequential(
+            nn.Linear(temporal_in, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, horizon * in_dim),
+        )
+        self.var_head = nn.Sequential(
             nn.Linear(temporal_in, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, horizon * in_dim),
         )
 
-    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
+        Forward pass of the ST-GNN Autoencoder.
+        
         Args:
-            x_seq: [B, H, N, F]
-            edge_index: [2, E]
+            x_seq: Input sequence [B, H, N, F]
+            edge_index: Graph connectivity
+            
         Returns:
-            recon: [B, N, F] reconstruction of last step
-            forecast: [B, horizon, N, F]
+            recon: Reconstructed last step [B, N, F]
+            mean_forecast: Predicted future sequence [B, H_out, N, F]
+            variance_forecast: Predicted variance of future sequence [B, H_out, N, F] (Uncertainty-aware)
         """
         b, h, n, f = x_seq.shape
-        spatial_outputs = []
-        for t in range(h):
-            spatial_outputs.append(self.spatial(x_seq[:, t], edge_index))  # [B, N, S]
-        spatial_stack = torch.stack(spatial_outputs, dim=1)  # [B, H, N, S]
-        seq_flat = spatial_stack.reshape(b * n, h, -1)
+        # Spatial encoding per step
+        x_spatial = []
+        for i in range(h):
+            x_spatial.append(self.spatial(x_seq[:, i], edge_index))
+        x_spatial = torch.stack(x_spatial, dim=1)  # [B, H, N, D]
+
+        # Temporal encoding
+        x_spatial = x_spatial.permute(0, 2, 1, 3).reshape(b * n, h, -1)  # [B*N, H, D]
         if self.temporal_type == "gru":
-            seq_out, _ = self.temporal(seq_flat)  # [B*N, H, hidden]
-        elif self.temporal_type == "transformer":
-            seq_out = self.temporal(seq_flat)  # [B*N, H, hidden]
+            _, h_n = self.temporal(x_spatial)
+            x_temporal = h_n.squeeze(0)  # [B*N, D]
         else:
-            seq_out = seq_flat
-        final_state = seq_out[:, -1]  # [B*N, hidden]
-        recon = self.recon_head(final_state).reshape(b, n, f)
-        forecast = self.forecast_head(final_state).reshape(b, n, self.horizon, f)
-        forecast = forecast.permute(0, 2, 1, 3)  # [B, horizon, N, F]
-        return recon, forecast
+            x_temporal = self.temporal(x_spatial)[:, -1, :]  # [B*N, D]
+
+        # Reconstruction head (last step)
+        recon = self.recon_head(x_temporal).reshape(b, n, f)
+
+        # Forecasting head (H_out steps)
+        # We predict mean and log_variance for each step
+        mean_forecast = self.mean_head(x_temporal).reshape(b, n, self.horizon, f).permute(0, 2, 1, 3)
+        log_var_forecast = self.var_head(x_temporal).reshape(b, n, self.horizon, f).permute(0, 2, 1, 3)
+        
+        # Uncertainty = exp(log_var)
+        variance_forecast = torch.exp(log_var_forecast)
+
+        return recon, mean_forecast, variance_forecast
+
+    def mc_dropout_predict(
+        self, 
+        x_seq: torch.Tensor, 
+        edge_index: torch.Tensor, 
+        num_samples: int = 10
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Monte Carlo Dropout for robust uncertainty estimation.
+        (Patent Angle: Uncertainty-aware anomaly detection using Bayesian ST-GNNs)
+        
+        Args:
+            x_seq: Input sequence [B, H, N, F]
+            edge_index: Graph connectivity
+            num_samples: Number of MC dropout samples
+            
+        Returns:
+            Combined mean and total variance (epistemic + aleatoric)
+        """
+        self.train()  # Enable dropout during inference
+        
+        means = []
+        vars_aleatoric = []
+        
+        for _ in range(num_samples):
+            _, m, v = self.forward(x_seq, edge_index)
+            means.append(m)
+            vars_aleatoric.append(v)
+            
+        means = torch.stack(means)  # [S, B, H, N, F]
+        vars_aleatoric = torch.stack(vars_aleatoric)
+        
+        # Predictive Mean
+        final_mean = means.mean(dim=0)
+        
+        # Epistemic Uncertainty (Variance of means)
+        var_epistemic = means.var(dim=0)
+        
+        # Aleatoric Uncertainty (Mean of variances)
+        var_aleatoric = vars_aleatoric.mean(dim=0)
+        
+        # Total Uncertainty
+        total_variance = var_epistemic + var_aleatoric
+        
+        self.eval() # Restore to eval mode
+        return final_mean, total_variance
 

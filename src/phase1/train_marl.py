@@ -49,7 +49,7 @@ def main():
         rl_gnn_hidden_dim=model_cfg["hidden_dim"],
         rl_gnn_embedding_dim=model_cfg["embedding_dim"],
         rl_gnn_layers=model_cfg["gnn_layers"],
-        rl_gnn_type=model_cfg["gnn_type"],
+        rl_gnn_type=model_cfg.get("gnn_type", "gat"),
         rl_gnn_heads=model_cfg.get("gat_heads", 2),
         rl_gnn_dropout=model_cfg["dropout"],
     )
@@ -63,20 +63,16 @@ def main():
         normalize=reward_cfg.get("normalize", True),
     )
 
-    # Create the multi-agent environment
-    def make_env():
-        env = MARLTrafficEnv(config, model=model, reward_calculator=reward_calculator)
-        return env
-    
     # Check for CUDA
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device: {device}")
     
     # Move custom model to device
     model = model.to(device)
-    
-    # Create a vectorized environment for parallel processing
-    vec_env = make_vec_env(make_env, n_envs=1)
+
+    # Create Environment (Directly as a VecEnv)
+    print(f"Initializing MARL environment with grid size from {config['sumo']['net_file']}...")
+    vec_env = MARLTrafficEnv(config, model=model, reward_calculator=reward_calculator)
     
     model = PPO(
         "MlpPolicy",
@@ -88,17 +84,28 @@ def main():
     )
 
     print("\n" + "="*60)
-    print("Starting Training (10x10 City Scale)")
+    print(f"Starting Training ({config['sumo'].get('net_file', 'unknown map')})")
     print(f"Total Timesteps: {config['training']['total_timesteps']}")
     print("="*60 + "\n")
 
     # Use SB3 progress bar for better visibility in Colab
-    model.learn(
-        total_timesteps=config["training"]["total_timesteps"],
-        progress_bar=True
-    )
-
-    model.save("marl_ppo_traffic")
+    try:
+        model.learn(
+            total_timesteps=config["training"]["total_timesteps"],
+            progress_bar=True
+        )
+        print("\n[OK] Training finished successfully")
+    except Exception as e:
+        print(f"\n[ERROR] Training interrupted: {e}")
+    finally:
+        # Save model
+        model.save("marl_ppo_traffic")
+        print("[OK] Model saved to marl_ppo_traffic.zip")
+        
+        # Explicitly close environment to prevent TraCI errors
+        print("Closing environment...")
+        vec_env.close()
+        print("[OK] Environment closed")
 
 if __name__ == "__main__":
     main()

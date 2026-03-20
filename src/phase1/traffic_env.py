@@ -113,20 +113,22 @@ class SUMOTrafficEnv(gym.Env):
         # Get edge index
         self.edge_index = self.graph_builder.get_edge_index()
         
-        # Observation space: flattened GNN embeddings
+        # Individual Agent Spaces (for Zero-Shot Generalization)
         embedding_dim = self.model.controller.out_dim
-        obs_dim = self.num_intersections * embedding_dim
+        max_neighbors = 4
+        obs_dim = embedding_dim * (1 + max_neighbors)
+        
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
             shape=(obs_dim,),
             dtype=np.float32
         )
+        # Assuming 4 phases per intersection (standard for our grid)
+        self.action_space = spaces.Discrete(4)
         
-        # Action space: MultiDiscrete (one action per intersection)
-        # Each intersection can choose from 4 phases
-        num_phases = 4
-        self.action_space = spaces.MultiDiscrete([num_phases] * self.num_intersections)
+        # Internal multi-agent tracking
+        self.num_agents = self.num_intersections
         
         # State
         self.current_step = 0
@@ -137,6 +139,15 @@ class SUMOTrafficEnv(gym.Env):
         self._tl_ids_for_exec: Optional[List[str]] = None  # SUMO TLS IDs at reset (A0,B0,...)
         self._veh_depart_times: Dict[str, float] = {}
         self._queue_length_step = 0.0
+        
+        # Episode-level metrics for SOTA evaluation
+        self.episode_metrics = {
+            "episode_total_waiting_time": 0.0,
+            "episode_total_queue_length": 0.0,
+            "episode_total_travel_time": 0.0,
+            "episode_arrived_vehicles": 0,
+            "episode_steps": 0,
+        }
         
     def reset(
         self,
@@ -185,6 +196,15 @@ class SUMOTrafficEnv(gym.Env):
         self._queue_length_step = 0.0
         self._veh_depart_times = {}
 
+        # Reset episode metrics
+        self.episode_metrics = {
+            "episode_total_waiting_time": 0.0,
+            "episode_total_queue_length": 0.0,
+            "episode_total_travel_time": 0.0,
+            "episode_arrived_vehicles": 0,
+            "episode_steps": 0,
+        }
+
         # Reset anomaly controller if enabled
         if self.enable_anomaly_awareness:
             anomaly_controller = get_anomaly_controller()
@@ -196,44 +216,57 @@ class SUMOTrafficEnv(gym.Env):
         # Get initial observation
         self.state_history.append(self._get_raw_observation())
         observation = self._get_observation()
-        info = self._get_info()
+        base_info = self._get_info()
+        # Vectorized info
+        info = [base_info.copy() for _ in range(self.num_agents)]
         
         return observation, info
     
-    def step(self, action: np.ndarray) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+    def step(self, actions: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[Dict]]:
         """
         Execute one step in the environment using SUMO simulation.
         
         Args:
-            action: Action array [num_intersections] with phase selections
+            actions: Action array [num_agents] with phase selections
             
         Returns:
             observation, reward, terminated, truncated, info
         """
         # Execute actions (set signal phases)
-        self._execute_actions(action)
+        self._execute_actions(actions)
         
         # Advance simulation
         self._advance_simulation()
         
-        # Log progress occasionally for visibility in Colab/Terminals
-        if self.current_step % 100 == 0:
-            departed = traci.simulation.getDepartedNumber()
-            running = traci.vehicle.getIDCount()
-            print(f"  Step #{self.current_step}.00 (vehicles TOT {departed} ACT {running})")
+        # Log progress occasionally for visibility
+        if self.current_step % 100 == 0 and self.current_step > 0:
+            try:
+                running = traci.vehicle.getIDCount()
+                print(f"  Step #{self.current_step}.00 (vehicles ACT {running})")
+            except Exception:
+                pass
         
-        # Calculate reward (real SUMO metrics) + optional per-step time penalty (standard RL)
-        reward = self._calculate_reward() - self.time_penalty_per_step
-        self._last_reward = reward
+        # Calculate global reward
+        global_reward = self._calculate_reward() - self.time_penalty_per_step
+        self._last_reward = global_reward
         
-        # Check termination
-        terminated = self._is_terminated()
-        truncated = self.current_step >= self.max_steps
+        # Get termination flags
+        terminated_bool = self._is_terminated()
+        truncated_bool = self.current_step >= self.max_steps
         
         # Get observation
         self.state_history.append(self._get_raw_observation())
         observation = self._get_observation()
-        info = self._get_info()
+        
+        # Prepare vectorized outputs
+        reward = np.full(self.num_agents, global_reward, dtype=np.float32)
+        terminated = np.full(self.num_agents, terminated_bool, dtype=bool)
+        truncated = np.full(self.num_agents, truncated_bool, dtype=bool)
+        
+        # Base info
+        base_info = self._get_info()
+        # Vectorized info
+        info = [base_info.copy() for _ in range(self.num_agents)]
         
         self.current_step += 1
         
@@ -425,11 +458,28 @@ class SUMOTrafficEnv(gym.Env):
         x_seq = torch.stack(history, dim=0).unsqueeze(0) # Add batch dimension
 
         with torch.no_grad():
-            embedding, forecast = self.model(x_seq, self.edge_index)
-            # Store forecast for reward calculation to avoid double-computing
-            self.last_forecast = forecast
-        
-        return embedding.flatten().cpu().numpy()
+            embedding, mean_forecast, variance_forecast = self.model(x_seq, self.edge_index)
+            # Store forecasts for reward calculation
+            self.last_mean_forecast = mean_forecast
+            self.last_variance_forecast = variance_forecast
+
+        # Create coordinated observations
+        max_neighbors = 4
+        obs_dim = self.observation_space.shape[0]
+        obs = np.zeros((self.num_intersections, obs_dim), dtype=np.float32)
+        for i in range(self.num_intersections):
+            neighbors = self.edge_index[1][self.edge_index[0] == i]
+            neighbor_embeddings = embedding[neighbors]
+            
+            # Pad neighbor embeddings
+            padded_neighbors = np.zeros((max_neighbors, embedding.shape[1]), dtype=np.float32)
+            num_neighbors = min(len(neighbors), max_neighbors)
+            padded_neighbors[:num_neighbors] = neighbor_embeddings.cpu().numpy()[:num_neighbors]
+            
+            # Concatenate self embedding with neighbor embeddings
+            obs[i] = np.concatenate([embedding[i].cpu().numpy(), padded_neighbors.flatten()])
+            
+        return obs
     
     def _calculate_reward(self) -> float:
         """Calculate reward from current traffic state."""
@@ -447,6 +497,14 @@ class SUMOTrafficEnv(gym.Env):
 
         if self.sumo_running:
             reward = self.reward_calculator.calculate_from_sumo(self.intersections, anomaly_scores)
+            
+            # Phase 3: Risk-aware penalty (uses GNN forecast)
+            if hasattr(self, "last_mean_forecast") and hasattr(self, "last_variance_forecast"):
+                risk_penalty = self.reward_calculator.risk_model.calculate_risk(
+                    self.last_mean_forecast,
+                    self.last_variance_forecast
+                )
+                reward -= risk_penalty
         else:
             # Placeholder reward
             reward = self.reward_calculator._calculate_placeholder(self.intersections, anomaly_scores)
@@ -464,6 +522,19 @@ class SUMOTrafficEnv(gym.Env):
         except Exception:
             return False
     
+    def _get_mean_speed(self) -> float:
+        """Get the mean speed of all vehicles in the network."""
+        if not self.sumo_running or not TRACI_AVAILABLE:
+            return 0.0
+        try:
+            vehicle_ids = traci.vehicle.getIDList()
+            if not vehicle_ids:
+                return 0.0
+            speeds = [traci.vehicle.getSpeed(veh_id) for veh_id in vehicle_ids]
+            return np.mean(speeds) if speeds else 0.0
+        except Exception:
+            return 0.0
+
     def _get_info(self) -> Dict[str, Any]:
         """Get info dictionary. In placeholder mode, throughput/travel_time/waiting_time are 0 (not reported as results)."""
         info = {
@@ -478,13 +549,25 @@ class SUMOTrafficEnv(gym.Env):
         }
         if self.sumo_running and TRACI_AVAILABLE:
             try:
-                info["simulation_time"] = traci.simulation.getTime()
-                info["num_vehicles"] = traci.simulation.getMinExpectedNumber()
-                info["departed"] = traci.simulation.getDepartedNumber()
-                info["arrived"] = traci.simulation.getArrivedNumber()
-                info["travel_time"] = getattr(self, "_travel_time_step", 0.0)
-                info["waiting_time"] = getattr(self, "_waiting_time_step", 0.0)
-                info["queue_length"] = getattr(self, "_queue_length_step", 0.0)
+                # Step-level metrics
+                info["step_total_waiting_time"] = self._get_waiting_time_step()
+                info["step_total_queue_length"] = self._get_queue_length_step()
+                info["step_mean_speed"] = self._get_mean_speed()
+                info["step_arrived_vehicles"] = traci.simulation.getArrivedNumber() - self.episode_metrics["episode_arrived_vehicles"]
+
+                # Update episode-level metrics
+                self.episode_metrics["episode_total_waiting_time"] += info["step_total_waiting_time"]
+                self.episode_metrics["episode_total_queue_length"] += info["step_total_queue_length"]
+                self.episode_metrics["episode_arrived_vehicles"] = traci.simulation.getArrivedNumber()
+                self.episode_metrics["episode_steps"] += 1
+
+                # Final episode metrics (averages)
+                if terminated or truncated:
+                    total_steps = self.episode_metrics["episode_steps"]
+                    info["episode_avg_waiting_time"] = self.episode_metrics["episode_total_waiting_time"] / total_steps
+                    info["episode_avg_queue_length"] = self.episode_metrics["episode_total_queue_length"] / total_steps
+                    info["episode_throughput"] = self.episode_metrics["episode_arrived_vehicles"]
+
             except Exception:
                 pass
         return info

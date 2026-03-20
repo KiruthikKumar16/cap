@@ -200,3 +200,40 @@ class MultiAgentCoordinator:
             "consensus_actions": self.consensus_actions,
             "active_intersections": len(self.message_history),
         }
+
+
+class RegionalController:
+    """
+    Zone-level coordinator for hierarchical multi-agent control.
+    (Patent Angle: Hierarchical coordination of decentralized traffic agents with regional consensus)
+    """
+    def __init__(self, zone_id: str, local_intersections: List[str]):
+        self.zone_id = zone_id
+        self.local_intersections = local_intersections
+        self.regional_state = {}
+        self.consensus_policy = {}
+
+    def aggregate_local_states(self, local_features: Dict[str, np.ndarray]) -> np.ndarray:
+        """Aggregate local states into a regional embedding."""
+        features = [local_features[int_id] for int_id in self.local_intersections if int_id in local_features]
+        if not features:
+            return np.zeros(12)
+        return np.mean(features, axis=0)
+
+    def provide_regional_guidance(self, regional_embedding: np.ndarray) -> Dict[str, str]:
+        """Provide guidance to local agents based on regional status."""
+        # Simple threshold-based regional guidance
+        # (Could be upgraded to a regional-level RL policy)
+        regional_density = regional_embedding[5] # queue_length index
+        
+        guidance = {}
+        for int_id in self.local_intersections:
+            if regional_density > 0.7:
+                guidance[int_id] = "high_priority_clearing"
+            elif regional_density > 0.4:
+                guidance[int_id] = "coordinated_flow"
+            else:
+                guidance[int_id] = "normal_operation"
+        
+        self.consensus_policy = guidance
+        return guidance

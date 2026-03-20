@@ -57,7 +57,7 @@ class PredictiveGNNRL(nn.Module):
             dropout=rl_gnn_dropout,
         )
 
-    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         First, forecast the future traffic state, then use the forecast to
         generate control embeddings.
@@ -67,7 +67,7 @@ class PredictiveGNNRL(nn.Module):
             edge_index: The graph connectivity
 
         Returns:
-            A tuple of (control_embeddings, forecasted_state)
+            A tuple of (control_embeddings, mean_forecast, variance_forecast)
         """
         # Ensure inputs are on the same device as the model
         device = next(self.parameters()).device
@@ -75,11 +75,11 @@ class PredictiveGNNRL(nn.Module):
         edge_index = edge_index.to(device)
 
         # We only need the forecasted state, not the reconstruction
-        _, forecast = self.forecaster(x_seq, edge_index)
+        _, mean_forecast, variance_forecast = self.forecaster(x_seq, edge_index)
 
         # Use the last forecasted step as the input to the controller
         # forecast is [B, H, N, F], we take the last step [B, N, F]
-        predicted_state = forecast[:, -1, :, :]
+        predicted_state = mean_forecast[:, -1, :, :]
 
         batch_size = predicted_state.shape[0]
         if batch_size > 1:
@@ -87,7 +87,7 @@ class PredictiveGNNRL(nn.Module):
             for i in range(batch_size):
                 single_embedding = self.controller(predicted_state[i], edge_index)
                 all_embeddings.append(single_embedding)
-            return torch.cat(all_embeddings, dim=0), forecast
+            return torch.cat(all_embeddings, dim=0), mean_forecast, variance_forecast
         else:
             control_embedding = self.controller(predicted_state.squeeze(0), edge_index)
-            return control_embedding, forecast
+            return control_embedding, mean_forecast, variance_forecast

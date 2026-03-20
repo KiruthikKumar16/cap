@@ -92,21 +92,30 @@ def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTr
         max_speed=13.89,
     )
     
-    # Create environment (traci_port isolates SUMO instances for train vs eval)
-    env = SUMOTrafficEnv(
-        net_file=sumo_cfg["net_file"],
-        route_file=sumo_cfg["route_file"],
-        config_file=sumo_cfg.get("config_file"),
-        step_length=sumo_cfg["step_length"],
-        max_steps=sumo_cfg["simulation_steps"],
-        model=model,
-        reward_calculator=reward_calculator,
-        use_gui=sumo_cfg.get("gui", False),
-        traci_port=traci_port,
-        sumo_binary=sumo_cfg.get("sumo_binary"),
-        time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
-        enable_anomaly_awareness=enable_anomaly_awareness,
-    )
+    # Create environment
+    if config.get("rl", {}).get("algorithm") == "PPO":
+        from src.phase1.marl_traffic_env import MARLTrafficEnv
+        env = MARLTrafficEnv(
+            config=config,
+            model=model,
+            reward_calculator=reward_calculator
+        )
+    else:
+        # Create single-agent environment (standard)
+        env = SUMOTrafficEnv(
+            net_file=sumo_cfg["net_file"],
+            route_file=sumo_cfg["route_file"],
+            config_file=sumo_cfg.get("config_file"),
+            step_length=sumo_cfg["step_length"],
+            max_steps=sumo_cfg["simulation_steps"],
+            model=model,
+            reward_calculator=reward_calculator,
+            use_gui=sumo_cfg.get("gui", False),
+            traci_port=traci_port,
+            sumo_binary=sumo_cfg.get("sumo_binary"),
+            time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
+            enable_anomaly_awareness=enable_anomaly_awareness,
+        )
     
     return env
 

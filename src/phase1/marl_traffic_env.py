@@ -12,10 +12,14 @@ import numpy as np
 
 from src.phase1.traffic_env import SUMOTrafficEnv
 
-class MARLTrafficEnv(gym.Env):
+from stable_baselines3.common.vec_env import VecEnv
+from typing import List, Any, Dict, Optional, Tuple, Sequence
+
+class MARLTrafficEnv(VecEnv):
     """
-    A multi-agent wrapper for the SUMO traffic environment.
-    This wrapper provides a standard Gymnasium interface for PPO training.
+    A multi-agent vectorized environment for SUMO.
+    Each intersection is treated as a separate parallel environment sharing the same policy.
+    This enables Zero-Shot Generalization across different map sizes.
     """
     def __init__(
         self,
@@ -23,7 +27,7 @@ class MARLTrafficEnv(gym.Env):
         model: any = None,
         reward_calculator: any = None
     ):
-        super().__init__()
+        # Initialize internal environment
         sumo_cfg = config["sumo"]
         reward_cfg = config.get("reward", {})
         
@@ -38,31 +42,55 @@ class MARLTrafficEnv(gym.Env):
             time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
             enable_anomaly_awareness=config.get("phase3", {}).get("enable_anomaly_awareness", False)
         )
-        self.num_agents = self.env.num_intersections
         
-        # Use standard spaces for compatibility with SB3
-        self.observation_space = self.env.observation_space
-        self.action_space = self.env.action_space
+        num_agents = self.env.num_agents
+        observation_space = self.env.observation_space
+        action_space = self.env.action_space
+        
+        # Initialize VecEnv
+        super().__init__(num_envs=num_agents, observation_space=observation_space, action_space=action_space)
+        
+        self.actions = None
 
-    def reset(self, seed=None, options=None):
-        return self.env.reset(seed=seed, options=options)
+    def reset(self) -> np.ndarray:
+        obs, info = self.env.reset()
+        return obs
+
+    def step_async(self, actions: np.ndarray) -> None:
+        self.actions = actions
+
+    def step_wait(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[Dict]]:
+        obs, reward, terminated, truncated, info = self.env.step(self.actions)
+        
+        # VecEnv expects 'done' (terminated | truncated)
+        done = terminated | truncated
+        
+        # Handle reset if done (SB3 VecEnv automatically resets)
+        if any(done):
+            # For SUMO, if one is done, all are done since it's a shared simulation
+            obs, _ = self.env.reset()
+            
+        return obs, reward, done, info
+
+    def close(self) -> None:
+        self.env.close()
+
+    def get_attr(self, attr_name: str, indices: Optional[Sequence[int]] = None) -> List[Any]:
+        val = getattr(self.env, attr_name)
+        return [val for _ in range(self.num_envs)]
+
+    def set_attr(self, attr_name: str, value: Any, indices: Optional[Sequence[int]] = None) -> None:
+        setattr(self.env, attr_name, value)
+
+    def env_method(self, method_name: str, *method_args, indices: Optional[Sequence[int]] = None, **method_kwargs) -> List[Any]:
+        method = getattr(self.env, method_name)
+        val = method(*method_args, **method_kwargs)
+        return [val for _ in range(self.num_envs)]
+
+    def env_is_wrapped(self, wrapper_class: Any, indices: Optional[Sequence[int]] = None) -> List[bool]:
+        return [False for _ in range(self.num_envs)]
 
     def step(self, actions):
-        obs, reward, terminated, truncated, info = self.env.step(actions)
-
-        # Use the cached forecast from the inner environment
-        forecasted_state = self.env.last_forecast
-        
-        # Calculate risk penalty
-        risk_penalty = self.env.reward_calculator.risk_model.calculate_risk(forecasted_state)
-        
-        # Subtract risk penalty from the base reward
-        reward -= risk_penalty
-        
-        # Update info with risk metrics for tracking
-        info["risk_penalty"] = risk_penalty
-        
-        return obs, reward, terminated, truncated, info
-
-    def close(self):
-        self.env.close()
+        # For compatibility if called directly
+        self.step_async(actions)
+        return self.step_wait()

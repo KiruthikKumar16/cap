@@ -1,0 +1,46 @@
+# Configuration for 5x5 Grid
+
+sumo:
+  net_file: data/raw/grid_5x5.net.xml
+  route_file: data/raw/grid_5x5.rou.xml
+  simulation_steps: 5000
+  step_length: 1.0
+  gui: false
+
+model:
+  use_gnn: true
+  gnn_type: GAT
+  feature_dim: 12
+  hidden_dim: 128
+  embedding_dim: 64
+  gnn_layers: 3
+  gat_heads: 2
+  dropout: 0.1
+
+rl:
+  algorithm: PPO
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  n_steps: 1024
+  batch_size: 128
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+reward:
+  waiting_time_weight: 0.2
+  queue_length_weight: 0.1
+  speed_bonus_weight: 0.4
+  pressure_weight: 0.0001
+  risk_density_threshold: 0.7
+  risk_penalty_factor: 1.5
+  risk_sensitivity: 0.5
+
+training:
+  total_timesteps: 200000
+  checkpoint_freq: 25000
+  eval_freq: 10000

@@ -1,0 +1,46 @@
+# Configuration for Bengaluru City-Scale Map (SOTA Evaluation)
+
+sumo:
+  net_file: data/raw/bengaluru.net.xml
+  route_file: data/raw/bengaluru.rou.xml
+  simulation_steps: 7200  # Longer simulation for complex real-world map
+  step_length: 1.0
+  gui: false
+
+model:
+  use_gnn: true
+  gnn_type: GAT
+  feature_dim: 12
+  hidden_dim: 128
+  embedding_dim: 64
+  gnn_layers: 3
+  gat_heads: 2
+  dropout: 0.1
+
+rl:
+  algorithm: PPO
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 256
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+reward:
+  waiting_time_weight: 0.3
+  queue_length_weight: 0.2
+  speed_bonus_weight: 0.4
+  pressure_weight: 0.1
+  risk_density_threshold: 0.75
+  risk_penalty_factor: 2.0
+  risk_sensitivity: 0.7  # Higher sensitivity for real-world chaotic traffic
+
+training:
+  total_timesteps: 1000000
+  checkpoint_freq: 100000
+  eval_freq: 50000
