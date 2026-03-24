@@ -1,9 +1,8 @@
-
-# Configuration for 10x10 Grid (Phase 2)
+# Configuration for 5x5 Grid (Phase 2)
 
 sumo:
-  net_file: data/raw/grid_10x10.net.xml
-  route_file: data/raw/grid_10x10.rou.xml
+  net_file: data/raw/grid_5x5.net.xml
+  route_file: data/raw/grid_5x5.rou.xml
   simulation_steps: 10000
   step_length: 0.5
   gui: false
@@ -12,7 +11,7 @@ model:
   use_gnn: true
   gnn_type: GAT
   feature_dim: 12
-  hidden_dim: 256  # Increased from 128 to 256 for better capacity
+  hidden_dim: 128
   embedding_dim: 64
   gnn_layers: 3
   gat_heads: 4
@@ -21,15 +20,15 @@ model:
 rl:
   algorithm: PPO
   policy: MlpPolicy
-  learning_rate: 0.0001 # Reduced for finer learning in the larger model
+  learning_rate: 0.0003
   n_steps: 1024  # Reduced for 4GB VRAM
   batch_size: 64 # Reduced for 4GB VRAM
   n_epochs: 10
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.02 # Increased exploration to help value function convergence
-  vf_coef: 1.0  # Increased from 0.5 to 1.0 to prioritize reward prediction accuracy
+  ent_coef: 0.01 # Add some exploration
+  vf_coef: 0.5
   max_grad_norm: 0.5
 
 reward:
@@ -42,6 +41,6 @@ reward:
   risk_sensitivity: 0.5 # Lambda for uncertainty penalty
 
 training:
-  total_timesteps: 5000000 # Increased from 1M to 5M for better convergence on 10x10 grid
+  total_timesteps: 2000000 # 5x5 converges faster than 10x10
   checkpoint_freq: 50000
   eval_freq: 25000

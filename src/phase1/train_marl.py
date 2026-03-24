@@ -28,6 +28,7 @@ def main():
     parser = argparse.ArgumentParser(description="Train Multi-Agent PPO")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml", help="Path to config file")
     parser.add_argument("--total-timesteps", type=int, default=None, help="Override total timesteps")
+    parser.add_argument("--load-model", type=str, default=None, help="Path to load a pre-trained model")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -74,14 +75,30 @@ def main():
     print(f"Initializing MARL environment with grid size from {config['sumo']['net_file']}...")
     vec_env = MARLTrafficEnv(config, model=model, reward_calculator=reward_calculator)
     
-    model = PPO(
-        "MlpPolicy",
-        vec_env,
-        verbose=1,
-        device=device,
-        tensorboard_log="./marl_ppo_tensorboard/",
-        **config.get("ppo", {}),
-    )
+    if args.load_model:
+        print(f"Loading pre-trained model from {args.load_model}...")
+        model = PPO.load(
+            args.load_model,
+            env=vec_env,
+            device=device,
+            tensorboard_log="./marl_ppo_tensorboard/",
+            custom_objects={"model": model} # Pass the GNN model
+        )
+        # Update PPO parameters from config if they changed
+        for key, value in config.get("rl", {}).items():
+            if key not in ["algorithm", "policy"]: # Skip non-PPO kwargs
+                setattr(model, key, value)
+    else:
+        # Filter out non-PPO kwargs
+        ppo_kwargs = {k: v for k, v in config.get("rl", {}).items() if k not in ["algorithm", "policy"]}
+        model = PPO(
+            "MlpPolicy",
+            vec_env,
+            verbose=1,
+            device=device,
+            tensorboard_log="./marl_ppo_tensorboard/",
+            **ppo_kwargs,
+        )
 
     print("\n" + "="*60)
     print(f"Starting Training ({config['sumo'].get('net_file', 'unknown map')})")
