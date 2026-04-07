@@ -134,60 +134,51 @@ class RewardCalculator:
             "anomaly": w_anomaly
         }
 
+    def sigmoid(self, x: float) -> float:
+        """Standard sigmoid function for smooth thresholding."""
+        # Steepness of 10, centered at 0.5 for smooth transition from 0 to 1
+        return 1 / (1 + np.exp(-10 * (x - 0.5)))
+
     def calculate(
         self,
         waiting_times: Dict[str, float],
         queue_lengths: Dict[str, float],
         anomaly_info: Optional[Dict[str, Dict]] = None,
         forecasted_state: Optional[torch.Tensor] = None,
-        sim_time: Optional[float] = None
+        sim_time: Optional[float] = None,
+        mean_speed: float = 0.0
     ) -> float:
-        """Calculate the reward based on the provided metrics and optional forecasted state."""
-        reward = 0.0
-
-        # Calculate total metrics
-        total_waiting = sum(waiting_times.values())
-        total_queue = sum(queue_lengths.values())
+        """
+        Calculate the reward using smooth sigmoid-based weighting and strict [0, 1] normalization.
         
-        # Calculate density proxy and anomaly severity for adaptive weighting
+        Formula:
+        reward = speed_weight * normalized_speed - density_factor * (queue_weight * normalized_queue + wait_weight * normalized_wait)
+        """
         num_nodes = max(1, len(waiting_times))
-        avg_queue = total_queue / num_nodes
-        density_proxy = min(1.0, avg_queue / self.max_queue)
         
-        anomaly_severity = 0.0
-        if anomaly_info:
-            anomaly_severity = np.mean([info.get('smoothed_score', 0.0) for info in anomaly_info.values()])
+        # 1. Normalize inputs to [0, 1]
+        avg_waiting = sum(waiting_times.values()) / num_nodes
+        avg_queue = sum(queue_lengths.values()) / num_nodes
+        
+        norm_wait = min(1.0, avg_waiting / self.max_waiting)
+        norm_queue = min(1.0, avg_queue / self.max_queue)
+        norm_speed = min(1.0, mean_speed / self.max_speed)
+        
+        # 2. Density factor using Sigmoid (smooth transition between flow and congestion)
+        # Using normalized queue as a proxy for density
+        density_factor = self.sigmoid(norm_queue)
+        
+        # 3. Calculate Reward Components
+        # Use provided weights (assumed from config)
+        speed_comp = self.speed_reward_weight * norm_speed
+        penalty_comp = density_factor * (self.queue_length_weight * norm_queue + self.waiting_time_weight * norm_wait)
+        
+        reward = speed_comp - penalty_comp
 
-        # Get adaptive weights
-        weights = self._get_adaptive_weights(density_proxy, anomaly_severity, sim_time)
+        # NOTE: Forecasting/Risk-aware penalty is temporarily disabled for stability as requested
+        # reward -= risk_penalty
 
-        if self.normalize:
-            total_waiting = total_waiting / max(1e-6, self.max_waiting * len(waiting_times))
-            total_queue = total_queue / max(1e-6, self.max_queue * len(queue_lengths))
-
-        reward -= weights["waiting"] * total_waiting
-        reward -= weights["queue"] * total_queue
-
-        # Add anomaly penalty if provided
-        if anomaly_info is not None and weights["anomaly"] > 0:
-            from src.phase3.integration import get_anomaly_controller
-            controller = get_anomaly_controller()
-            if controller is not None:
-                anomaly_penalty = controller.get_anomaly_penalty(anomaly_info)
-                reward -= weights["anomaly"] * anomaly_penalty
-
-        # Risk-aware penalty (uses forecasted state)
-        if forecasted_state is not None:
-            # Check if forecasted_state is a tuple (mean, variance)
-            if isinstance(forecasted_state, tuple) and len(forecasted_state) == 2:
-                risk_penalty = self.risk_model.calculate_risk(forecasted_state[0], forecasted_state[1])
-            else:
-                # Fallback: create dummy variance if not provided
-                dummy_variance = torch.zeros_like(forecasted_state)
-                risk_penalty = self.risk_model.calculate_risk(forecasted_state, dummy_variance)
-            reward -= risk_penalty
-
-        return reward
+        return float(reward)
     
     def add_throughput_bonus(self, reward: float, departed_count: float) -> float:
         """Add throughput bonus to reward (call when throughput_weight > 0)."""
@@ -272,10 +263,19 @@ class RewardCalculator:
 
         try:
             sim_time = traci.simulation.getTime()
+            # Calculate mean speed across all intersections for global reward
+            total_speed = 0.0
+            lane_count = 0
+            for intersection_id in use_ids:
+                for lane_id in traci.trafficlight.getControlledLanes(intersection_id):
+                    total_speed += traci.lane.getLastStepMeanSpeed(lane_id)
+                    lane_count += 1
+            avg_speed = total_speed / max(1, lane_count)
         except Exception:
             sim_time = None
+            avg_speed = 0.0
 
-        reward = self.calculate(waiting_times, queue_lengths, anomaly_info, sim_time=sim_time)
+        reward = self.calculate(waiting_times, queue_lengths, anomaly_info, sim_time=sim_time, mean_speed=avg_speed)
         # Pressure penalty: vehicle count on controlled lanes (non-zero when traffic present; differentiates policies)
         if self.pressure_weight > 0:
             try:
@@ -284,22 +284,6 @@ class RewardCalculator:
                     for lane_id in traci.trafficlight.getControlledLanes(intersection_id):
                         total_vehicles_on_lanes += traci.lane.getLastStepVehicleNumber(lane_id)
                 reward -= self.pressure_weight * total_vehicles_on_lanes
-            except Exception:
-                pass
-        # Speed bonus: higher speed = better flow (GUARANTEES differentiation when policies differ)
-        if self.speed_reward_weight > 0:
-            try:
-                total_speed = 0.0
-                lane_count = 0
-                for intersection_id in use_ids:
-                    for lane_id in traci.trafficlight.getControlledLanes(intersection_id):
-                        total_speed += traci.lane.getLastStepMeanSpeed(lane_id)
-                        lane_count += 1
-                if lane_count > 0:
-                    avg_speed = total_speed / lane_count
-                    if self.normalize:
-                        avg_speed = avg_speed / self.max_speed
-                    reward += self.speed_reward_weight * avg_speed
             except Exception:
                 pass
         

@@ -113,16 +113,24 @@ class SUMOTrafficEnv(gym.Env):
         # Get edge index
         self.edge_index = self.graph_builder.get_edge_index()
         
-        # Individual Agent Spaces (for Zero-Shot Generalization)
-        embedding_dim = self.model.controller.out_dim
-        max_neighbors = 4
-        obs_dim = embedding_dim * (1 + max_neighbors)
-        
+        # Each agent (intersection) observation is a concatenation of:
+        #   [self_embedding] + [neighbor_embeddings (max_neighbors)] + [global_embedding]
+        # Total length = (2 + max_neighbors) * embedding_dim.
+        self.max_neighbors = 4
+        embedding_dim = None
+        if hasattr(self.model, "controller"):
+            embedding_dim = getattr(self.model.controller, "out_dim", None)
+            if embedding_dim is None and hasattr(self.model.controller, "get_output_dim"):
+                embedding_dim = self.model.controller.get_output_dim()
+        if embedding_dim is None:
+            raise ValueError("Could not infer embedding_dim from model.controller")
+
+        obs_vector_dim = int((2 + self.max_neighbors) * int(embedding_dim))
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(obs_dim,),
-            dtype=np.float32
+            shape=(obs_vector_dim,),
+            dtype=np.float32,
         )
         # Assuming 4 phases per intersection (standard for our grid)
         self.action_space = spaces.Discrete(4)
@@ -146,8 +154,32 @@ class SUMOTrafficEnv(gym.Env):
             "episode_total_queue_length": 0.0,
             "episode_total_travel_time": 0.0,
             "episode_arrived_vehicles": 0,
+            "episode_stopped_vehicles": 0,
             "episode_steps": 0,
         }
+        self.log_file = "episode_metrics.csv"
+        self.episode_count = 0
+        self._init_log_file()
+
+    def _init_log_file(self):
+        if not Path(self.log_file).exists():
+            with open(self.log_file, "w") as f:
+                f.write("episode,avg_waiting_time,avg_queue_length,throughput,avg_stopped_vehicles\n")
+
+    def _log_episode(self, episode_idx: int):
+        total_steps = max(1, self.episode_metrics["episode_steps"])
+        avg_wait = self.episode_metrics["episode_total_waiting_time"] / total_steps
+        avg_queue = self.episode_metrics["episode_total_queue_length"] / total_steps
+        throughput = self.episode_metrics["episode_arrived_vehicles"]
+        avg_stopped = self.episode_metrics["episode_stopped_vehicles"] / total_steps
+        
+        # Log to CSV
+        with open(self.log_file, "a") as f:
+            f.write(f"{episode_idx},{avg_wait:.2f},{avg_queue:.2f},{throughput},{avg_stopped:.2f}\n")
+        
+        # Print for visibility
+        print(f"\n[Episode {episode_idx} Metrics]")
+        print(f"  Avg Wait: {avg_wait:.2f}s | Avg Queue: {avg_queue:.2f} | Throughput: {throughput} | Avg Stopped: {avg_stopped:.2f}")
         
     def reset(
         self,
@@ -174,6 +206,11 @@ class SUMOTrafficEnv(gym.Env):
         
         # Start SUMO simulation
         self._start_sumo()
+        
+        # Log previous episode metrics if any steps were taken
+        if self.episode_metrics["episode_steps"] > 0:
+            self.episode_count += 1
+            self._log_episode(self.episode_count)
         
         # Sync with SUMO TLS IDs for phase execution (handles graph placeholder J0 vs net A0)
         if self.sumo_running and TRACI_AVAILABLE:
@@ -447,7 +484,7 @@ class SUMOTrafficEnv(gym.Env):
         return torch.tensor(features, dtype=torch.float32)
 
     def _get_observation(self) -> np.ndarray:
-        """Get observation from GNN encoder."""
+        """Get observation from GNN encoder (including local features and global embedding)."""
         if len(self.state_history) < self.state_history.maxlen:
             # Pad with zeros if we don't have enough history
             padding = [torch.zeros_like(self.state_history[0])] * (self.state_history.maxlen - len(self.state_history))
@@ -458,26 +495,33 @@ class SUMOTrafficEnv(gym.Env):
         x_seq = torch.stack(history, dim=0).unsqueeze(0) # Add batch dimension
 
         with torch.no_grad():
-            embedding, mean_forecast, variance_forecast = self.model(x_seq, self.edge_index)
+            embedding, global_embedding, mean_forecast, variance_forecast = self.model(x_seq, self.edge_index)
             # Store forecasts for reward calculation
             self.last_mean_forecast = mean_forecast
             self.last_variance_forecast = variance_forecast
 
         # Create coordinated observations
-        max_neighbors = 4
+        embedding_dim = embedding.shape[1]
         obs_dim = self.observation_space.shape[0]
         obs = np.zeros((self.num_intersections, obs_dim), dtype=np.float32)
+        
+        global_emb_np = global_embedding.cpu().numpy().flatten()
+
         for i in range(self.num_intersections):
             neighbors = self.edge_index[1][self.edge_index[0] == i]
             neighbor_embeddings = embedding[neighbors]
             
             # Pad neighbor embeddings
-            padded_neighbors = np.zeros((max_neighbors, embedding.shape[1]), dtype=np.float32)
-            num_neighbors = min(len(neighbors), max_neighbors)
+            padded_neighbors = np.zeros((self.max_neighbors, embedding_dim), dtype=np.float32)
+            num_neighbors = min(len(neighbors), self.max_neighbors)
             padded_neighbors[:num_neighbors] = neighbor_embeddings.cpu().numpy()[:num_neighbors]
             
-            # Concatenate self embedding with neighbor embeddings
-            obs[i] = np.concatenate([embedding[i].cpu().numpy(), padded_neighbors.flatten()])
+            # Concatenate self embedding, neighbor embeddings, AND global embedding
+            obs[i] = np.concatenate([
+                embedding[i].cpu().numpy(), 
+                padded_neighbors.flatten(),
+                global_emb_np
+            ])
             
         return obs
     
@@ -535,8 +579,22 @@ class SUMOTrafficEnv(gym.Env):
         except Exception:
             return 0.0
 
+    def _get_stopped_vehicles_count(self) -> int:
+        """Count vehicles with speed < 0.1 m/s."""
+        if not self.sumo_running or not TRACI_AVAILABLE:
+            return 0
+        try:
+            vehicle_ids = traci.vehicle.getIDList()
+            stopped = 0
+            for veh_id in vehicle_ids:
+                if traci.vehicle.getSpeed(veh_id) < 0.1:
+                    stopped += 1
+            return stopped
+        except Exception:
+            return 0
+
     def _get_info(self) -> Dict[str, Any]:
-        """Get info dictionary. In placeholder mode, throughput/travel_time/waiting_time are 0 (not reported as results)."""
+        """Get info dictionary with detailed metrics."""
         info = {
             "step": self.current_step,
             "sumo_running": self.sumo_running,
@@ -553,20 +611,26 @@ class SUMOTrafficEnv(gym.Env):
                 info["step_total_waiting_time"] = self._get_waiting_time_step()
                 info["step_total_queue_length"] = self._get_queue_length_step()
                 info["step_mean_speed"] = self._get_mean_speed()
-                info["step_arrived_vehicles"] = traci.simulation.getArrivedNumber() - self.episode_metrics["episode_arrived_vehicles"]
+                info["step_stopped_vehicles"] = self._get_stopped_vehicles_count()
+                info["step_arrived_vehicles"] = traci.simulation.getArrivedNumber()
 
                 # Update episode-level metrics
                 self.episode_metrics["episode_total_waiting_time"] += info["step_total_waiting_time"]
                 self.episode_metrics["episode_total_queue_length"] += info["step_total_queue_length"]
+                self.episode_metrics["episode_stopped_vehicles"] += info["step_stopped_vehicles"]
                 self.episode_metrics["episode_arrived_vehicles"] = traci.simulation.getArrivedNumber()
                 self.episode_metrics["episode_steps"] += 1
 
                 # Final episode metrics (averages)
-                if terminated or truncated:
-                    total_steps = self.episode_metrics["episode_steps"]
+                terminated_bool = self._is_terminated()
+                truncated_bool = self.current_step >= self.max_steps
+                
+                if terminated_bool or truncated_bool:
+                    total_steps = max(1, self.episode_metrics["episode_steps"])
                     info["episode_avg_waiting_time"] = self.episode_metrics["episode_total_waiting_time"] / total_steps
                     info["episode_avg_queue_length"] = self.episode_metrics["episode_total_queue_length"] / total_steps
                     info["episode_throughput"] = self.episode_metrics["episode_arrived_vehicles"]
+                    info["episode_avg_stopped_vehicles"] = self.episode_metrics["episode_stopped_vehicles"] / total_steps
 
             except Exception:
                 pass

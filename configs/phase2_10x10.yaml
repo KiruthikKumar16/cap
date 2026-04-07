@@ -21,27 +21,41 @@ model:
 rl:
   algorithm: PPO
   policy: MlpPolicy
-  learning_rate: 0.0001 # Reduced for finer learning in the larger model
-  n_steps: 1024  # Reduced for 4GB VRAM
-  batch_size: 64 # Reduced for 4GB VRAM
+  learning_rate: 0.0001 # Set to 1e-4 as requested
+  n_steps: 1024
+  batch_size: 128 # Increased as requested (GPU-optimized)
   n_epochs: 10
-  gamma: 0.99
+  gamma: 0.99 # Keep as requested
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.02 # Increased exploration to help value function convergence
-  vf_coef: 1.0  # Increased from 0.5 to 1.0 to prioritize reward prediction accuracy
+  ent_coef: 0.01 # Reduced as requested (reduce noise)
+  vf_coef: 0.7   # Reduced slightly to 0.7 as requested
   max_grad_norm: 0.5
 
 reward:
   waiting_time_weight: 0.2
   queue_length_weight: 0.1
-  speed_bonus_weight: 0.4
-  pressure_weight: 0.0001
+  speed_reward_weight: 0.5 # Increased to emphasize flow
+  pressure_weight: 0.0
   risk_density_threshold: 0.7
-  risk_penalty_factor: 1.5
-  risk_sensitivity: 0.5 # Lambda for uncertainty penalty
+  risk_penalty_factor: 0.0 # Temporarily disabled for stability
+  risk_sensitivity: 0.0 # Temporarily disabled
+  normalize: true # Ensure all inputs are normalized to [0, 1]
 
 training:
   total_timesteps: 5000000 # Increased from 1M to 5M for better convergence on 10x10 grid
   checkpoint_freq: 50000
   eval_freq: 25000
+
+# Optional: `src/phase1/curriculum_train.py` turns on adaptive mode when this block exists.
+# Reward scale is environment-specific (often negative); tune thresholds to your logs.
+# curriculum:
+#   stage_0:
+#     timesteps: 50000
+#     reward_threshold: -1.0
+#   stage_1:
+#     timesteps: 100000
+#     reward_threshold: -0.5
+#   stage_2:
+#     timesteps: 200000
+#     reward_threshold: -0.25

@@ -2,11 +2,11 @@
 
 A comprehensive, 100% implemented intelligent traffic management system using Graph Neural Networks (GNNs), Spatio-Temporal AI, and Reinforcement Learning. This project integrates adaptive control with proactive anomaly detection and hierarchical coordination.
 
-## 🚀 Project Status: 100% Complete
+## 🚀 Project Status: Implementation complete; training/evaluation ongoing
 
-- **Phase 1**: Traffic Prediction & Adaptive Control (GNN + DQN/PPO) — **100%**
-- **Phase 2**: Anomaly Detection (ST-GNN + Bayesian Uncertainty) — **100%**
-- **Phase 3**: Proactive Integration (Self-Adaptive Rewards + Wave Forecasting) — **100%**
+- **Phase 1**: Traffic Control (GNN + DQN/PPO) — implemented; results depend on training convergence
+- **Phase 2**: Anomaly Detection (ST-GNN + Bayesian Uncertainty) — implemented; thresholding/evaluation configurable
+- **Phase 3**: Proactive Integration (Self-Adaptive Rewards + Risk hooks) — implemented; can be enabled via config
 
 ## 🧠 Core Novelties (Patent-Ready)
 

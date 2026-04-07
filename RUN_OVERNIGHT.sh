@@ -8,7 +8,7 @@ sed -i 's/total_timesteps: 20000/total_timesteps: 100000/g' configs/phase1.yaml
 python -m src.phase1.train_rl --config configs/phase1.yaml
 
 # Step 3: Evaluate (30 min)
-python -m src.phase1.evaluate_clean --episodes 10 --seeds 3 --save-summary outputs/phase1/evaluation_summary.json
+python -m src.phase1.evaluate --config configs/phase1.yaml --checkpoint outputs/phase1/dqn_traffic_final.zip --episodes 10 --seeds 3 --fixed-time --actuated --save-summary outputs/phase1/evaluation_summary.json
 
 # Step 4: Generate figures
 python scripts/phase1_generate_figures.py

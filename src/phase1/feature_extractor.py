@@ -44,6 +44,10 @@ class TrafficFeatureExtractor:
         self.max_queue = max_queue
         self.max_waiting = max_waiting
         self.num_phases = 4  # Typically 4 phases per intersection
+        # Total number of per-intersection features produced by `extract()`.
+        # Current feature layout:
+        #   4 one-hot phase bits + 1 phase duration + 2 queue stats + 1 waiting time + 4 directional vehicle counts = 12
+        self.feature_dim = 12  # Used by SUMOTrafficEnv for observation space shape
         
     def extract(self) -> torch.Tensor:
         """

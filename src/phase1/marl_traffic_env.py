@@ -11,6 +11,8 @@ from gymnasium import spaces
 import numpy as np
 
 from src.phase1.traffic_env import SUMOTrafficEnv
+from src.models.predictive_gnn_rl import PredictiveGNNRL
+import torch
 
 from stable_baselines3.common.vec_env import VecEnv
 from typing import List, Any, Dict, Optional, Tuple, Sequence
@@ -30,6 +32,30 @@ class MARLTrafficEnv(VecEnv):
         # Initialize internal environment
         sumo_cfg = config["sumo"]
         reward_cfg = config.get("reward", {})
+
+        # `SUMOTrafficEnv` requires a `PredictiveGNNRL` model to build observations.
+        # If the caller didn't provide one, construct it from the config.
+        if model is None:
+            model_cfg = config["model"]
+            st_gnn_horizon = config.get("data", {}).get("window", {}).get("history", 3)
+
+            model = PredictiveGNNRL(
+                st_gnn_in_dim=model_cfg["feature_dim"],
+                st_gnn_hidden_dim=model_cfg["hidden_dim"],
+                st_gnn_heads=model_cfg.get("gat_heads", 2),
+                st_gnn_layers=model_cfg["gnn_layers"],
+                st_gnn_dropout=model_cfg["dropout"],
+                st_gnn_horizon=st_gnn_horizon,
+                rl_gnn_in_dim=model_cfg["feature_dim"],
+                rl_gnn_hidden_dim=model_cfg["hidden_dim"],
+                rl_gnn_embedding_dim=model_cfg["embedding_dim"],
+                rl_gnn_layers=model_cfg["gnn_layers"],
+                rl_gnn_type=model_cfg.get("gnn_type", "gat"),
+                rl_gnn_heads=model_cfg.get("gat_heads", 2),
+                rl_gnn_dropout=model_cfg["dropout"],
+            )
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            model = model.to(device)
         
         self.env = SUMOTrafficEnv(
             net_file=sumo_cfg["net_file"],
@@ -39,7 +65,9 @@ class MARLTrafficEnv(VecEnv):
             step_length=sumo_cfg.get("step_length", 1.0),
             max_steps=sumo_cfg.get("simulation_steps", 3600),
             use_gui=sumo_cfg.get("gui", False),
+            traci_port=sumo_cfg.get("traci_port", 8813),
             time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
+            st_gnn_horizon=config.get("data", {}).get("window", {}).get("history", 3),
             enable_anomaly_awareness=config.get("phase3", {}).get("enable_anomaly_awareness", False)
         )
         

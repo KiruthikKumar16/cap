@@ -57,7 +57,7 @@ class PredictiveGNNRL(nn.Module):
             dropout=rl_gnn_dropout,
         )
 
-    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         First, forecast the future traffic state, then use the forecast to
         generate control embeddings.
@@ -67,7 +67,7 @@ class PredictiveGNNRL(nn.Module):
             edge_index: The graph connectivity
 
         Returns:
-            A tuple of (control_embeddings, mean_forecast, variance_forecast)
+            A tuple of (node_embeddings, global_graph_embedding, mean_forecast, variance_forecast)
         """
         # Ensure inputs are on the same device as the model
         device = next(self.parameters()).device
@@ -75,7 +75,7 @@ class PredictiveGNNRL(nn.Module):
         edge_index = edge_index.to(device)
 
         # We only need the forecasted state, not the reconstruction
-        _, mean_forecast, variance_forecast = self.forecaster(x_seq, edge_index)
+        recon, mean_forecast, variance_forecast = self.forecaster(x_seq, edge_index)
 
         # Use the last forecasted step as the input to the controller
         # forecast is [B, H, N, F], we take the last step [B, N, F]
@@ -83,11 +83,35 @@ class PredictiveGNNRL(nn.Module):
 
         batch_size = predicted_state.shape[0]
         if batch_size > 1:
-            all_embeddings = []
+            all_node_embeddings = []
+            all_global_embeddings = []
             for i in range(batch_size):
-                single_embedding = self.controller(predicted_state[i], edge_index)
-                all_embeddings.append(single_embedding)
-            return torch.cat(all_embeddings, dim=0), mean_forecast, variance_forecast
+                node_embedding = self.controller(predicted_state[i], edge_index)
+                global_embedding = torch.mean(node_embedding, dim=0, keepdim=True)
+                
+                all_node_embeddings.append(node_embedding)
+                all_global_embeddings.append(global_embedding)
+                
+            return torch.cat(all_node_embeddings, dim=0), torch.cat(all_global_embeddings, dim=0), mean_forecast, variance_forecast
         else:
-            control_embedding = self.controller(predicted_state.squeeze(0), edge_index)
-            return control_embedding, mean_forecast, variance_forecast
+            node_embedding = self.controller(predicted_state.squeeze(0), edge_index)
+            global_embedding = torch.mean(node_embedding, dim=0, keepdim=True)
+            return node_embedding, global_embedding, mean_forecast, variance_forecast
+
+    def compute_forecasting_loss(
+        self, 
+        x_seq: torch.Tensor, 
+        edge_index: torch.Tensor, 
+        y_future: torch.Tensor
+    ) -> torch.Tensor:
+        """
+        Compute Negative Log Likelihood loss for forecasting.
+        y_future: [B, H_out, N, F]
+        """
+        _, mean, var = self.forward(x_seq, edge_index)[2:] # Get mean and var from forward
+        
+        # NLL Loss for Gaussian distribution
+        # Loss = 0.5 * (log(var) + (y - mean)^2 / var)
+        precision = 1.0 / (var + 1e-6)
+        loss = 0.5 * (torch.log(var + 1e-6) + (y_future - mean)**2 * precision)
+        return loss.mean()

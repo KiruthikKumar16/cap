@@ -572,11 +572,17 @@ def main():
     parser.add_argument("--actuated", action="store_true", help="Also evaluate actuated baseline")
     parser.add_argument("--random", action="store_true", help="Also evaluate random baseline")
     parser.add_argument("--fixed-time", action="store_true", help="Also evaluate fixed-time baseline")
+    parser.add_argument("--require-cuda", action="store_true", help="Fail fast if CUDA is not available")
+    parser.add_argument("--require-sumo", action="store_true", help="Fail fast if placeholder_mode is detected (ensures real SUMO metrics)")
     parser.add_argument("--save-summary", type=str, nargs="?", const="outputs/phase1/evaluation_summary.json", default=None, help="Save evaluation summary to JSON for comparison charts (default: outputs/phase1/evaluation_summary.json if flag present)")
     parser.add_argument("--debug-actions", type=int, default=0, metavar="N", help="Log first N step actions (DQN vs fixed-time) for episode 0 to verify policies differ (e.g. 20)")
     args = parser.parse_args()
 
     config = load_config(args.config)
+    # CUDA gate (requested for reproducibility on GPU-only setups)
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if args.require_cuda and device != "cuda":
+        raise RuntimeError("CUDA is required but torch.cuda.is_available() is False. Activate venv_gpu / install CUDA torch.")
     eval_cfg = config.get("evaluation", {})
     num_episodes = args.episodes or eval_cfg.get("num_episodes", 10)
     deterministic = eval_cfg.get("deterministic", True)
@@ -631,6 +637,11 @@ def main():
         env.close()
         
         used_sumo = used_sumo or (not placeholder_mode)
+        if args.require_sumo and placeholder_mode:
+            raise RuntimeError(
+                "Placeholder mode detected (SUMO/TraCI not providing real metrics). "
+                "Fix SUMO installation/connection or run without --require-sumo."
+            )
         all_dqn_r.extend(r)
         all_dqn_l.extend(l)
         all_dqn_tput.extend(tput)

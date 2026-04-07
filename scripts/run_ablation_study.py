@@ -3,6 +3,7 @@ import yaml
 import json
 from pathlib import Path
 import os
+import sys
 
 SEED = 42
 
@@ -35,16 +36,22 @@ def run_ablation_study():
         with open(temp_config_path, 'w') as f:
             yaml.dump(base_config, f)
             
+        py = sys.executable
         train_cmd = [
-            "python", "-m", "src.phase1.train_marl",
+            py, "src/phase1/train_marl.py",
             "--config", temp_config_path,
             "--total-timesteps", "10000"
         ]
         subprocess.run(train_cmd, check=True)
         
         eval_cmd = [
-            "python", "-m", "src.phase1.evaluate",
+            py, "-m", "src.phase1.evaluate",
             "--config", temp_config_path,
+            "--checkpoint", "marl_ppo_traffic.zip",
+            "--episodes", "3",
+            "--fixed-time",
+            "--random",
+            "--actuated",
             "--save-summary", f"outputs/{model_name}_eval.json"
         ]
         subprocess.run(eval_cmd, check=True)
