@@ -61,9 +61,9 @@ def train_one_epoch(
         target_forecast = batch[:, 1:]  # [B, H, N, F]
 
         optimizer.zero_grad()
-        recon, forecast = model(x_seq, edge_index)
+        recon, mean_forecast, var_forecast = model(x_seq, edge_index)
         loss_recon = mse(recon, target_last)
-        loss_forecast = mse(forecast, target_forecast)
+        loss_forecast = mse(mean_forecast, target_forecast)
         loss = recon_weight * loss_recon + forecast_weight * loss_forecast
 
         loss.backward()
@@ -88,6 +88,7 @@ def main() -> None:
     parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--output_dir", type=str, default="outputs/phase2", help="Directory to save model")
+    parser.add_argument("--data_file", type=str, default="", help="Path to real SUMO .pt trajectory dataset. If empty, uses synthetic data.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,16 +107,28 @@ def main() -> None:
         temporal_type="gru",
     ).to(device)
 
-    # Synthetic normal dataset (no anomalies for training)
-    dataset = SyntheticTrafficSequenceDataset(
-        num_samples=512,
-        horizon=args.horizon,
-        num_nodes=args.num_nodes,
-        num_features=args.num_features,
-        anomaly_prob=0.0,
-        return_labels=False,
-    )
-    data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    if args.data_file and os.path.exists(args.data_file):
+        print(f"Loading real SUMO trajectory dataset from: {args.data_file}")
+        tensor_data = torch.load(args.data_file)
+        from torch.utils.data import TensorDataset
+        dataset = TensorDataset(tensor_data)
+        # TensorDataset returns tuples like (tensor,) on __getitem__
+        # We need a custom collate or simple map to unpack it
+        def collate_unpacked(batch):
+            return torch.stack([item[0] for item in batch], dim=0)
+        data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_unpacked)
+    else:
+        print("Starting Phase 2 anomaly detector training (placeholder synthetic data)...")
+        # Synthetic normal dataset (no anomalies for training)
+        dataset = SyntheticTrafficSequenceDataset(
+            num_samples=512,
+            horizon=args.horizon,
+            num_nodes=args.num_nodes,
+            num_features=args.num_features,
+            anomaly_prob=0.0,
+            return_labels=False,
+        )
+        data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
     edge_index = build_fully_connected_edge_index(args.num_nodes, device)
 

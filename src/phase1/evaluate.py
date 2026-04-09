@@ -175,10 +175,10 @@ def evaluate_fixed_time(
                 placeholder_mode = info.get("placeholder_mode", not info.get("sumo_running", False))
             r = float(np.asarray(reward).flatten()[0]) if np.ndim(reward) > 0 else float(reward)
             total_reward += r
-            total_departed += float(np.asarray(info.get("departed", 0)).flatten()[0]) if np.ndim(info.get("departed", 0)) > 0 else float(info.get("departed", 0))
-            total_travel_time += float(np.asarray(info.get("travel_time", 0.0)).flatten()[0]) if np.ndim(info.get("travel_time", 0.0)) > 0 else float(info.get("travel_time", 0.0))
-            total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
-            total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
+            total_departed += float(np.asarray(info.get("step_arrived_vehicles", 0)).flatten()[0]) if np.ndim(info.get("step_arrived_vehicles", 0)) > 0 else float(info.get("step_arrived_vehicles", 0))
+            total_travel_time += float(np.asarray(info.get("step_stopped_vehicles", 0.0)).flatten()[0]) if np.ndim(info.get("step_stopped_vehicles", 0.0)) > 0 else float(info.get("step_stopped_vehicles", 0.0))
+            total_waiting_time += float(np.asarray(info.get("step_total_waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("step_total_waiting_time", 0.0)) > 0 else float(info.get("step_total_waiting_time", 0.0))
+            total_queue_length += float(np.asarray(info.get("step_total_queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("step_total_queue_length", 0.0)) > 0 else float(info.get("step_total_queue_length", 0.0))
             step_count += 1
             done = np.any(terminated) or np.any(truncated)
         ep_reward = total_reward
