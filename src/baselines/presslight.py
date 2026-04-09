@@ -26,6 +26,5 @@ class PresslightAgent:
             The action to take for each intersection.
         """
         # The observation is the pressure for each intersection's possible phases.
-        # PressLight simply chooses the action (phase) that minimizes the pressure.
-        # The observation is expected to be of shape (num_intersections, num_phases)
-        return np.argmin(obs, axis=1)
+        # PressLight chooses the action (phase) that MAXIMIZES the pressure relief.
+        return np.argmax(obs, axis=1)

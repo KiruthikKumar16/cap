@@ -115,6 +115,7 @@ def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTr
             sumo_binary=sumo_cfg.get("sumo_binary"),
             time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
             enable_anomaly_awareness=enable_anomaly_awareness,
+            config=config,
         )
     
     return env

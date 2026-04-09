@@ -55,6 +55,7 @@ class SUMOTrafficEnv(gym.Env):
         sumo_binary: Optional[str] = None,
         time_penalty_per_step: float = 0.0,
         enable_anomaly_awareness: bool = False,
+        config: Optional[Dict] = None,
     ):
         """
         Initialize SUMO traffic environment.
@@ -73,9 +74,11 @@ class SUMOTrafficEnv(gym.Env):
             sumo_binary: Full path to sumo/sumo-gui executable. If not set, uses PATH or SUMO_HOME/bin.
             time_penalty_per_step: Small per-step cost (standard RL) so baseline reward is non-zero when traffic metrics are 0.
             enable_anomaly_awareness: Whether to use Phase 2 anomaly detection for reward shaping.
+            config: Full global dictionary configuration mapping.
         """
         super().__init__()
         
+        self.config = config or {}
         self.net_file = net_file
         self.route_file = route_file
         self.config_file = config_file
@@ -431,6 +434,22 @@ class SUMOTrafficEnv(gym.Env):
         self._queue_length_step = 0.0
         if self.sumo_running and TRACI_AVAILABLE:
             try:
+                # SOTA: Phase 3 Adversarial Accident Injection
+                if self.config.get("evaluation", {}).get("adversarial_accidents", False):
+                    # Randomly stop 5 vehicles in the network to simulate a gridlock crash
+                    if self.current_step == 500: # Trigger crash exactly at step 500
+                        try:
+                            veh_list = traci.vehicle.getIDList()
+                            if len(veh_list) >= 5:
+                                np.random.seed(42) # Deterministic crash nodes
+                                crash_vehs = np.random.choice(veh_list, 5, replace=False)
+                                for vid in crash_vehs:
+                                    traci.vehicle.setSpeed(vid, 0.0)
+                                    traci.vehicle.setColor(vid, (255, 0, 0, 255))
+                                print(f"[Adversarial] Triggered artificial multi-car crash on {crash_vehs} at step 500!")
+                        except Exception as e:
+                            pass
+
                 traci.simulationStep()
                 try:
                     sim_time = traci.simulation.getTime()
@@ -479,9 +498,15 @@ class SUMOTrafficEnv(gym.Env):
     def _get_raw_observation(self) -> torch.Tensor:
         """Get the raw feature observation from the feature extractor."""
         features = self.feature_extractor.extract()
-        if torch.is_tensor(features):
-            return features.detach().clone().to(torch.float32)
-        return torch.tensor(features, dtype=torch.float32)
+        tensor_feats = features.detach().clone().to(torch.float32) if torch.is_tensor(features) else torch.tensor(features, dtype=torch.float32)
+        
+        # SOTA: Phase 3 Adversarial Sensor Failure (10% Noise/Blackout)
+        if self.config.get("evaluation", {}).get("sensor_noise", False):
+            # Apply 10% masking (sensor failure zeroing)
+            mask = torch.rand_like(tensor_feats) > 0.1
+            tensor_feats = tensor_feats * mask
+            
+        return tensor_feats
 
     def _get_observation(self) -> np.ndarray:
         """Get observation from GNN encoder (including local features and global embedding)."""

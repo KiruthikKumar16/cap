@@ -33,9 +33,9 @@ def run_benchmarks(config_path: str, checkpoint: str, episodes: int):
     results = {}
 
     # Evaluate our model
-    print("Evaluating Our Model...")
+    print("Evaluating MAPPO-STGNN (Ours)...")
     our_model_results = evaluate_model(config, "PPO")
-    results["our_model"] = our_model_results
+    results["MAPPO-STGNN"] = our_model_results
 
     # Evaluate PressLight
     print("Evaluating PressLight...")

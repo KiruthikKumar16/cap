@@ -90,8 +90,8 @@ def main() -> None:
             x_plus = x_plus.to(device)  # [B, H+1, N, F]
             labels = labels.to(device)  # [B, N]
             x_input = x_plus[:, :-1]  # [B, H, N, F]
-            recon, forecast = model(x_input, edge_index)
-            scores, details = combined_anomaly_score(recon, forecast, x_plus)
+            recon, mean_forecast, var_forecast = model(x_input, edge_index)
+            scores, details = combined_anomaly_score(recon, mean_forecast, x_plus)
             recon_scores = details["recon_error"]
             forecast_scores = details["forecast_error"]
 

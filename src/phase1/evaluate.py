@@ -108,6 +108,16 @@ def evaluate_sb3_agent(
         # Prefer our accumulated total_reward; use Monitor episode["r"] only when present and non-zero (or when total_reward is 0)
         ep_reward = total_reward
         if last_info and isinstance(last_info, dict):
+            # Attempt to map episodic metrics gracefully
+            term_info = last_info.get("terminal_observation", last_info)
+            if "episode_throughput" in last_info:
+                total_departed = last_info["episode_throughput"]
+                total_travel_time = last_info.get("episode_avg_stopped_vehicles", 0) * step_count
+                avg_waiting = last_info.get("episode_avg_waiting_time", 0)
+                avg_queue = last_info.get("episode_avg_queue_length", 0)
+                total_waiting_time = avg_waiting * step_count
+                total_queue_length = avg_queue * step_count
+
             ep_data = last_info.get("episode") or (last_info[0].get("episode") if isinstance(last_info, (list, tuple)) and last_info else None)
             if ep_data is not None and "r" in ep_data:
                 mon_r = float(ep_data["r"])
@@ -501,6 +511,10 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
     Evaluates a specific model type and returns mean metrics.
     """
     env = create_environment(config)
+    if hasattr(env, "unwrapped"):
+        env.unwrapped.config = config
+    else:
+        env.config = config
     num_episodes = config.get("evaluation", {}).get("num_episodes", 10)
     max_steps = config.get("sumo", {}).get("simulation_steps", 3600)
     
@@ -515,6 +529,15 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
         results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
     elif model_type == "CoLight":
         agent = CoLightAgent(
+            in_dim=config["model"]["feature_dim"],
+            hidden_dim=config["model"]["hidden_dim"],
+            out_dim=config["model"]["embedding_dim"],
+            num_layers=config["model"]["gnn_layers"]
+        )
+        results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
+    elif model_type == "NSTLight":
+        from src.baselines.nstlight import NSTLightAgent
+        agent = NSTLightAgent(
             in_dim=config["model"]["feature_dim"],
             hidden_dim=config["model"]["hidden_dim"],
             out_dim=config["model"]["embedding_dim"],
@@ -563,8 +586,10 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
                 if isinstance(agent, CoLightAgent):
                     action_tensor = agent.predict(torch.tensor(raw_nodes, dtype=torch.float32), base_env.edge_index)
                     action = action_tensor.numpy() if hasattr(action_tensor, "numpy") else action_tensor
+                elif agent.__class__.__name__ == "NSTLightAgent":
+                    action_tensor = agent.predict(torch.tensor(raw_nodes, dtype=torch.float32), base_env.edge_index)
+                    action = action_tensor.numpy() if hasattr(action_tensor, "numpy") else action_tensor
                 elif isinstance(agent, PresslightAgent):
-                    # Extract the features representing phase queues (indices 5 to 8 arbitrarily for benchmarking baseline flow)
                     pressures = raw_nodes[:, 5:9] 
                     action = agent.predict(pressures)
                 else:
