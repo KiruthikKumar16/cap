@@ -103,6 +103,41 @@ def merge_curriculum_from_yaml(
     return specs
 
 
+def moving_average(values: List[float], window: int = 3) -> float:
+    if len(values) < window:
+        return sum(values) / len(values) if values else 0.0
+    return sum(values[-window:]) / window
+
+
+def compute_slope(values: List[float]) -> float:
+    if len(values) < 2:
+        return 0.0
+    x = list(range(len(values)))
+    y = values
+    x_mean = sum(x) / len(x)
+    y_mean = sum(y) / len(y)
+
+    num = sum((xi - x_mean) * (yi - y_mean) for xi, yi in zip(x, y))
+    den = sum((xi - x_mean) ** 2 for xi in x)
+
+    return num / den if den != 0 else 0.0
+
+
+def set_config_safely(config: dict, net_file: str, route_file: str, timesteps: int) -> None:
+    if "sumo" in config:
+        config["sumo"]["net_file"] = net_file
+        config["sumo"]["route_file"] = route_file
+    elif "data" in config and "sumo" in config["data"]:
+        config["data"]["sumo"]["net_file"] = net_file
+        config["data"]["sumo"]["route_file"] = route_file
+    else:
+        config["sumo"] = {"net_file": net_file, "route_file": route_file}
+        
+    if "training" not in config:
+        config["training"] = {}
+    config["training"]["total_timesteps"] = timesteps
+
+
 def train_subprocess(
     python_executable: str,
     config_path: str,
@@ -162,6 +197,9 @@ def run_stage_adaptive(
     require_cuda: bool,
     fast_dev: bool,
     eval_ema_alpha: Optional[float],
+    trend_window: int,
+    stop_on_negative_trend: bool,
+    min_passes: int,
 ) -> Tuple[bool, float, Optional[str]]:
     """
     Train with optional chunked evals; return (passed_gating, last_mean_reward, reason_if_fail).
@@ -173,20 +211,20 @@ def run_stage_adaptive(
     total_steps = FAST_DEV_TIMESTEPS if fast_dev else stage.timesteps
     freq = (FAST_DEV_EVAL_FREQ if fast_dev else eval_freq) if eval_freq > 0 else total_steps
 
-    eval_history: List[float] = []
-    smoothed: Optional[float] = None
+    eval_rewards: List[float] = []
+    ema_smoothed: Optional[float] = None
     best_eval = -float("inf")
     no_improve_evals = 0
     trained = 0
     current_load = load_model
     last_mean = 0.0
+    consecutive_passes = 0
+    metric_for_gate = 0.0
 
     while trained < total_steps:
         chunk = min(freq, total_steps - trained)
         base = load_yaml(base_config_path)
-        base["sumo"]["net_file"] = stage.net
-        base["sumo"]["route_file"] = stage.rou
-        base["training"]["total_timesteps"] = chunk
+        set_config_safely(base, stage.net, stage.rou, chunk)
         save_yaml(base, temp_config_path)
 
         train_subprocess(
@@ -210,27 +248,32 @@ def run_stage_adaptive(
             require_cuda=require_cuda,
             verbose=False,
         )
-        eval_history.append(last_mean)
+        eval_rewards.append(last_mean)
+
+        smoothed_reward = moving_average(eval_rewards, window=3)
 
         if eval_ema_alpha is not None and 0 < eval_ema_alpha < 1:
-            smoothed = (
-                eval_ema_alpha * last_mean + (1 - eval_ema_alpha) * (smoothed or last_mean)
+            ema_smoothed = (
+                eval_ema_alpha * last_mean + (1 - eval_ema_alpha) * (ema_smoothed or last_mean)
             )
-            metric_for_gate = smoothed
+            metric_for_gate = ema_smoothed
         else:
-            metric_for_gate = last_mean
+            metric_for_gate = smoothed_reward
 
-        print(
-            f"  [Stage {stage.index}] Step {trained}/{total_steps} -> Eval mean reward: {last_mean:.4f}"
-            + (f" (EMA: {smoothed:.4f})" if smoothed is not None else "")
-        )
+        slope = compute_slope(eval_rewards[-trend_window:])
 
-        if min_reward is not None and last_mean < min_reward:
+        print(f"  [Stage {stage.index}] Step {trained}/{total_steps} -> Raw: {last_mean:.4f} | Smoothed: {smoothed_reward:.4f} | Slope: {slope:.4f}")
+
+        if stop_on_negative_trend and len(eval_rewards) >= trend_window and slope < 0:
+            print(f"  [Stage {stage.index}] STOPPED (negative trend)")
+            return False, metric_for_gate, "negative_trend"
+
+        if min_reward is not None and metric_for_gate < min_reward:
             print(f"  [Stage {stage.index}] FAILED (min_reward: {min_reward}) -> stopping")
-            return False, last_mean, "below_min_reward"
+            return False, metric_for_gate, "below_min_reward"
 
         best_eval, improved = maybe_save_best(
-            save_best_only, stage.index, last_mean, best_eval, min_improvement
+            save_best_only, stage.index, metric_for_gate, best_eval, min_improvement
         )
         if improved:
             no_improve_evals = 0
@@ -244,19 +287,28 @@ def run_stage_adaptive(
             )
             break
 
-    # Post-stage gate
-    gate_metric = smoothed if (eval_ema_alpha and smoothed is not None) else last_mean
+        if stage_threshold is not None:
+            if metric_for_gate >= stage_threshold:
+                consecutive_passes += 1
+                if consecutive_passes >= min_passes:
+                    print(f"  [Stage {stage.index}] PASS {consecutive_passes}/{min_passes} -> advancing")
+                    break
+                else:
+                    print(f"  [Stage {stage.index}] PASS {consecutive_passes}/{min_passes}")
+            else:
+                consecutive_passes = 0
+
     if stage_threshold is not None:
-        if gate_metric < stage_threshold:
+        if consecutive_passes < min_passes:
             print(
-                f"  [Stage {stage.index}] FAILED (threshold: {stage_threshold}, metric: {gate_metric:.4f})"
+                f"  [Stage {stage.index}] FAILED (threshold: {stage_threshold}, min_passes: {min_passes}, consecutive: {consecutive_passes})"
             )
-            return False, gate_metric, "below_threshold"
+            return False, metric_for_gate, "below_threshold_passes"
         print(
-            f"  [Stage {stage.index}] PASSED (threshold: {stage_threshold}, metric: {gate_metric:.4f})"
+            f"  [Stage {stage.index}] PASSED (threshold: {stage_threshold}, metric: {metric_for_gate:.4f})"
         )
 
-    return True, gate_metric, None
+    return True, metric_for_gate, None
 
 
 def build_stage_config_and_train_once(
@@ -271,12 +323,10 @@ def build_stage_config_and_train_once(
     require_cuda: bool,
     fast_dev: bool,
 ) -> None:
-    base_config["sumo"]["net_file"] = stage.net
-    base_config["sumo"]["route_file"] = stage.rou
     steps = FAST_DEV_TIMESTEPS if fast_dev else (
         timesteps_override if timesteps_override is not None else stage.timesteps
     )
-    base_config["training"]["total_timesteps"] = steps
+    set_config_safely(base_config, stage.net, stage.rou, steps)
     save_yaml(base_config, temp_config_path)
     train_subprocess(
         python_executable,
@@ -381,6 +431,9 @@ def main() -> None:
         default=None,
         help="Optional exponential moving average (0,1) for gating metric stability.",
     )
+    parser.add_argument("--trend-window", type=int, default=5, help="Window for slope detection.")
+    parser.add_argument("--stop-on-negative-trend", action="store_true", help="Stop if negative trend detected.")
+    parser.add_argument("--min-passes", type=int, default=2, help="Consecutive evals above threshold needed.")
     args = parser.parse_args()
 
     if args.total_timesteps is not None and args.stage is None and not args.enable_adaptive:
@@ -448,6 +501,9 @@ def main() -> None:
                 require_cuda=args.require_cuda,
                 fast_dev=args.fast_dev_run,
                 eval_ema_alpha=args.eval_ema_alpha,
+                trend_window=args.trend_window,
+                stop_on_negative_trend=args.stop_on_negative_trend,
+                min_passes=args.min_passes,
             )
             previous_passed = gate_ok
             if not gate_ok:

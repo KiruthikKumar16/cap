@@ -44,6 +44,13 @@ class MAPPOPolicy(ActorCriticPolicy):
         self.action_net = nn.Linear(128, self.action_space.n).to(self.device)
         self.value_net = nn.Linear(128, 1).to(self.device)
 
+        # RE-REGISTER OPTIMIZER
+        # Because we created these new layers after calling super().__init__,
+        # PyTorch failed to add them to the SB3 optimizer. We MUST update it here.
+        self.optimizer = self.optimizer_class(
+            self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs
+        )
+
     def forward(self, obs: torch.Tensor, deterministic: bool = False) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Forward pass with separate Actor/Critic processing."""
         local_obs = obs[:, :self.local_dim]

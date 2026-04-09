@@ -15,8 +15,7 @@ import yaml
 import numpy as np
 import torch
 
-# Add project root to path
-project_root = Path(__file__).parent.parent
+project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from stable_baselines3 import DQN, PPO
@@ -357,10 +356,10 @@ def evaluate_actuated(
                 placeholder_mode = info.get("placeholder_mode", not info.get("sumo_running", False))
             r = float(np.asarray(reward).flatten()[0]) if np.ndim(reward) > 0 else float(reward)
             total_reward += r
-            total_departed += float(np.asarray(info.get("departed", 0)).flatten()[0]) if np.ndim(info.get("departed", 0)) > 0 else float(info.get("departed", 0))
-            total_travel_time += float(np.asarray(info.get("travel_time", 0.0)).flatten()[0]) if np.ndim(info.get("travel_time", 0.0)) > 0 else float(info.get("travel_time", 0.0))
-            total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
-            total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
+            total_departed += float(np.asarray(info.get("step_arrived_vehicles", 0)).flatten()[0]) if np.ndim(info.get("step_arrived_vehicles", 0)) > 0 else float(info.get("step_arrived_vehicles", 0))
+            total_travel_time += float(np.asarray(info.get("step_stopped_vehicles", 0.0)).flatten()[0]) if np.ndim(info.get("step_stopped_vehicles", 0.0)) > 0 else float(info.get("step_stopped_vehicles", 0.0))
+            total_waiting_time += float(np.asarray(info.get("step_total_waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("step_total_waiting_time", 0.0)) > 0 else float(info.get("step_total_waiting_time", 0.0))
+            total_queue_length += float(np.asarray(info.get("step_total_queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("step_total_queue_length", 0.0)) > 0 else float(info.get("step_total_queue_length", 0.0))
             step_count += 1
             done = np.any(terminated) or np.any(truncated)
 
@@ -398,10 +397,18 @@ def _debug_actions(
     max_steps: int,
     num_log_steps: int,
 ) -> None:
-    """Run one DQN episode and one fixed-time episode, log first num_log_steps actions to verify policies differ."""
+    """Run one DQN/PPO episode and one fixed-time episode, log first num_log_steps actions to verify policies differ."""
+    from stable_baselines3 import PPO, DQN
+    rl_algo = config.get("rl", {}).get("algorithm", "DQN")
     env_raw = create_environment(config)
-    wrapped = wrap_env_for_dqn(env_raw)
-    model = DQN.load(str(checkpoint_path), env=wrapped)
+    
+    if rl_algo == "PPO":
+        wrapped = env_raw
+        model = PPO.load(str(checkpoint_path), env=wrapped)
+    else:
+        wrapped = wrap_env_for_dqn(env_raw)
+        model = DQN.load(str(checkpoint_path), env=wrapped)
+        
     num_intersections = env_raw.num_intersections
     nvec = np.array(env_raw.action_space.nvec) if hasattr(env_raw.action_space, "nvec") else np.array([4] * num_intersections)
 
@@ -533,24 +540,54 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
     episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths = [], [], [], [], [], []
     
     for _ in range(num_episodes):
-        obs, info = env.reset()
+        reset_out = env.reset()
+        obs = reset_out[0] if isinstance(reset_out, (tuple, list)) else reset_out
         total_reward, total_departed, total_travel_time, total_waiting_time, total_queue_length = 0, 0, 0, 0, 0
         for step in range(max_steps):
             if hasattr(agent, "predict"):
+                base_env = env
+                while hasattr(base_env, "envs") or hasattr(base_env, "env") or hasattr(base_env, "unwrapped"):
+                    if hasattr(base_env, "envs"):
+                        base_env = base_env.envs[0]
+                    elif hasattr(base_env, "unwrapped") and base_env.unwrapped is not base_env:
+                        base_env = base_env.unwrapped
+                    elif hasattr(base_env, "env") and base_env.env is not base_env:
+                        base_env = base_env.env
+                    else:
+                        break
+                
+                # Reconstruct raw nodes from SUMOTrafficEnv dictionary state
+                raw_tensor = base_env._get_raw_observation()
+                raw_nodes = raw_tensor.numpy() if hasattr(raw_tensor, "numpy") else raw_tensor # Shape: (num_intersections, 12)
+
                 if isinstance(agent, CoLightAgent):
-                    # CoLight needs edge_index
-                    action = agent.predict(torch.tensor(obs, dtype=torch.float32), env.edge_index).numpy()
+                    action_tensor = agent.predict(torch.tensor(raw_nodes, dtype=torch.float32), base_env.edge_index)
+                    action = action_tensor.numpy() if hasattr(action_tensor, "numpy") else action_tensor
+                elif isinstance(agent, PresslightAgent):
+                    # Extract the features representing phase queues (indices 5 to 8 arbitrarily for benchmarking baseline flow)
+                    pressures = raw_nodes[:, 5:9] 
+                    action = agent.predict(pressures)
                 else:
                     action = agent.predict(obs)
             else:
                 action = env.action_space.sample()
                 
-            obs, reward, terminated, truncated, info = env.step(action)
+            step_out = env.step(action)
+            if len(step_out) == 5:
+                obs, reward, terminated, truncated, info = step_out
+            else:
+                obs, reward, terminated, info = step_out[0], step_out[1], step_out[2], step_out[3]
+                truncated = np.array([False]) if np.ndim(terminated) > 0 else False
+            
+            info_dict = info[0] if isinstance(info, list) and len(info) > 0 else info
+            if not isinstance(info_dict, dict):
+                info_dict = {}
+
             total_reward += reward
-            total_departed += info.get("departed", 0)
-            total_travel_time += info.get("travel_time", 0)
-            total_waiting_time += info.get("waiting_time", 0)
-            total_queue_length += info.get("queue_length", 0)
+            total_departed += info_dict.get("step_arrived_vehicles", 0)
+            total_travel_time += info_dict.get("step_stopped_vehicles", 0) # Fallback mapping to display stopped cars count instead of unavailable pure travel_time
+            total_waiting_time += info_dict.get("step_total_waiting_time", 0)
+            total_queue_length += info_dict.get("step_total_queue_length", 0)
             if np.any(terminated) or np.any(truncated):
                 break
         

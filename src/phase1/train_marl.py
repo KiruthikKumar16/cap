@@ -6,9 +6,15 @@ This script trains a multi-agent system using Proximal Policy Optimization (PPO)
 where each intersection is controlled by an independent PPO agent.
 """
 
+import sys
 import argparse
 import yaml
 from pathlib import Path
+
+# Project root for imports
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
