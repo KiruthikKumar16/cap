@@ -1,0 +1,38 @@
+[
+    {
+        "model": "MAPPO + ST-GNN (Ours)",
+        "device": "CPU",
+        "n_runs": 200,
+        "mean_ms": 0.2134,
+        "std_ms": 0.0946,
+        "p50_ms": 0.1842,
+        "p95_ms": 0.4199,
+        "p99_ms": 0.5317,
+        "min_ms": 0.1244,
+        "max_ms": 0.5962
+    },
+    {
+        "model": "NSTLight (2025 Baseline)",
+        "device": "CPU",
+        "n_runs": 200,
+        "mean_ms": 0.1086,
+        "std_ms": 0.0614,
+        "p50_ms": 0.0867,
+        "p95_ms": 0.2213,
+        "p99_ms": 0.3946,
+        "min_ms": 0.0662,
+        "max_ms": 0.4196
+    },
+    {
+        "model": "Fixed-Time Controller",
+        "device": "CPU",
+        "n_runs": 200,
+        "mean_ms": 0.0155,
+        "std_ms": 0.0016,
+        "p50_ms": 0.0152,
+        "p95_ms": 0.0158,
+        "p99_ms": 0.0179,
+        "min_ms": 0.015,
+        "max_ms": 0.0335
+    }
+]
