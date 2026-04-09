@@ -51,6 +51,7 @@ def evaluate_sb3_agent(
     num_episodes: int,
     deterministic: bool = True,
     max_steps_per_episode: int = 3600,
+    sensor_noise_rate: float = 0.0,
 ) -> Tuple[List[float], List[int], List[float], List[float], List[float], List[float], bool]:
     """
     Run evaluation episodes with an SB3 agent (DQN, PPO, etc.).
@@ -83,7 +84,8 @@ def evaluate_sb3_agent(
         done = False
         last_info = None
         while not done and step_count < max_steps_per_episode:
-            action, _ = model.predict(obs, deterministic=deterministic)
+            obs_for_policy = _apply_sensor_failure_noise(obs, sensor_noise_rate)
+            action, _ = model.predict(obs_for_policy, deterministic=deterministic)
             step_out = run_env.step(action)
             # VecEnv (SB3) returns 4 values: (obs, rewards, dones, infos); gymnasium returns 5: (obs, reward, terminated, truncated, info)
             if len(step_out) == 5:
@@ -133,6 +135,21 @@ def evaluate_sb3_agent(
         episode_queue_lengths.append(avg_queue)
 
     return episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, placeholder_mode
+
+
+def _apply_sensor_failure_noise(obs: Any, noise_rate: float) -> Any:
+    """
+    Apply random sensor blackout noise to observations.
+    Keeps the same dtype/shape as incoming observations.
+    """
+    if noise_rate <= 0.0:
+        return obs
+    arr = np.asarray(obs)
+    if arr.size == 0:
+        return obs
+    mask = (np.random.rand(*arr.shape) >= float(noise_rate)).astype(arr.dtype, copy=False)
+    noisy = arr * mask
+    return noisy
 
 def evaluate_dqn(
     model: DQN,
@@ -522,7 +539,17 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
         from stable_baselines3 import PPO
         checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
         model = PPO.load(checkpoint, env=env)
-        results = evaluate_dqn(model, env, num_episodes, max_steps_per_episode=max_steps)
+        eval_cfg = config.get("evaluation", {})
+        apply_noise = bool(eval_cfg.get("sensor_noise", False))
+        noise_rate = float(eval_cfg.get("sensor_noise_rate", 0.10)) if apply_noise else 0.0
+        results = evaluate_sb3_agent(
+            model,
+            env,
+            num_episodes,
+            deterministic=True,
+            max_steps_per_episode=max_steps,
+            sensor_noise_rate=noise_rate,
+        )
     elif model_type == "PressLight":
         agent = PresslightAgent(num_actions=4)
         # Custom evaluation loop for PressLight

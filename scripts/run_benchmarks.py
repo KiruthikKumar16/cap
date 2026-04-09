@@ -2,8 +2,8 @@
 """
 Benchmark Script
 
-This script runs evaluations for our model and the SOTA baselines (PressLight, CoLight)
-and saves the results for comparison.
+This script runs evaluations for MAPPO vs NSTLight baseline
+and saves results for comparison (with latency summary if available).
 """
 
 import argparse
@@ -37,15 +37,21 @@ def run_benchmarks(config_path: str, checkpoint: str, episodes: int):
     our_model_results = evaluate_model(config, "PPO")
     results["MAPPO-STGNN"] = our_model_results
 
-    # Evaluate PressLight
-    print("Evaluating PressLight...")
-    presslight_results = evaluate_model(config, "PressLight")
-    results["presslight"] = presslight_results
+    # Evaluate NSTLight baseline
+    print("Evaluating NSTLight...")
+    nstlight_results = evaluate_model(config, "NSTLight")
+    results["nstlight"] = nstlight_results
 
-    # Evaluate CoLight
-    print("Evaluating CoLight...")
-    colight_results = evaluate_model(config, "CoLight")
-    results["colight"] = colight_results
+    # Keep fixed-time for hardware-independent sanity check.
+    print("Evaluating Fixed-Time...")
+    fixed_time_results = evaluate_model(config, "FixedTime")
+    results["fixed_time"] = fixed_time_results
+
+    # Append latency outputs to benchmark summary when available.
+    latency_path = Path("outputs/latency/inference_latency.json")
+    if latency_path.exists():
+        with open(latency_path, "r", encoding="utf-8") as f:
+            results["latency_ms_per_step"] = json.load(f)
 
     # Save results
     output_path = Path("outputs/benchmark_results.json")

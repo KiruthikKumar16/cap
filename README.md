@@ -15,9 +15,9 @@
 
 ## 📖 Abstract
 
-Standard traffic control frameworks assume a **perfect, stationary environment** — failing catastrophically when accidents occur, sensors malfunction, or traffic demand surges unpredictably. This Capstone introduces the **Traffic Resilience Engine**: a 3-Phase MARL system that treats urban traffic as a **Non-Stationary, Adversarial Environment**.
+Urban traffic control breaks when assumptions of stationarity fail. This Capstone reframes signal optimization as a **traffic resilience** problem: policies must sustain performance through accidents, demand shifts, and partial sensor outages rather than only maximize throughput in clean conditions.
 
-By coupling **MAPPO (Multi-Agent PPO)** with a **Spatio-Temporal GNN Autoencoder (ST-GNN)**, our agents do not just optimise green-light timing — they *detect, anticipate, and recover* from congestion waves, ghost-vehicle accidents, and sensor noise in real-time, outperforming the **NSTLight 2025 SOTA baseline** under every adversarial condition tested.
+The **Traffic Resilience Engine** combines **MAPPO** with a **Spatio-Temporal GNN Autoencoder** and risk-aware reward shaping to model explicitly **non-stationary environments**. The result is a controller that adapts to shock events, preserves flow under adversarial disturbances, and remains competitive on unseen city topology (Bengaluru OSM) without retraining.
 
 ---
 
@@ -52,7 +52,7 @@ Phase 3 ── Risk-Aware Reward Shaping ──▶ Resilience Under Uncertainty
  ┃  ┣ latency_benchmark.py         # CUDA/CPU inference latency (ms/step)
  ┃  ┗ phase1_generate_figures.py   # Full publication figure suite
  ┣ 📂 src/
- ┃  ┣ 📂 baselines/        # NSTLight (2025), CoLight, PressLight
+ ┃  ┣ 📂 baselines/        # NSTLight (2025) baseline package
  ┃  ┣ 📂 models/           # ST-GNN + MAPPO PyTorch modules
  ┃  ┣ 📂 phase1/           # SUMO-TraCI RL environment & training
  ┃  ┣ 📂 phase2/           # Autoencoder anomaly detector
@@ -166,9 +166,9 @@ obs[mask] = 0.0
 
 | Chart | Script |
 |---|---|
-| Congestion Propagation Heatmap | `sota_visualizations.py` |
-| ST-GNN Latent Space (t-SNE) | `sota_visualizations.py` |
-| Reward Convergence Comparison | `sota_visualizations.py` |
+| Congestion Propagation Heatmap | `generate_plots.py` |
+| ST-GNN Latent Space (t-SNE) | `generate_plots.py` |
+| Reward Convergence Comparison | `generate_plots.py` |
 | SOTA Benchmark Dashboard | `sota_visualizations.py` |
 | Architecture Flowchart | `phase1_generate_figures.py` |
 | Anomaly Detection Metrics | `generate_plots.py` |

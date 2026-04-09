@@ -499,13 +499,6 @@ class SUMOTrafficEnv(gym.Env):
         """Get the raw feature observation from the feature extractor."""
         features = self.feature_extractor.extract()
         tensor_feats = features.detach().clone().to(torch.float32) if torch.is_tensor(features) else torch.tensor(features, dtype=torch.float32)
-        
-        # SOTA: Phase 3 Adversarial Sensor Failure (10% Noise/Blackout)
-        if self.config.get("evaluation", {}).get("sensor_noise", False):
-            # Apply 10% masking (sensor failure zeroing)
-            mask = torch.rand_like(tensor_feats) > 0.1
-            tensor_feats = tensor_feats * mask
-            
         return tensor_feats
 
     def _get_observation(self) -> np.ndarray:
