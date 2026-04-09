@@ -1,66 +1,61 @@
-# Smart Traffic Management System - Unified GNN-RL Framework
+# Risk-Aware MAPPO Traffic Signal Control
 
-A comprehensive, 100% implemented intelligent traffic management system using Graph Neural Networks (GNNs), Spatio-Temporal AI, and Reinforcement Learning. This project integrates adaptive control with proactive anomaly detection and hierarchical coordination.
+A comprehensive Capstone Project implementing a Multi-Agent Proximal Policy Optimization (MAPPO) architecture bundled with a Spatial-Temporal Graph Neural Network (ST-GNN) Autoencoder.
 
-## 🚀 Project Status: Implementation complete; training/evaluation ongoing
+This system dynamically detects geometrically clustered traffic crashes and adaptively penalizes the Reinforcement Learning agent to prevent grid-lock.
 
-- **Phase 1**: Traffic Control (GNN + DQN/PPO) — implemented; results depend on training convergence
-- **Phase 2**: Anomaly Detection (ST-GNN + Bayesian Uncertainty) — implemented; thresholding/evaluation configurable
-- **Phase 3**: Proactive Integration (Self-Adaptive Rewards + Risk hooks) — implemented; can be enabled via config
+## 1. System Requirements & Installation
 
-## 🧠 Core Novelties (Patent-Ready)
+You must install **Python 3.9+** and **Eclipse SUMO** (Simulation of Urban MObility) to run the simulation environments.
 
-- **Self-Adaptive Reward Function**: Dynamically adjusts optimization goals based on traffic density, anomaly severity, and time-of-day.
-- **Spatio-Temporal Congestion Wave Forecasting**: Predicts future bottleneck zones 5-10 steps ahead using graph-based propagation modeling.
-- **Hierarchical Multi-Agent Coordination**: Two-tier control system with local intersection agents and regional zone-level coordinators.
-- **Uncertainty-Aware Anomaly Detection**: Uses Bayesian GNNs (Monte Carlo Dropout) to distinguish between real traffic incidents and sensor noise.
-- **Risk-Aware Decision Making**: Real-time calculation of Spillback Probability and Accident Likelihood integrated into the RL policy.
-
-## 🛠️ Quick Start
-
-### 1. Environment Setup
-Ensure you have **SUMO** installed and `SUMO_HOME` set.
-```bash
-pip install -r requirements.txt
-python scripts/setup_environment.py
-python scripts/test_setup.py
+### Clone the Repository
+```powershell
+git clone https://github.com/KiruthikKumar16/cap.git
+cd cap
 ```
 
-### 2. Run Integrated Training (Phase 3)
-Trains the full proactive system with anomaly-aware rewards.
-```bash
-python -m src.training.train --config configs/default.yaml
+### Install Python Dependencies
+It is highly recommended to use a virtual environment (`venv`).
+```powershell
+python -m venv venv_gpu
+.\venv_gpu\Scripts\activate
+
+# Install requirements (PyTorch, Stable-Baselines3, SUMO-RL)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install stable-baselines3[extra] sumolib traci torch-geometric pyyaml matplotlib
 ```
 
-### 3. Run Generalization Test (Zero-Shot)
-Train on 5x5 and test on 10x10 + Real Bengaluru Map.
-```bash
-python scripts/run_generalization_test.py
+### Configure SUMO Variables
+Ensure SUMO is installed on your Windows/Linux machine and mapped to your system `PATH`.
+```powershell
+# Set SUMO_HOME environment variable (Required for TraCI)
+$env:SUMO_HOME="C:\Program Files (x86)\Eclipse\Sumo"
 ```
 
-### 4. Launch Real-Time Dashboard
-Visualize anomalies and control decisions in a web UI.
-```bash
-streamlit run src/dashboard/app.py -- --config configs/default.yaml --checkpoint outputs/checkpoints/latest.ckpt
+---
+
+## 2. Execution & Testing
+
+The project is broken into three phases. You can test each phase independently using the exact wrappers provided in the `scripts/` folder.
+
+### Phase 1: Test Baseline MAPPO vs SOTA Models
+Evaluates the baseline MAPPO policy throughput against CoLight and PressLight baseline algorithms using pure JSON benchmarking.
+```powershell
+python scripts/test_phase1.py
 ```
 
-## 📁 Repo Layout
+### Phase 2: Test Spatial-Temporal Autoencoder
+Isolates the trained ST-GNN Autoencoder (`st_gnn_anomaly_detector.pt`) and maps complex collision geometries to generate Precision and F1 anomaly metrics.
+```powershell
+python scripts/test_phase2.py
+```
 
-- `src/phase1/` – Adaptive control logic (GNN + RL)
-- `src/phase2/` – Anomaly detection pipeline (ST-GNN)
-- `src/phase3/` – Proactive integration, coordination, and risk models
-- `src/models/` – Unified GNN architectures (ST-GNN, Predictive-RL)
-- `src/data/` – SUMO simulation wrappers and graph builders
-- `src/dashboard/` – Streamlit visualization interface
-- `scripts/` – Workflow automation (Generalization, Ablation, Benchmarks)
-- `configs/` – YAML configurations for different scenarios (5x5, 10x10, Bengaluru)
+### Phase 3: Test Dynamic Anomaly Integration
+Boots the RL agent with the PyTorch anomaly detector mounted dynamically in parallel. You will directly observe the integration `[AnomalyController]` penalizing traffic routing into geometric accidents in real-time.
+```powershell
+python scripts/test_phase3.py
+```
 
-## 📊 Scientific Validation
-
-The system includes built-in scripts for:
-- **Ablation Studies**: Proving the impact of GNN vs. MLP and Anomaly-Awareness.
-- **SOTA Benchmarking**: Comparison against **CoLight** and **PressLight**.
-- **Performance Figures**: Automated generation of throughput, waiting time, and emission charts.
-
-## ⚖️ License
-This project is developed as a Capstone Project. See `PATENT_ANALYSIS.md` for novelty claims.
+## Outputs
+- Tabular SOTA physical metrics map to `outputs/benchmark_results.json`.
+- Visual matplotlib graphs are dynamically generated into `outputs/plots/`.
