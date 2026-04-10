@@ -38,7 +38,7 @@ print("[OK] Enabled native Anomaly Routing penalties.")
 subprocess.run([
     sys.executable, "scripts/run_benchmarks.py", 
     "--config", config_test, 
-    "--checkpoint", "best_model_stage_2.zip",
+    "--checkpoint", "marl_ppo_traffic.zip",
     "--episodes", "1"
 ])
 

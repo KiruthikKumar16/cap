@@ -22,7 +22,7 @@ def _safe_drop(base: float, stressed: float, lower_is_better: bool) -> float:
 def main():
     parser = argparse.ArgumentParser(description="Adversarial accident injection benchmark")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", type=str, default="best_model_stage_2.zip")
+    parser.add_argument("--checkpoint", type=str, default="marl_ppo_traffic.zip")
     parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--sensor-noise-rate", type=float, default=0.10)
     args = parser.parse_args()

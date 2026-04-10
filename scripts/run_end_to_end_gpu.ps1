@@ -1,6 +1,6 @@
 param(
     [string]$Config = "configs/phase1.yaml",
-    [string]$Checkpoint = "best_model_stage_2.zip",
+    [string]$Checkpoint = "marl_ppo_traffic.zip",
     [int]$TrainTimesteps = 0,
     [int]$Episodes = 1
 )

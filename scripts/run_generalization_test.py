@@ -10,7 +10,8 @@ def run_generalization_test():
     print("--- Training on 5x5 Grid ---")
     train_cmd = [
         "python", "-m", "src.phase1.train_marl",
-        "--config", "configs/phase1_5x5.yaml"
+        "--config", "configs/phase1_5x5.yaml",
+        "--total-timesteps", "2048",
     ]
     subprocess.run(train_cmd, check=True)
     

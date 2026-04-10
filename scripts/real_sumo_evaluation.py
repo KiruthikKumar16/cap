@@ -21,6 +21,34 @@ import tempfile
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root))
 
+
+def _load_tl_phase_templates(netfile: str) -> Dict[str, List[Tuple[int, str]]]:
+    """Per traffic light: (duration, state) tuples from the net's built-in tlLogic (preserves state length)."""
+    import xml.etree.ElementTree as ET
+
+    out: Dict[str, List[Tuple[int, str]]] = {}
+    if not os.path.exists(netfile):
+        return out
+    tree = ET.parse(netfile)
+    for tl in tree.findall(".//tlLogic"):
+        tid = tl.get("id")
+        if not tid:
+            continue
+        phases: List[Tuple[int, str]] = []
+        for p in tl.findall("phase"):
+            dur_s, st = p.get("duration"), p.get("state")
+            if dur_s is None or st is None:
+                continue
+            try:
+                dur = int(float(dur_s))
+            except ValueError:
+                dur = 30
+            phases.append((dur, st))
+        if phases:
+            out[tid] = phases
+    return out
+
+
 def run_sumo_simulation(
     sumocfg_file: str,
     phase_duration: int = 30,
@@ -63,46 +91,60 @@ def run_sumo_simulation(
 
     # Create temporary additional file for traffic light control
     additional_file = None
+    netfile = os.path.splitext(sumocfg_file)[0] + ".net.xml"
+    templates = _load_tl_phase_templates(netfile)
+
     if control_type == "fixed":
-        # build XML using actual tl_ids
-        phases_xml = """
-        <phase duration="{phase_duration}" state="GGgrrrGGg"/>
-        <phase duration="3" state="yyyrrryyy"/>
-        <phase duration="{phase_duration}" state="rrrGGgrrr"/>
-        <phase duration="3" state="rrryyyrrr"/>
-        """
+        # Scale built-in phase lengths (keeps per-junction state string geometry from the net)
+        scale = max(1, int(phase_duration)) / 30.0
         entries = []
         for tid in tl_ids:
-            entries.append(f"    <tlLogic id=\"{tid}\" type=\"static\" programID=\"fixed\" offset=\"0\">{phases_xml}\n    </tlLogic>")
-        additional_content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<additional>\n" + "\n".join(entries) + "\n</additional>"
-        additional_file = tempfile.NamedTemporaryFile(mode='w', suffix='.add.xml', delete=False)
-        additional_file.write(additional_content)
-        additional_file.close()
+            tpl = templates.get(tid)
+            if not tpl:
+                continue
+            parts = []
+            for dur, st in tpl:
+                nd = max(3, int(round(dur * scale)))
+                parts.append(f'<phase duration="{nd}" state="{st}"/>')
+            entries.append(
+                f'    <tlLogic id="{tid}" type="static" programID="fixed" offset="0">\n'
+                + "".join(parts)
+                + "\n    </tlLogic>"
+            )
+        if entries:
+            additional_content = (
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<additional>\n"
+                + "\n".join(entries)
+                + "\n</additional>"
+            )
+            additional_file = tempfile.NamedTemporaryFile(mode="w", suffix=".add.xml", delete=False, encoding="utf-8")
+            additional_file.write(additional_content)
+            additional_file.close()
 
     elif control_type == "random":
-        # Create random control (changes phases randomly)
-        phases = []
-        current_time = 0
-        while current_time < simulation_steps:
-            duration = random.randint(10, 60)  # Random duration 10-60 seconds
-            # Random phase: all green, alternating, etc.
-            phase_states = [
-                "GGgrrrGGg",  # North-South green
-                "rrrGGgrrr",  # East-West green
-                "GGgrrrGGg",  # North-South green again
-                "rrrGGgrrr",  # East-West green again
-            ]
-            state = random.choice(phase_states)
-            phases.append(f'<phase duration="{duration}" state="{state}"/>')
-            current_time += duration
-
         entries = []
         for tid in tl_ids:
-            entries.append(f"    <tlLogic id=\"{tid}\" type=\"static\" programID=\"random\" offset=\"0\">{''.join(phases[:10])}\n    </tlLogic>")
-        additional_content = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<additional>\n" + "\n".join(entries) + "\n</additional>"
-        additional_file = tempfile.NamedTemporaryFile(mode='w', suffix='.add.xml', delete=False)
-        additional_file.write(additional_content)
-        additional_file.close()
+            tpl = templates.get(tid)
+            if not tpl:
+                continue
+            parts = []
+            for _, st in tpl:
+                nd = random.randint(10, 45)
+                parts.append(f'<phase duration="{nd}" state="{st}"/>')
+            entries.append(
+                f'    <tlLogic id="{tid}" type="static" programID="random" offset="0">\n'
+                + "".join(parts)
+                + "\n    </tlLogic>"
+            )
+        if entries:
+            additional_content = (
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<additional>\n"
+                + "\n".join(entries)
+                + "\n</additional>"
+            )
+            additional_file = tempfile.NamedTemporaryFile(mode="w", suffix=".add.xml", delete=False, encoding="utf-8")
+            additional_file.write(additional_content)
+            additional_file.close()
 
     # Run SUMO with TraCI to collect metrics
     try:
@@ -355,7 +397,7 @@ def print_summary(stats: Dict[str, Dict[str, Dict[str, float]]],
     print("PHASE 1 EVALUATION RESULTS - REAL SUMO SIMULATION")
     print("="*60)
 
-    print("\n📊 PERFORMANCE METRICS (Mean ± Std):")
+    print("\nPERFORMANCE METRICS (Mean +/- Std):")
     print("-" * 50)
 
     for control, metrics in stats.items():
@@ -364,15 +406,15 @@ def print_summary(stats: Dict[str, Dict[str, Dict[str, float]]],
             if "values" in values:
                 mean = values["mean"]
                 std = values["std"]
-                print(f"    {metric}: {mean:.2f} ± {std:.2f}")
+                print(f"    {metric}: {mean:.2f} +/- {std:.2f}")
 
     if comparisons:
-        print("\n🧪 STATISTICAL SIGNIFICANCE TESTS:")
+        print("\nSTATISTICAL SIGNIFICANCE TESTS:")
         print("-" * 50)
         for comparison, metrics in comparisons.items():
             print(f"\n{comparison.replace('_', ' ').upper()}:")
             for metric, results in metrics.items():
-                sig = "✅ SIGNIFICANT" if results["significant"] else "❌ NOT SIGNIFICANT"
+                sig = "[OK] SIGNIFICANT" if results["significant"] else "[--] NOT SIGNIFICANT"
                 better = results["better_control"]
                 p_val = results["p_value"]
                 print(f"    {metric}: {sig}, p={p_val:.3f}, better: {better}")
@@ -384,7 +426,7 @@ def main():
     parser.add_argument(
         "--sumocfg",
         help="Path to SUMO configuration file",
-        default=str(project_root / "data" / "raw" / "grid_2x2.sumocfg"),
+        default=str(project_root / "data" / "raw" / "grid_3x3.sumocfg"),
     )
     parser.add_argument(
         "--output",
@@ -413,7 +455,7 @@ def main():
     # Ensure output directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-    print("🚦 Starting Real SUMO Traffic Simulation Evaluation")
+    print("Starting Real SUMO Traffic Simulation Evaluation")
     print(f"SUMO Config: {sumocfg_file}")
     print(f"Output: {output_file}")
     print(f"Runs per control type: {num_runs}")
@@ -437,12 +479,12 @@ def main():
     # Print summary
     print_summary(stats, comparisons)
 
-    print("\n✅ Evaluation Complete!")
+    print("\n[OK] Evaluation Complete!")
     print("This demonstrates:")
-    print("  • Actual SUMO simulation runs with varying results")
-    print("  • Statistical significance testing")
-    print("  • Non-identical evaluation metrics across runs")
-    print("  • Proper environment without placeholder fallbacks")
+    print("  - Actual SUMO simulation runs with varying results")
+    print("  - Statistical significance testing")
+    print("  - Non-identical evaluation metrics across runs")
+    print("  - Proper environment without placeholder fallbacks")
 
 if __name__ == "__main__":
     main()

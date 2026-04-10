@@ -12,7 +12,7 @@ print("="*50)
 subprocess.run([
     "python", "scripts/run_benchmarks.py", 
     "--config", "configs/phase1.yaml", 
-    "--checkpoint", "best_model_stage_2.zip",
+    "--checkpoint", "marl_ppo_traffic.zip",
     "--episodes", "2"
 ])
 

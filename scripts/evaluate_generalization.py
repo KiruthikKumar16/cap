@@ -31,7 +31,7 @@ def map_generalization():
     }
     
     # Hardcode evaluation model PPO
-    config["output"] = {"final_model_path": str(project_root / "best_model_stage_2.zip")}
+    config["output"] = {"final_model_path": str(project_root / "marl_ppo_traffic.zip")}
     config["evaluation"] = {"num_episodes": 1, "adversarial_accidents": False, "sensor_noise": False}
     
     results = {}

@@ -248,7 +248,7 @@ def generate_sota_dashboard():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("SOTA Visualization Suite — Generating All Phase 4 Plots")
+    print("SOTA Visualization Suite - Generating All Phase 4 Plots")
     print("=" * 60)
     generate_congestion_heatmap()
     generate_tsne_plot()

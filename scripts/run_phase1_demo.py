@@ -31,33 +31,32 @@ def main():
     config = args.config
     py = sys.executable
 
-    # 0) Create SUMO network if missing (so training uses real simulation)
-    net_file = root / "data" / "raw" / "grid_2x2.net.xml"
+    # 0) Create SUMO network if missing (default phase1 config uses grid_3x3)
+    cfg_path = root / config
+    net_rel = "data/raw/grid_3x3.net.xml"
+    if cfg_path.is_file():
+        import yaml
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            _cfg = yaml.safe_load(f)
+        net_rel = _cfg.get("sumo", {}).get("net_file", net_rel)
+    net_file = root / net_rel
     if not net_file.exists():
         print("\n" + "=" * 60)
-        print("Step 0/3: Creating SUMO 2x2 grid network (data/raw/)")
+        print("Step 0/3: Creating SUMO grid network (data/raw/)")
         print("=" * 60)
         r0 = subprocess.run([py, "scripts/create_sumo_network.py"], cwd=str(root))
         if r0.returncode != 0:
-            print("[WARN] SUMO network creation failed; training will use placeholder mode.")
+            print("[WARN] SUMO network creation failed; training may error without net files.")
         else:
             print("[OK] SUMO network ready.")
     else:
-        print("[OK] SUMO network found: data/raw/grid_2x2.net.xml")
+        print(f"[OK] SUMO network found: {net_rel}")
 
-    # 1) Train
-    train_cmd = [py, "-m", "src.phase1.train_rl", "--config", config]
+    # 1) Train (configs/phase1.yaml is MAPPO / PPO — use train_marl, not train_rl)
+    train_cmd = [py, "-m", "src.phase1.train_marl", "--config", config]
     if args.quick:
-        import yaml
-        with open(config, "r", encoding="utf-8") as f:
-            cfg = yaml.safe_load(f)
-        cfg["training"]["total_timesteps"] = 10000
-        quick_config = root / "configs" / "phase1_quick_demo.yaml"
-        with open(quick_config, "w", encoding="utf-8") as f:
-            yaml.dump(cfg, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
-        config = str(quick_config)
-        train_cmd = [py, "-m", "src.phase1.train_rl", "--config", config]
-        print("[QUICK] Training for 10,000 steps only.")
+        train_cmd += ["--total-timesteps", "2048"]
+        print("[QUICK] Training for 2,048 steps only (smoke run).")
     print("\n" + "=" * 60)
     print("Step 1/3: Training")
     print("=" * 60)
@@ -68,12 +67,28 @@ def main():
 
     # 2) Evaluate (save summary for comparison charts)
     print("\n" + "=" * 60)
-    print("Step 2/3: Evaluation (DQN vs Fixed-time vs Actuated)")
+    print("Step 2/3: Evaluation (MAPPO vs baselines)")
     print("=" * 60)
     eval_config = args.config if not args.quick else config
     summary_path = root / "outputs" / "phase1" / "evaluation_summary.json"
+    eval_ep, eval_seeds = ("1", "1") if args.quick else ("5", "2")
     r = subprocess.run(
-        [py, "-m", "src.phase1.evaluate", "--config", eval_config, "--episodes", "5", "--seeds", "2", "--actuated", "--save-summary", str(summary_path)],
+        [
+            py,
+            "-m",
+            "src.phase1.evaluate",
+            "--config",
+            eval_config,
+            "--checkpoint",
+            "marl_ppo_traffic.zip",
+            "--episodes",
+            eval_ep,
+            "--seeds",
+            eval_seeds,
+            "--actuated",
+            "--save-summary",
+            str(summary_path),
+        ],
         cwd=str(root),
     )
     if r.returncode != 0:
@@ -99,7 +114,7 @@ def main():
     for name in ["phase1_comparison_reward.png", "phase1_comparison_throughput.png", "phase1_comparison_travel_time.png", "phase1_comparison_improvement.png"]:
         if (fig_dir / name).exists():
             print(f"    - {name}")
-    print("\nOne-line for panel: Phase 1 trains a GNN-DQN traffic controller, evaluates it vs fixed-time and actuated baselines, and produces architecture diagrams, learning curves, and comparison charts showing why ours is better (SOTA).")
+    print("\nOne-line for panel: Phase 1 trains MAPPO+ST-GNN traffic control, evaluates vs baselines, and produces figures and comparison charts.")
     print("=" * 60)
     return 0
 

@@ -29,9 +29,21 @@ def generate_heatmap(evaluation_file: str, output_file: str):
 
 if __name__ == "__main__":
     import argparse
+    from pathlib import Path
+
     parser = argparse.ArgumentParser(description="Generate congestion heatmap")
-    parser.add_argument("--evaluation-file", type=str, required=True, help="Path to evaluation JSON file")
-    parser.add_argument("--output-file", type=str, required=True, help="Path to output heatmap image")
+    parser.add_argument(
+        "--evaluation-file",
+        type=str,
+        default="outputs/phase1/real_evaluation_results.json",
+        help="Path to evaluation JSON file",
+    )
+    parser.add_argument(
+        "--output-file",
+        type=str,
+        default="outputs/plots/congestion_heatmap.png",
+        help="Path to output heatmap image",
+    )
     args = parser.parse_args()
-    
+    Path(args.output_file).parent.mkdir(parents=True, exist_ok=True)
     generate_heatmap(args.evaluation_file, args.output_file)

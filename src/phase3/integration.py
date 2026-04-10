@@ -106,6 +106,14 @@ class AnomalyAwareTrafficController:
         self.feature_history: List[np.ndarray] = []
         self.max_history_length = 3  # For 3-step horizon
 
+    def reset(self) -> None:
+        """Clear per-episode buffers when the traffic env resets."""
+        self.feature_history = []
+        self.score_history.clear()
+        self.smoothed_scores.clear()
+        self.confidence_intervals.clear()
+        self.anomaly_explanations.clear()
+
     def _load_anomaly_model(self) -> None:
         """Load the trained ST-GNN anomaly detector."""
         if not self.anomaly_model_path.exists():

@@ -3,6 +3,10 @@
 GPU-first command list for this project, in proper order.  
 Run from repo root: `C:\Users\Kiruthik Kumar M\cap-1`
 
+**CPU-only dev:** Section 0 exits with code `2` when CUDA is missing (by design). For a quick training smoke test, cancel after you see the run start, or use  
+`python src/phase1/train_marl.py --config configs/phase1.yaml --total-timesteps 2048`  
+(needs at least `n_steps` from the config, typically 2048). Latency: `python scripts/latency_benchmark.py --gpu` falls back to CPU if CUDA is unavailable.
+
 ## 0) GPU preflight (required)
 
 ```powershell
@@ -29,15 +33,27 @@ python scripts/generate_anomaly_data.py
 
 ## 3) Training
 
+`configs/phase1.yaml` uses **PPO / MAPPO** (`rl.algorithm: PPO`). Use the MARL trainer (writes `marl_ppo_traffic.zip` in the repo root):
+
+```powershell
+python src/phase1/train_marl.py --config configs/phase1.yaml
+```
+
+For a **DQN-only** config (`rl.algorithm` not `PPO`), use:
+
 ```powershell
 python src/phase1/train_rl.py --config configs/phase1.yaml
 ```
 
 ## 4) Core evaluations (1 episode where supported)
 
+**Time:** `run_benchmarks` / `accident_injection` each drive full SUMO episodes (`simulation_steps` in the YAML, often 3600). `evaluate_generalization` on large nets is slow. `run_generalization_test` runs a **full** 5x5 train then eval unless you edit the script. `run_ablation_study` runs **four** train+eval cycles. On a dev machine without GPU, use Ctrl+C after a successful start, or shorten timesteps / configs locally.
+
+After training, the default MAPPO checkpoint is `marl_ppo_traffic.zip` (repo root). Pass that path (or your own `.zip`) to evaluation scripts:
+
 ```powershell
-python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint best_model_stage_2.zip --episodes 1
-python scripts/accident_injection.py --config configs/phase1.yaml --checkpoint best_model_stage_2.zip --episodes 1 --sensor-noise-rate 0.10
+python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint marl_ppo_traffic.zip --episodes 1
+python scripts/accident_injection.py --config configs/phase1.yaml --checkpoint marl_ppo_traffic.zip --episodes 1 --sensor-noise-rate 0.10
 python scripts/evaluate_generalization.py
 python scripts/run_generalization_test.py
 python scripts/real_sumo_evaluation.py
@@ -75,10 +91,13 @@ python scripts/test_phase3_integration.py
 
 ```powershell
 python scripts/run_phase1_demo.py
+python scripts/run_phase1_demo.py --quick
 ```
+
+`--quick` runs a short MAPPO smoke train (`--total-timesteps 2048`) and a 1-episode / 1-seed eval so the full pipeline finishes in reasonable time on CPU.
 
 ## Optional one-shot runner (GPU-enforced)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_end_to_end_gpu.ps1 -Config "configs/phase1.yaml" -Checkpoint "best_model_stage_2.zip" -Episodes 1
+powershell -ExecutionPolicy Bypass -File .\scripts\run_end_to_end_gpu.ps1 -Config "configs/phase1.yaml" -Checkpoint "marl_ppo_traffic.zip" -Episodes 1
 ```
