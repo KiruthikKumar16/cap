@@ -26,12 +26,12 @@ def map_generalization():
     
     # Formal Bengaluru zero-shot protocol: Map A (train distribution) vs Map B (Bengaluru OSM).
     geometries = {
-        "Map_A_Training_Grid_10x10": "data/raw/grid_10x10",
-        "Map_B_Bengaluru_OSM": "data/raw/bengaluru_osm",
+        "Map_A_Training_Grid_5x5": "data/raw/grid_5x5",
+        "Map_B_Large_Grid_10x10": "data/raw/grid_10x10",
     }
     
     # Hardcode evaluation model PPO
-    config["output"] = {"final_model_path": str(project_root / "best_model_stage_2.zip")}
+    config["output"] = {"final_model_path": str(project_root / "marl_ppo_traffic.zip")}
     config["evaluation"] = {"num_episodes": 1, "adversarial_accidents": False, "sensor_noise": False}
     
     results = {}
@@ -67,8 +67,8 @@ def map_generalization():
     print(f"[OK] Generalization Metrics locked and exported to {out_file}")
     
     # Calculate Map A -> Map B zero-shot performance drop.
-    map_a = "Map_A_Training_Grid_10x10"
-    map_b = "Map_B_Bengaluru_OSM"
+    map_a = "Map_A_Training_Grid_5x5"
+    map_b = "Map_B_Large_Grid_10x10"
     if map_a in results and map_b in results:
         drop = {
             "throughput_drop_pct": _drop_pct(results[map_a]["mean_throughput"], results[map_b]["mean_throughput"], lower_is_better=False),

@@ -15,16 +15,27 @@ class PresslightAgent:
     def __init__(self, num_actions: int):
         self.num_actions = num_actions
 
-    def predict(self, obs: np.ndarray) -> np.ndarray:
+    def predict(self, raw_obs: np.ndarray) -> np.ndarray:
         """
-        Predict the action based on the pressure observation.
-
-        Args:
-            obs: The observation, which is assumed to be the pressure at each intersection.
-
-        Returns:
-            The action to take for each intersection.
+        Predict the action based on the pressure heuristic.
+        raw_obs: [num_intersections, num_features]
+        Indices 8, 9, 10, 11 are N, S, E, W incoming queue lengths.
         """
-        # The observation is the pressure for each intersection's possible phases.
-        # PressLight chooses the action (phase) that MAXIMIZES the pressure relief.
-        return np.argmax(obs, axis=1)
+        actions = []
+        for i in range(len(raw_obs)):
+            node_feats = raw_obs[i]
+            q_n, q_s, q_e, q_w = node_feats[8:12]
+            
+            # Simple phase mapping: 
+            # 0: GGrr (N-S Green), 1: rrGG (E-W Green), 2: GYrr (N-S Yellow), 3: rrGY (E-W Yellow)
+            # Actually, let's assume 4 phases like MaxPressure:
+            # 0: N-S Green, 1: E-W Green, 2: N-S Yellow (not used for pressure), 3: E-W Yellow
+            
+            pressures = [
+                q_n + q_s, # Phase 0: North-South
+                q_e + q_w, # Phase 1: East-West
+                0,         # Phase 2: Yellow
+                0          # Phase 3: Yellow
+            ]
+            actions.append(np.argmax(pressures))
+        return np.array(actions)

@@ -21,10 +21,9 @@ import numpy as np
 
 HAS_TORCH = False
 try:
-    import importlib.util
-    if importlib.util.find_spec("torch") is not None:
-        HAS_TORCH = True
-except Exception:
+    import torch
+    HAS_TORCH = True
+except ImportError:
     HAS_TORCH = False
 
 OUT_DIR = project_root / "outputs" / "latency"
@@ -174,7 +173,7 @@ def main():
     out_json = OUT_DIR / "inference_latency.json"
     with open(out_json, "w") as f:
         json.dump(results, f, indent=4)
-    print(f"\n[OK] Latency report saved → {out_json}")
+    print(f"\n[OK] Latency report saved -> {out_json}")
 
     # Print summary table
     print("\n{:<28} {:>10} {:>10} {:>10}".format("Model", "Mean(ms)", "p95(ms)", "p99(ms)"))
@@ -203,7 +202,7 @@ def main():
         chart_path = OUT_DIR / "inference_latency_chart.png"
         plt.savefig(chart_path, dpi=150, bbox_inches="tight")
         plt.close()
-        print(f"[OK] Latency chart saved  → {chart_path}")
+        print(f"[OK] Latency chart saved  -> {chart_path}")
     except Exception as e:
         print(f"[Warn] Could not generate latency chart: {e}")
 

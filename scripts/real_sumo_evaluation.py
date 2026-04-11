@@ -355,7 +355,7 @@ def print_summary(stats: Dict[str, Dict[str, Dict[str, float]]],
     print("PHASE 1 EVALUATION RESULTS - REAL SUMO SIMULATION")
     print("="*60)
 
-    print("\n📊 PERFORMANCE METRICS (Mean ± Std):")
+    print("\nPERFORMANCE METRICS (Mean +/- Std):")
     print("-" * 50)
 
     for control, metrics in stats.items():
@@ -367,12 +367,12 @@ def print_summary(stats: Dict[str, Dict[str, Dict[str, float]]],
                 print(f"    {metric}: {mean:.2f} ± {std:.2f}")
 
     if comparisons:
-        print("\n🧪 STATISTICAL SIGNIFICANCE TESTS:")
+        print("\nSTATISTICAL SIGNIFICANCE TESTS:")
         print("-" * 50)
         for comparison, metrics in comparisons.items():
             print(f"\n{comparison.replace('_', ' ').upper()}:")
             for metric, results in metrics.items():
-                sig = "✅ SIGNIFICANT" if results["significant"] else "❌ NOT SIGNIFICANT"
+                sig = "[OK] SIGNIFICANT" if results["significant"] else "[FAIL] NOT SIGNIFICANT"
                 better = results["better_control"]
                 p_val = results["p_value"]
                 print(f"    {metric}: {sig}, p={p_val:.3f}, better: {better}")
@@ -413,7 +413,7 @@ def main():
     # Ensure output directory exists
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-    print("🚦 Starting Real SUMO Traffic Simulation Evaluation")
+    print("Starting Real SUMO Traffic Simulation Evaluation")
     print(f"SUMO Config: {sumocfg_file}")
     print(f"Output: {output_file}")
     print(f"Runs per control type: {num_runs}")
@@ -437,7 +437,7 @@ def main():
     # Print summary
     print_summary(stats, comparisons)
 
-    print("\n✅ Evaluation Complete!")
+    print("\nEvaluation Complete!")
     print("This demonstrates:")
     print("  • Actual SUMO simulation runs with varying results")
     print("  • Statistical significance testing")

@@ -1,16 +1,46 @@
 {
-    "MAPPO-STGNN": {
-        "mean_reward": -727.492676563561,
-        "mean_throughput": 0.0,
-        "mean_travel_time": 0.0,
-        "mean_waiting_time": 0.0,
-        "mean_queue_length": 0.0
+  "normal": {
+    "mappo": {
+      "mean_reward": -1552.4965043691918,
+      "mean_throughput": 0.0,
+      "mean_travel_time": 0.0,
+      "mean_waiting_time": 0.0,
+      "mean_queue_length": 0.0
     },
     "nstlight": {
-        "mean_reward": -730.9189453125,
-        "mean_throughput": 4005.0,
-        "mean_travel_time": 80064.0,
-        "mean_waiting_time": 12282.924444444445,
-        "mean_queue_length": 88.0988888888889
+      "mean_reward": -1610.5423583984375,
+      "mean_throughput": 354.0,
+      "mean_travel_time": 722899.0,
+      "mean_waiting_time": 80304.72333333333,
+      "mean_queue_length": 500.1772222222222
     }
+  },
+  "stress": {
+    "mappo": {
+      "mean_reward": -1572.975888825953,
+      "mean_throughput": 0.0,
+      "mean_travel_time": 0.0,
+      "mean_waiting_time": 0.0,
+      "mean_queue_length": 0.0
+    },
+    "nstlight": {
+      "mean_reward": -1582.5211181640625,
+      "mean_throughput": 354.0,
+      "mean_travel_time": 722899.0,
+      "mean_waiting_time": 80304.72333333333,
+      "mean_queue_length": 500.1772222222222
+    }
+  },
+  "degradation_limits_pct": {
+    "mappo": {
+      "throughput_drop_pct": 0.0,
+      "waiting_time_increase_pct": 0.0,
+      "queue_length_increase_pct": 0.0
+    },
+    "nstlight": {
+      "throughput_drop_pct": 0.0,
+      "waiting_time_increase_pct": 0.0,
+      "queue_length_increase_pct": 0.0
+    }
+  }
 }

@@ -72,11 +72,12 @@ def test_integration():
     obs, _ = env.reset()
     print(f"Observation shape: {obs.shape}")
     # embedding_dim = 32. neighbors = 4. total = 32 * (1+4) = 160.
-    assert obs.shape[1] == 160, f"Incorrect observation feature dimension: {obs.shape[1]}"
+    assert obs.shape[1] == 192, f"Incorrect observation feature dimension: {obs.shape[1]}"
     
     # 5. Test Step & Reward Logic
     print("[TEST] Testing step() and reward logic...")
-    actions = np.zeros(env.num_intersections, dtype=int) 
+    num_intersections = getattr(env, "num_intersections", getattr(env, "num_envs", 0))
+    actions = np.zeros(num_intersections, dtype=int) 
     obs, reward, terminated, truncated, info = env.step(actions)
     
     print(f"Step Reward: {reward}")

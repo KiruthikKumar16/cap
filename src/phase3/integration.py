@@ -102,9 +102,17 @@ class AnomalyAwareTrafficController:
         self.anomaly_model = None
         self._load_anomaly_model()
 
-        # State tracking for temporal sequences
         self.feature_history: List[np.ndarray] = []
         self.max_history_length = 3  # For 3-step horizon
+
+    def reset(self) -> None:
+        """Reset the controller state for a new episode."""
+        self.feature_history.clear()
+        self.score_history.clear()
+        self.smoothed_scores.clear()
+        self.confidence_intervals.clear()
+        self.anomaly_explanations.clear()
+        self.logger.info("Anomaly controller reset.")
 
     def _load_anomaly_model(self) -> None:
         """Load the trained ST-GNN anomaly detector."""

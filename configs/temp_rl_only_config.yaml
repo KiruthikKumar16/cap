@@ -1,0 +1,36 @@
+experiment:
+  seed: 42
+model:
+  use_gnn: false
+reward:
+  normalize: true
+  pressure_weight: 0.0
+  queue_length_weight: 0.1
+  risk_density_threshold: 0.7
+  risk_penalty_factor: 0.0
+  risk_sensitivity: 0.0
+  speed_reward_weight: 0.5
+  waiting_time_weight: 0.2
+rl:
+  algorithm: PPO
+  batch_size: 128
+  clip_range: 0.2
+  ent_coef: 0.01
+  gae_lambda: 0.95
+  gamma: 0.99
+  learning_rate: 0.0001
+  max_grad_norm: 0.5
+  n_epochs: 10
+  n_steps: 1024
+  policy: MlpPolicy
+  vf_coef: 0.7
+sumo:
+  gui: false
+  net_file: data/raw/grid_10x10.net.xml
+  route_file: data/raw/grid_10x10.rou.xml
+  simulation_steps: 10000
+  step_length: 0.5
+training:
+  checkpoint_freq: 50000
+  eval_freq: 25000
+  total_timesteps: 5000000

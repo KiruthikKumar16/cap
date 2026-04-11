@@ -153,7 +153,9 @@ def main():
     print("\nCreating environment...")
     env = create_environment(config, traci_port=8813)
     print(f"[OK] Environment created")
-    print(f"   Intersections: {env.num_intersections}")
+    # Check if env has num_intersections (SUMOTrafficEnv) or num_envs (MARLTrafficEnv/VecEnv)
+    num_intersections = getattr(env, "num_intersections", getattr(env, "num_envs", 0))
+    print(f"   Intersections: {num_intersections}")
     print(f"   Observation space: {env.observation_space}")
     print(f"   Action space: {env.action_space}")
     

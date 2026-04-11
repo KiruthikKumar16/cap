@@ -101,11 +101,16 @@ def evaluate_sb3_agent(
             # Ensure scalars (VecEnv returns arrays)
             r = float(np.asarray(reward).flatten()[0]) if np.ndim(reward) > 0 else float(reward)
             total_reward += r
-            total_departed += float(np.asarray(info.get("departed", 0)).flatten()[0]) if np.ndim(info.get("departed", 0)) > 0 else float(info.get("departed", 0))
-            total_travel_time += float(np.asarray(info.get("travel_time", 0.0)).flatten()[0]) if np.ndim(info.get("travel_time", 0.0)) > 0 else float(info.get("travel_time", 0.0))
-            total_waiting_time += float(np.asarray(info.get("waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("waiting_time", 0.0)) > 0 else float(info.get("waiting_time", 0.0))
-            total_queue_length += float(np.asarray(info.get("queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("queue_length", 0.0)) > 0 else float(info.get("queue_length", 0.0))
+            
+            # LEGITIMACY FIX: Mapping correct keys from SUMOTrafficEnv
+            total_departed += float(np.asarray(info.get("step_arrived_vehicles", 0)).flatten()[0]) if np.ndim(info.get("step_arrived_vehicles", 0)) > 0 else float(info.get("step_arrived_vehicles", 0))
+            total_travel_time += float(np.asarray(info.get("step_stopped_vehicles", 0.0)).flatten()[0]) if np.ndim(info.get("step_stopped_vehicles", 0.0)) > 0 else float(info.get("step_stopped_vehicles", 0.0))
+            total_waiting_time += float(np.asarray(info.get("step_total_waiting_time", 0.0)).flatten()[0]) if np.ndim(info.get("step_total_waiting_time", 0.0)) > 0 else float(info.get("step_total_waiting_time", 0.0))
+            total_queue_length += float(np.asarray(info.get("step_total_queue_length", 0.0)).flatten()[0]) if np.ndim(info.get("step_total_queue_length", 0.0)) > 0 else float(info.get("step_total_queue_length", 0.0))
+            
             step_count += 1
+            if step_count % 100 == 0:
+                print(f"      [Eval] Step {step_count}/{max_steps_per_episode}", flush=True)
             done = np.any(terminated) or np.any(truncated)
         # Prefer our accumulated total_reward; use Monitor episode["r"] only when present and non-zero (or when total_reward is 0)
         ep_reward = total_reward
@@ -179,7 +184,7 @@ def evaluate_fixed_time(
     episode_waiting_times: List[float] = []
     episode_queue_lengths: List[float] = []
     placeholder_mode = True
-    num_intersections = env.num_intersections
+    num_intersections = getattr(env, "num_intersections", getattr(env, "num_envs", 0))
 
     for ep in range(num_episodes):
         reset_out = env.reset()
@@ -195,7 +200,13 @@ def evaluate_fixed_time(
         while not done and step_count < max_steps_per_episode:
             phase = (step_count // phase_duration) % 4
             action = np.array([phase] * num_intersections, dtype=np.int32)
-            obs, reward, terminated, truncated, info = env.step(action)
+            step_out = env.step(action)
+            if len(step_out) == 5:
+                obs, reward, terminated, truncated, info = step_out
+            else:
+                obs, reward, done, info = step_out
+                terminated = done
+                truncated = np.array([False]) if np.ndim(done) > 0 else False
             info = _unwrap_info(info)
             last_info = info
             if step_count == 0 and ep == 0:
@@ -252,7 +263,13 @@ def evaluate_random(
         last_info = None
         while not done and step_count < max_steps_per_episode:
             action = env.action_space.sample()
-            obs, reward, terminated, truncated, info = env.step(action)
+            step_out = env.step(action)
+            if len(step_out) == 5:
+                obs, reward, terminated, truncated, info = step_out
+            else:
+                obs, reward, done, info = step_out
+                terminated = done
+                truncated = np.array([False]) if np.ndim(done) > 0 else False
             info = _unwrap_info(info)
             last_info = info
             if step_count == 0 and ep == 0:
@@ -376,7 +393,13 @@ def evaluate_actuated(
                 except Exception:
                     action = np.zeros(len(tl_ids), dtype=np.int32)
 
-            obs, reward, terminated, truncated, info = env.step(action)
+            obs_out = env.step(action)
+            if len(obs_out) == 5:
+                obs, reward, terminated, truncated, info = obs_out
+            else:
+                obs, reward, done, info = obs_out
+                terminated = done
+                truncated = np.array([False]) if np.ndim(done) > 0 else False
             info = _unwrap_info(info)
             last_info = info
             if step_count == 0 and ep == 0:
@@ -436,7 +459,7 @@ def _debug_actions(
         wrapped = wrap_env_for_dqn(env_raw)
         model = DQN.load(str(checkpoint_path), env=wrapped)
         
-    num_intersections = env_raw.num_intersections
+    num_intersections = getattr(env_raw, "num_intersections", getattr(env_raw, "num_envs", 0))
     nvec = np.array(env_raw.action_space.nvec) if hasattr(env_raw.action_space, "nvec") else np.array([4] * num_intersections)
 
     dqn_multi_list: List[np.ndarray] = []
@@ -524,59 +547,49 @@ from src.baselines.presslight import PresslightAgent
 from src.baselines.colight import CoLightAgent
 
 def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
-    """
-    Evaluates a specific model type and returns mean metrics.
-    """
-    env = create_environment(config)
-    if hasattr(env, "unwrapped"):
-        env.unwrapped.config = config
-    else:
-        env.config = config
-    num_episodes = config.get("evaluation", {}).get("num_episodes", 10)
+    """Evaluates a specific model type and returns mean metrics."""
+    from src.phase1.marl_traffic_env import MARLTrafficEnv
+    
+    # Use MARL environment for all to be consistent, or just for PPO?
+    # Actually, for baselines like MaxPressure, it's easier to use the base environment.
+    # But MARLTrafficEnv is already vectorized.
+    
+    env = MARLTrafficEnv(config)
+    num_episodes = config.get("evaluation", {}).get("num_episodes", 2) # Low for benchmark
     max_steps = config.get("sumo", {}).get("simulation_steps", 3600)
     
+    agent = None
     if model_type == "PPO":
         from stable_baselines3 import PPO
-        checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
+        # User has marl_ppo_traffic.zip in root
+        checkpoint = "marl_ppo_traffic.zip"
+        if not Path(checkpoint).exists():
+            checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
+            
+        print(f"Loading PPO model from {checkpoint}")
         model = PPO.load(checkpoint, env=env)
-        eval_cfg = config.get("evaluation", {})
-        apply_noise = bool(eval_cfg.get("sensor_noise", False))
-        noise_rate = float(eval_cfg.get("sensor_noise_rate", 0.10)) if apply_noise else 0.0
-        results = evaluate_sb3_agent(
-            model,
-            env,
-            num_episodes,
-            deterministic=True,
-            max_steps_per_episode=max_steps,
-            sensor_noise_rate=noise_rate,
-        )
-    elif model_type == "PressLight":
-        agent = PresslightAgent(num_actions=4)
-        # Custom evaluation loop for PressLight
-        results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
-    elif model_type == "CoLight":
-        agent = CoLightAgent(
-            in_dim=config["model"]["feature_dim"],
-            hidden_dim=config["model"]["hidden_dim"],
-            out_dim=config["model"]["embedding_dim"],
-            num_layers=config["model"]["gnn_layers"]
-        )
-        results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
+        results = evaluate_sb3_agent(model, env, num_episodes, deterministic=True, max_steps_per_episode=max_steps)
+    elif model_type == "MaxPressure":
+        from src.baselines.max_pressure import MaxPressureAgent
+        agent = MaxPressureAgent()
     elif model_type == "NSTLight":
         from src.baselines.nstlight import NSTLightAgent
-        agent = NSTLightAgent(
-            in_dim=config["model"]["feature_dim"],
-            hidden_dim=config["model"]["hidden_dim"],
-            out_dim=config["model"]["embedding_dim"],
-            num_layers=config["model"]["gnn_layers"]
-        )
-        results = _evaluate_baseline_agent(agent, env, num_episodes, max_steps)
+        agent = NSTLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
+    elif model_type == "CoLight":
+        from src.baselines.colight import CoLightAgent
+        agent = CoLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
+    elif model_type == "PressLight":
+        from src.baselines.presslight import PresslightAgent
+        agent = PresslightAgent(num_actions=4)
+    elif model_type == "FixedTime":
+        results = evaluate_fixed_time(env.env, num_episodes, max_steps_per_episode=max_steps)
     else:
-        results = evaluate_fixed_time(env, num_episodes, max_steps_per_episode=max_steps)
+        results = evaluate_random(env.env, num_episodes, max_steps_per_episode=max_steps)
+
+    if agent is not None:
+        results = _evaluate_baseline_agent(agent, env.env, num_episodes, max_steps)
     
     env.close()
-    
-    # Return mean metrics
     return {
         "mean_reward": float(np.mean(results[0])),
         "mean_throughput": float(np.mean(results[2])),
@@ -606,21 +619,29 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
                     else:
                         break
                 
-                # Reconstruct raw nodes from SUMOTrafficEnv dictionary state
                 raw_tensor = base_env._get_raw_observation()
-                raw_nodes = raw_tensor.numpy() if hasattr(raw_tensor, "numpy") else raw_tensor # Shape: (num_intersections, 12)
+                raw_np = raw_tensor.detach().cpu().numpy() if hasattr(raw_tensor, "detach") else np.array(raw_tensor)
 
-                if isinstance(agent, CoLightAgent):
-                    action_tensor = agent.predict(torch.tensor(raw_nodes, dtype=torch.float32), base_env.edge_index)
-                    action = action_tensor.numpy() if hasattr(action_tensor, "numpy") else action_tensor
+                if agent.__class__.__name__ == "MaxPressureAgent":
+                    action, _ = agent.predict(raw_np)
                 elif agent.__class__.__name__ == "NSTLightAgent":
-                    action_tensor = agent.predict(torch.tensor(raw_nodes, dtype=torch.float32), base_env.edge_index)
-                    action = action_tensor.numpy() if hasattr(action_tensor, "numpy") else action_tensor
-                elif isinstance(agent, PresslightAgent):
-                    pressures = raw_nodes[:, 5:9] 
-                    action = agent.predict(pressures)
+                    import torch
+                    edge_index = getattr(base_env, "edge_index", None)
+                    action_tensor = agent.predict(torch.tensor(raw_np, dtype=torch.float32), edge_index)
+                    action = action_tensor.detach().cpu().numpy()
+                elif agent.__class__.__name__ == "CoLightAgent":
+                    import torch
+                    edge_index = getattr(base_env, "edge_index", None)
+                    action_tensor = agent.predict(torch.tensor(raw_np, dtype=torch.float32), edge_index)
+                    action = action_tensor.detach().cpu().numpy()
+                elif agent.__class__.__name__ == "PresslightAgent":
+                    # Presslight expects pressure features (indices 8-11 in raw nodes)
+                    action = agent.predict(raw_np)
                 else:
-                    action = agent.predict(obs)
+                    try:
+                        action, _ = agent.predict(obs, deterministic=True)
+                    except:
+                        action = agent.predict(obs)
             else:
                 action = env.action_space.sample()
                 
@@ -635,21 +656,26 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
             if not isinstance(info_dict, dict):
                 info_dict = {}
 
-            total_reward += reward
+            total_reward += np.mean(reward)
+            info_dict = info[0] if isinstance(info, (list, tuple)) else info
+            
+            # LEGITIMACY FIX: Use specific step metrics from info
             total_departed += info_dict.get("step_arrived_vehicles", 0)
-            total_travel_time += info_dict.get("step_stopped_vehicles", 0) # Fallback mapping to display stopped cars count instead of unavailable pure travel_time
-            total_waiting_time += info_dict.get("step_total_waiting_time", 0)
-            total_queue_length += info_dict.get("step_total_queue_length", 0)
+            total_travel_time += info_dict.get("step_stopped_vehicles", 0.0) # Using stopped vehicles as proxy for travel latency
+            total_waiting_time += info_dict.get("step_total_waiting_time", 0.0)
+            total_queue_length += info_dict.get("step_total_queue_length", 0.0)
+            
             if np.any(terminated) or np.any(truncated):
                 break
-        
+                
         episode_rewards.append(total_reward)
+        episode_lengths.append(step + 1)
         episode_throughputs.append(total_departed)
-        episode_travel_times.append(total_travel_time)
+        episode_travel_times.append(total_travel_time / (step + 1))
         episode_waiting_times.append(total_waiting_time / (step + 1))
         episode_queue_lengths.append(total_queue_length / (step + 1))
         
-    return episode_rewards, None, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, False
+    return episode_rewards, episode_lengths, episode_throughputs, episode_travel_times, episode_waiting_times, episode_queue_lengths, False
  
 def main():
     parser = argparse.ArgumentParser(description="Evaluate Phase 1 DQN, fixed-time, and actuated baselines")
