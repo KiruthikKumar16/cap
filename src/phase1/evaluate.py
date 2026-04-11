@@ -575,9 +575,27 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
     elif model_type == "NSTLight":
         from src.baselines.nstlight import NSTLightAgent
         agent = NSTLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
+        try:
+            import torch
+            from pathlib import Path
+            weights = Path("checkpoints/nstlight.pth")
+            if weights.exists():
+                agent.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
+                print(f"Loaded trained weights for NSTLight from {weights}")
+        except Exception as e:
+            print(f"Failed to load NSTLight weights: {e}")
     elif model_type == "CoLight":
         from src.baselines.colight import CoLightAgent
         agent = CoLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
+        try:
+            import torch
+            from pathlib import Path
+            weights = Path("checkpoints/colight.pth")
+            if weights.exists():
+                agent.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
+                print(f"Loaded trained weights for CoLight from {weights}")
+        except Exception as e:
+            print(f"Failed to load CoLight weights: {e}")
     elif model_type == "PressLight":
         from src.baselines.presslight import PresslightAgent
         agent = PresslightAgent(num_actions=4)
@@ -606,6 +624,7 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
         reset_out = env.reset()
         obs = reset_out[0] if isinstance(reset_out, (tuple, list)) else reset_out
         total_reward, total_departed, total_travel_time, total_waiting_time, total_queue_length = 0, 0, 0, 0, 0
+        prev_raw_np = None
         for step in range(max_steps):
             if hasattr(agent, "predict"):
                 base_env = env
@@ -627,8 +646,10 @@ def _evaluate_baseline_agent(agent, env, num_episodes, max_steps):
                 elif agent.__class__.__name__ == "NSTLightAgent":
                     import torch
                     edge_index = getattr(base_env, "edge_index", None)
-                    action_tensor = agent.predict(torch.tensor(raw_np, dtype=torch.float32), edge_index)
+                    if prev_raw_np is None: prev_raw_np = np.zeros_like(raw_np)
+                    action_tensor = agent.predict(torch.tensor(raw_np, dtype=torch.float32), torch.tensor(prev_raw_np, dtype=torch.float32), edge_index)
                     action = action_tensor.detach().cpu().numpy()
+                    prev_raw_np = raw_np.copy()
                 elif agent.__class__.__name__ == "CoLightAgent":
                     import torch
                     edge_index = getattr(base_env, "edge_index", None)

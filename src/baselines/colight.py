@@ -17,12 +17,15 @@ class CoLightAgent(nn.Module):
     """
     def __init__(self, in_dim: int, hidden_dim: int, out_dim: int, num_layers: int):
         super().__init__()
+        # CoLight relies on Graph Attention Networks (GAT) to aggregate neighbor intersection states.
+        # This aligns with the 2019 CoLight paper specification using multi-head GAT.
         self.gnn = TrafficGNNEncoder(
             in_dim=in_dim,
             hidden_dim=hidden_dim,
             out_dim=out_dim,
             num_layers=num_layers,
             gnn_type="GAT",
+            gat_heads=2,
         )
         self.q_head = nn.Linear(out_dim, 4) # 4 phases
 

@@ -128,7 +128,7 @@ class SUMOTrafficEnv(gym.Env):
         if embedding_dim is None:
             raise ValueError("Could not infer embedding_dim from model.controller")
 
-        obs_vector_dim = int((2 + self.max_neighbors) * int(embedding_dim))
+        obs_vector_dim = int((1 + self.max_neighbors) * int(embedding_dim))
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -534,11 +534,10 @@ class SUMOTrafficEnv(gym.Env):
             num_neighbors = min(len(neighbors), self.max_neighbors)
             padded_neighbors[:num_neighbors] = neighbor_embeddings.cpu().numpy()[:num_neighbors]
             
-            # Concatenate self embedding, neighbor embeddings, AND global embedding
+            # Concatenate self embedding and neighbor embeddings (omitting global to match 320-dim trained space)
             obs[i] = np.concatenate([
                 embedding[i].cpu().numpy(), 
-                padded_neighbors.flatten(),
-                global_emb_np
+                padded_neighbors.flatten()
             ])
             
         return obs
@@ -636,7 +635,7 @@ class SUMOTrafficEnv(gym.Env):
                 self.episode_metrics["episode_total_waiting_time"] += info["step_total_waiting_time"]
                 self.episode_metrics["episode_total_queue_length"] += info["step_total_queue_length"]
                 self.episode_metrics["episode_stopped_vehicles"] += info["step_stopped_vehicles"]
-                self.episode_metrics["episode_arrived_vehicles"] = traci.simulation.getArrivedNumber()
+                self.episode_metrics["episode_arrived_vehicles"] += traci.simulation.getArrivedNumber()
                 self.episode_metrics["episode_steps"] += 1
 
                 # Final episode metrics (averages)

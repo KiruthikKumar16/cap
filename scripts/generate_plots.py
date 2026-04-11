@@ -26,8 +26,8 @@ def _generate_benchmark_bars():
 
     models_to_keys = {
         "MAPPO (Ours)": "MAPPO-STGNN",
-        "NSTLight": "nstlight",
-        "Fixed-Time": "fixed_time",
+        "NSTLight (Max Pressure proxy)": "NSTLight",
+        "Fixed-Time": "FixedTime",
     }
 
     labels, throughput, waiting_time, queue_length = [], [], [], []

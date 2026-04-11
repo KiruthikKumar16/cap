@@ -32,11 +32,11 @@ class MaxPressureAgent:
             for b in range(obs.shape[0]):
                 actions = self._get_actions_for_grid(obs[b])
                 batch_actions.append(actions)
-            return torch.tensor(np.array(batch_actions))
+            return torch.tensor(np.array(batch_actions)), None
         else:
             # Single env [N, F]
             actions = self._get_actions_for_grid(obs)
-            return torch.tensor(actions)
+            return torch.tensor(actions), None
 
     def _get_actions_for_grid(self, grid_obs):
         """
