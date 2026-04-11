@@ -60,3 +60,30 @@ Since our current baseline (NSTLight Dummy) is untrained, the "Ours is better" c
 
 ---
 **Conclusion**: The project demonstrates a high-quality "Shell" and "Visual Dashboard", but the underlying data for the Capstone is currently based on broken metrics and placeholder comparisons.
+
+
+
+Viewed evaluate.py:150-250
+Searched for "def evaluate_sb3_agent"
+Viewed evaluate.py:70-145
+Viewed traffic_env.py:500-600
+Viewed traffic_env.py:430-500
+Viewed traffic_env.py:380-430
+Searched for "def step(self"
+Viewed traffic_env.py:280-350
+Viewed traffic_env.py:600-650
+Listed directory baselines
+Viewed presslight.py:1-31
+Viewed feature_extractor.py:1-231
+Edited implementation_plan.md
+
+I have developed a plan to restore the project's legitimacy by fixing the broken metric collection and replacing the dummy baselines with a functional **Max Pressure** controller (a standard and powerful SOTA comparison).
+
+You can review the full [Implementation Plan](file:///C:/Users/suganprasath/.gemini/antigravity/brain/3f5de58b-1231-4467-9525-db9794d5f1dc/implementation_plan.md) for details on the technical changes.
+
+### Summary of proposed actions:
+1.  **Fix Metric Pipeline**: Re-mapping internal keys in `evaluate.py` to ensure throughput and waiting times are captured correctly (fixing the 0.0 values).
+2.  **Deploy Real Baseline**: Replacing the "Dummy NSTLight" with a functional **Max Pressure (Greedy Queue)** agent.
+3.  **Validate Results**: Executing a clean benchmark run to generate statistically valid data for your presentation.
+
+**Does this plan look good to you, or would you like me to make any adjustments before I begin?**
