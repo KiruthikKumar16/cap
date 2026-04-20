@@ -577,7 +577,6 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
         agent = NSTLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
         try:
             import torch
-            from pathlib import Path
             weights = Path("checkpoints/nstlight.pth")
             if weights.exists():
                 agent.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
@@ -589,7 +588,6 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
         agent = CoLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
         try:
             import torch
-            from pathlib import Path
             weights = Path("checkpoints/colight.pth")
             if weights.exists():
                 agent.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))

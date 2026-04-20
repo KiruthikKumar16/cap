@@ -8,7 +8,7 @@ with a GNN-based DQN for reinforcement learning-based control.
 
 import torch
 import torch.nn as nn
-from typing import Tuple
+from typing import Tuple, Optional
 
 from src.models.st_gnn import SpatialTemporalAutoencoder
 from src.phase1.gnn_encoder import TrafficGNNEncoder
@@ -35,6 +35,8 @@ class PredictiveGNNRL(nn.Module):
         rl_gnn_dropout: float,
     ):
         super().__init__()
+        self.st_gnn_in_dim = st_gnn_in_dim
+        self.st_gnn_hidden_dim = st_gnn_hidden_dim
 
         self.forecaster = SpatialTemporalAutoencoder(
             in_dim=st_gnn_in_dim,
@@ -47,6 +49,13 @@ class PredictiveGNNRL(nn.Module):
             temporal_type="gru",
         )
 
+        # Bridge for Control (256 -> 12)
+        self.input_proj = nn.Linear(st_gnn_hidden_dim, rl_gnn_in_dim)
+        
+        # Bridge for Forecasting Loss (256 -> 12)
+        # Allows training against raw physical features while keeping latent space expressive.
+        self.forecast_decode = nn.Linear(st_gnn_hidden_dim, st_gnn_in_dim)
+
         self.controller = TrafficGNNEncoder(
             in_dim=rl_gnn_in_dim,
             hidden_dim=rl_gnn_hidden_dim,
@@ -58,35 +67,20 @@ class PredictiveGNNRL(nn.Module):
         )
 
     def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        First, forecast the future traffic state, then use the forecast to
-        generate control embeddings.
-
-        Args:
-            x_seq: A sequence of historical traffic states [B, H, N, F]
-            edge_index: The graph connectivity
-
-        Returns:
-            A tuple of (node_embeddings, global_graph_embedding, mean_forecast, variance_forecast)
-        """
-        # Ensure inputs are on the same device as the model
         device = next(self.parameters()).device
         x_seq = x_seq.to(device)
         edge_index = edge_index.to(device)
 
-        # We only need the forecasted state, not the reconstruction
         recon, mean_forecast, variance_forecast = self.forecaster(x_seq, edge_index)
-
-        # Use the last forecasted step as the input to the controller
-        # forecast is [B, H, N, F], we take the last step [B, N, F]
-        predicted_state = mean_forecast[:, -1, :, :]
-
+        predicted_state = mean_forecast[:, -1, :, :] # [B, N, hidden_dim]
+        
         batch_size = predicted_state.shape[0]
         if batch_size > 1:
             all_node_embeddings = []
             all_global_embeddings = []
             for i in range(batch_size):
-                node_embedding = self.controller(predicted_state[i], edge_index)
+                x = self.input_proj(predicted_state[i])
+                node_embedding = self.controller(x, edge_index)
                 global_embedding = torch.mean(node_embedding, dim=0, keepdim=True)
                 
                 all_node_embeddings.append(node_embedding)
@@ -94,24 +88,28 @@ class PredictiveGNNRL(nn.Module):
                 
             return torch.cat(all_node_embeddings, dim=0), torch.cat(all_global_embeddings, dim=0), mean_forecast, variance_forecast
         else:
-            node_embedding = self.controller(predicted_state.squeeze(0), edge_index)
+            x = self.input_proj(predicted_state.squeeze(0))
+            node_embedding = self.controller(x, edge_index)
             global_embedding = torch.mean(node_embedding, dim=0, keepdim=True)
             return node_embedding, global_embedding, mean_forecast, variance_forecast
 
     def compute_forecasting_loss(
         self, 
-        x_seq: torch.Tensor, 
-        edge_index: torch.Tensor, 
-        y_future: torch.Tensor
+        mean_forecast: torch.Tensor,
+        actual_next: torch.Tensor
     ) -> torch.Tensor:
         """
-        Compute Negative Log Likelihood loss for forecasting.
-        y_future: [B, H_out, N, F]
+        Calculates loss by decoding the latent forecast back to physical dimensions.
+        mean_forecast: [B, H_out, N, hidden_dim]
+        actual_next: [B, N, in_dim] or [B, H_out, N, in_dim]
         """
-        _, mean, var = self.forward(x_seq, edge_index)[2:] # Get mean and var from forward
+        # Take the last projected step
+        predicted_latent = mean_forecast[:, -1, :, :] # [B, N, 256]
         
-        # NLL Loss for Gaussian distribution
-        # Loss = 0.5 * (log(var) + (y - mean)^2 / var)
-        precision = 1.0 / (var + 1e-6)
-        loss = 0.5 * (torch.log(var + 1e-6) + (y_future - mean)**2 * precision)
-        return loss.mean()
+        # Decode latent prediction back to physical features (12-dim)
+        decoded_prediction = self.forecast_decode(predicted_latent) # [B, N, 12]
+        
+        if actual_next.dim() == 4:
+            actual_next = actual_next[:, -1, :, :]
+            
+        return torch.nn.functional.mse_loss(decoded_prediction, actual_next)

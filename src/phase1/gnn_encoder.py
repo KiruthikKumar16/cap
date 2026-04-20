@@ -121,49 +121,41 @@ class TrafficGNNEncoder(nn.Module):
         # Build layers
         self.layers = nn.ModuleList()
         
-        # First layer
-        if self.gnn_type == "gat":
-            self.layers.append(GATConv(in_dim, hidden_dim, heads=gat_heads, dropout=dropout))
-            current_dim = hidden_dim * gat_heads
-        else:  # gcn
-            self.layers.append(GCNConv(in_dim, hidden_dim))
-            current_dim = hidden_dim
-        
-        # Hidden layers
-        for _ in range(num_layers - 2):
-            if self.gnn_type == "gat":
-                self.layers.append(GATConv(current_dim, hidden_dim, heads=gat_heads, dropout=dropout))
-                current_dim = hidden_dim * gat_heads
-            else:  # gcn
-                self.layers.append(GCNConv(current_dim, hidden_dim))
-                current_dim = hidden_dim
-        
-        # Output layer
-        if num_layers > 1:
-            if self.gnn_type == "gat":
-                # Final layer: reduce from multi-head to single output
-                self.layers.append(GATConv(current_dim, out_dim, heads=1, dropout=dropout, concat=False))
-            else:  # gcn
-                self.layers.append(GCNConv(current_dim, out_dim))
-        else:
+        if num_layers == 1:
             # Single layer case
             if self.gnn_type == "gat":
                 self.layers.append(GATConv(in_dim, out_dim, heads=1, dropout=dropout, concat=False))
             else:
                 self.layers.append(GCNConv(in_dim, out_dim))
+        else:
+            # Multi-layer case: First layer
+            if self.gnn_type == "gat":
+                self.layers.append(GATConv(in_dim, hidden_dim, heads=gat_heads, dropout=dropout))
+                current_dim = hidden_dim * gat_heads
+            else:  # gcn
+                self.layers.append(GCNConv(in_dim, hidden_dim))
+                current_dim = hidden_dim
+            
+            # Hidden layers
+            for _ in range(num_layers - 2):
+                if self.gnn_type == "gat":
+                    self.layers.append(GATConv(current_dim, hidden_dim, heads=gat_heads, dropout=dropout))
+                    current_dim = hidden_dim * gat_heads
+                else:  # gcn
+                    self.layers.append(GCNConv(current_dim, hidden_dim))
+                    current_dim = hidden_dim
+            
+            # Output layer
+            if self.gnn_type == "gat":
+                self.layers.append(GATConv(current_dim, out_dim, heads=1, dropout=dropout, concat=False))
+            else:  # gcn
+                self.layers.append(GCNConv(current_dim, out_dim))
         
         self.dropout_layer = nn.Dropout(dropout)
     
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
         Forward pass through GNN encoder.
-        
-        Args:
-            x: Node features [num_nodes, in_dim]
-            edge_index: Edge index [2, num_edges]
-            
-        Returns:
-            Node embeddings [num_nodes, out_dim]
         """
         # Handle fallback MLP case
         if hasattr(self, 'fallback_mlp') and self.fallback_mlp:

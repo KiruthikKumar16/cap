@@ -21,9 +21,10 @@ class NSTLightAgent(nn.Module):
 
     def __init__(self, in_dim: int, hidden_dim: int, out_dim: int, num_layers: int):
         super().__init__()
-        # Explicit 5-head attention as rigorously specified by the NSTLight architecture
+        # SOTA 2024-2025 Feature Fusion: Process both absolute state (x_t) and temporal trend (x_t - x_prev)
+        # In-dim is doubled due to concatenation of (state, diff)
         self.encoder = TrafficGNNEncoder(
-            in_dim=in_dim,
+            in_dim=in_dim * 2,
             hidden_dim=hidden_dim,
             out_dim=out_dim,
             num_layers=num_layers,
@@ -39,8 +40,15 @@ class NSTLightAgent(nn.Module):
         # Non-Stationary Differencing Operation (x_t - x_{t-1})
         x_diff = x_t - x_prev
         
+        # SOTA Feature Fusion: Absolute State + Temporal Dynamics
+        # Concatenate x_t and x_diff to allow the GNN to learn spatial-temporal correlations
+        if x_t.dim() == 2: # [nodes, features]
+            x_fusion = torch.cat([x_t, x_diff], dim=-1)
+        else: # [batch, nodes, features] or [batch, features]
+            x_fusion = torch.cat([x_t, x_diff], dim=-1)
+            
         # Process the dynamically shifted embedding via Graph Attention
-        h = self.encoder(x_diff, edge_index)
+        h = self.encoder(x_fusion, edge_index)
         return self.action_head(h)
 
     def predict(self, obs: torch.Tensor, prev_obs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:

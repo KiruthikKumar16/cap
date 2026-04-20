@@ -17,11 +17,11 @@ class MAPPOPolicy(ActorCriticPolicy):
             
         super().__init__(observation_space, action_space, lr_schedule, *args, **kwargs)
         
-        # Determine dimensions from observation space
+        # Determine dimensions from observation space (Expected 6 embeddings: 1 self, 4 neighbors, 1 global)
         obs_dim = self.observation_space.shape[0]
         self.embedding_dim = obs_dim // 6
         self.local_dim = self.embedding_dim * 5
-        self.global_dim = self.embedding_dim
+        self.global_dim = obs_dim - self.local_dim # Ensure sum is exactly obs_dim
         
         # Override the policy and value heads
         # pi network: local_dim -> pi latent -> action_net

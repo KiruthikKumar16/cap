@@ -1,61 +1,89 @@
 {
     "MAPPO-STGNN": {
-        "mean_reward": -1566.8472462911159,
+        "mean_reward": -4953.699416667223,
+        "mean_throughput": 7488.0,
+        "mean_travel_time": 4687001.0,
+        "mean_waiting_time": 185547.8046,
+        "mean_queue_length": 1170.4319
+    },
+    "MaxPressure": {
+        "mean_reward": -4992.92529296875,
+        "mean_throughput": 7488.0,
+        "mean_travel_time": 468.7001,
+        "mean_waiting_time": 185547.8046,
+        "mean_queue_length": 1170.4319
+    },
+    "PressLight": {
+        "mean_reward": -5072.65966796875,
+        "mean_throughput": 7488.0,
+        "mean_travel_time": 468.7001,
+        "mean_waiting_time": 185547.8046,
+        "mean_queue_length": 1170.4319
+    },
+    "CoLight": {
+        "mean_reward": -5020.2578125,
+        "mean_throughput": 7488.0,
+        "mean_travel_time": 468.7001,
+        "mean_waiting_time": 185547.8046,
+        "mean_queue_length": 1170.4319
+    },
+    "NSTLight": {
+        "mean_reward": -4985.958984375,
+        "mean_throughput": 7488.0,
+        "mean_travel_time": 468.7001,
+        "mean_waiting_time": 185547.8046,
+        "mean_queue_length": 1170.4319
+    },
+    "FixedTime": {
+        "mean_reward": -5174.727575063705,
+        "mean_throughput": 7488.0,
+        "mean_travel_time": 4687001.0,
+        "mean_waiting_time": 185547.8046,
+        "mean_queue_length": 1170.4319
+    },
+    "Random": {
+        "mean_reward": -3792.9152824282646,
         "mean_throughput": 0.0,
         "mean_travel_time": 0.0,
         "mean_waiting_time": 0.0,
         "mean_queue_length": 0.0
     },
-    "nstlight": {
-        "mean_reward": -1637.0050048828125,
-        "mean_throughput": 354.0,
-        "mean_travel_time": 722899.0,
-        "mean_waiting_time": 80304.72333333333,
-        "mean_queue_length": 500.1772222222222
-    },
-    "fixed_time": {
-        "mean_reward": -1567.580377520062,
-        "mean_throughput": 354.0,
-        "mean_travel_time": 722899.0,
-        "mean_waiting_time": 80304.72333333333,
-        "mean_queue_length": 500.1772222222222
-    },
     "latency_ms_per_step": [
         {
             "model": "MAPPO + ST-GNN (Ours)",
-            "device": "CPU",
+            "device": "CUDA",
             "n_runs": 200,
-            "mean_ms": 0.2134,
-            "std_ms": 0.0946,
-            "p50_ms": 0.1842,
-            "p95_ms": 0.4199,
-            "p99_ms": 0.5317,
-            "min_ms": 0.1244,
-            "max_ms": 0.5962
+            "mean_ms": 0.2794,
+            "std_ms": 0.1381,
+            "p50_ms": 0.2231,
+            "p95_ms": 0.5301,
+            "p99_ms": 0.7802,
+            "min_ms": 0.1657,
+            "max_ms": 1.0936
         },
         {
             "model": "NSTLight (2025 Baseline)",
-            "device": "CPU",
+            "device": "CUDA",
             "n_runs": 200,
-            "mean_ms": 0.1086,
-            "std_ms": 0.0614,
-            "p50_ms": 0.0867,
-            "p95_ms": 0.2213,
-            "p99_ms": 0.3946,
-            "min_ms": 0.0662,
-            "max_ms": 0.4196
+            "mean_ms": 0.1491,
+            "std_ms": 0.0409,
+            "p50_ms": 0.1396,
+            "p95_ms": 0.2593,
+            "p99_ms": 0.2888,
+            "min_ms": 0.0976,
+            "max_ms": 0.3086
         },
         {
             "model": "Fixed-Time Controller",
             "device": "CPU",
             "n_runs": 200,
-            "mean_ms": 0.0155,
-            "std_ms": 0.0016,
-            "p50_ms": 0.0152,
-            "p95_ms": 0.0158,
-            "p99_ms": 0.0179,
-            "min_ms": 0.015,
-            "max_ms": 0.0335
+            "mean_ms": 0.008,
+            "std_ms": 0.0013,
+            "p50_ms": 0.0078,
+            "p95_ms": 0.0084,
+            "p99_ms": 0.0088,
+            "min_ms": 0.0075,
+            "max_ms": 0.0253
         }
     ]
 }

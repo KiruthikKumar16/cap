@@ -130,26 +130,28 @@ def main():
         def _on_step(self) -> bool:
             # Run forecasting update every 100 steps
             if self.n_calls % 100 == 0:
-                # Access the environment directly (MARLTrafficEnv)
-                env = self.training_env
+                # 1. Fetch training data via standard SB3 VecEnv methods
+                # This bypasses all wrapper layers safely
+                state_histories = self.training_env.get_attr("state_history")
+                edge_indices = self.training_env.get_attr("edge_index")
                 
-                # Check if we can get history (MARLTrafficEnv.env is SUMOTrafficEnv)
-                if hasattr(env, "env") and len(env.env.state_history) >= env.env.state_history.maxlen:
-                    inner_env = env.env
-                    # Prepare data: x_seq is [B, H, N, F]
-                    x_seq = torch.stack(list(inner_env.state_history), dim=0).unsqueeze(0).to(device)
-                    edge_index = inner_env.edge_index.to(device)
+                # We only need data from the first parallel env for the GNN update
+                history = state_histories[0]
+                edge_index = edge_indices[0].to(device)
+                
+                if len(history) >= history.maxlen:
+                    # Prepare input sequence: [B, H, N, F]
+                    x_seq = torch.stack(list(history), dim=0).unsqueeze(0).to(device)
                     
-                    # For MSE loss, we compare predicted next state with current actual state
-                    # predicted_state from model is mean_forecast[:, -1, :, :]
+                    # 2. Get latent forecast from model
                     _, _, mean_forecast, _ = self.gnn_model(x_seq, edge_index)
-                    predicted_next = mean_forecast[:, -1, :, :] # [1, N, F]
                     
-                    # Current actual state
-                    actual_current = inner_env._get_raw_observation().unsqueeze(0).to(device) # [1, N, F]
+                    # 3. Get ground truth from environment
+                    actual_current_list = self.training_env.env_method("_get_raw_observation")
+                    actual_current = actual_current_list[0].unsqueeze(0).to(device)
                     
-                    # MSE Loss
-                    loss = torch.nn.functional.mse_loss(predicted_next, actual_current)
+                    # 4. Calculate loss (internally decodes latent 256 -> physical 12)
+                    loss = self.gnn_model.compute_forecasting_loss(mean_forecast, actual_current)
                     
                     # Optimization step
                     self.optimizer.zero_grad()

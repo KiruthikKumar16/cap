@@ -118,7 +118,7 @@ class SUMOTrafficEnv(gym.Env):
         
         # Each agent (intersection) observation is a concatenation of:
         #   [self_embedding] + [neighbor_embeddings (max_neighbors)] + [global_embedding]
-        # Total length = (2 + max_neighbors) * embedding_dim.
+        # Total length = (1 (self) + max_neighbors + 1 (global)) * embedding_dim.
         self.max_neighbors = 4
         embedding_dim = None
         if hasattr(self.model, "controller"):
@@ -128,7 +128,8 @@ class SUMOTrafficEnv(gym.Env):
         if embedding_dim is None:
             raise ValueError("Could not infer embedding_dim from model.controller")
 
-        obs_vector_dim = int((1 + self.max_neighbors) * int(embedding_dim))
+        # 1 self + 4 neighbors + 1 global = 6 embeddings total
+        obs_vector_dim = int((2 + self.max_neighbors) * int(embedding_dim))
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
@@ -177,8 +178,11 @@ class SUMOTrafficEnv(gym.Env):
         avg_stopped = self.episode_metrics["episode_stopped_vehicles"] / total_steps
         
         # Log to CSV
-        with open(self.log_file, "a") as f:
-            f.write(f"{episode_idx},{avg_wait:.2f},{avg_queue:.2f},{throughput},{avg_stopped:.2f}\n")
+        try:
+            with open(self.log_file, "a") as f:
+                f.write(f"{episode_idx},{avg_wait:.2f},{avg_queue:.2f},{throughput},{avg_stopped:.2f}\n")
+        except Exception as e:
+            print(f"Warning: Could not log to {self.log_file}: {e}")
         
         # Print for visibility
         print(f"\n[Episode {episode_idx} Metrics]")
@@ -207,8 +211,8 @@ class SUMOTrafficEnv(gym.Env):
         if self.sumo_running:
             self._close_sumo()
         
-        # Start SUMO simulation
-        self._start_sumo()
+        # Start SUMO simulation with the provided seed for multi-episode variance
+        self._start_sumo(seed)
         
         # Log previous episode metrics if any steps were taken
         if self.episode_metrics["episode_steps"] > 0:
@@ -242,6 +246,7 @@ class SUMOTrafficEnv(gym.Env):
             "episode_total_queue_length": 0.0,
             "episode_total_travel_time": 0.0,
             "episode_arrived_vehicles": 0,
+            "episode_stopped_vehicles": 0,
             "episode_steps": 0,
         }
 
@@ -333,8 +338,8 @@ class SUMOTrafficEnv(gym.Env):
                     return str(candidate)
         return name  # rely on PATH
     
-    def _start_sumo(self) -> None:
-        """Start SUMO simulation. SUMO is mandatory (no placeholder fallback)."""
+    def _start_sumo(self, seed: Optional[int] = None) -> None:
+        """Start SUMO simulation with specific seed for reproducibility/variance."""
         sumo_bin = self._resolve_sumo_binary()
         sumo_cmd = [sumo_bin]
         
@@ -345,6 +350,11 @@ class SUMOTrafficEnv(gym.Env):
         
         sumo_cmd.extend(["--step-length", str(self.step_length)])
         sumo_cmd.append("--no-warnings")
+        
+        # SOTA: Explicit seeding for research-grade variance
+        if seed is not None:
+            sumo_cmd.extend(["--seed", str(seed)])
+            
         traci.start(sumo_cmd, port=self.traci_port)
         self.sumo_running = True
     
@@ -534,10 +544,11 @@ class SUMOTrafficEnv(gym.Env):
             num_neighbors = min(len(neighbors), self.max_neighbors)
             padded_neighbors[:num_neighbors] = neighbor_embeddings.cpu().numpy()[:num_neighbors]
             
-            # Concatenate self embedding and neighbor embeddings (omitting global to match 320-dim trained space)
+            # Concatenate self embedding, neighbor embeddings, and global embedding
             obs[i] = np.concatenate([
                 embedding[i].cpu().numpy(), 
-                padded_neighbors.flatten()
+                padded_neighbors.flatten(),
+                global_emb_np
             ])
             
         return obs
@@ -654,7 +665,12 @@ class SUMOTrafficEnv(gym.Env):
         return info
     
     def close(self) -> None:
-        """Close the environment."""
+        """Close the environment and log the final episode metrics."""
+        if self.episode_metrics["episode_steps"] > 0:
+            self.episode_count += 1
+            self._log_episode(self.episode_count)
+            self.episode_metrics["episode_steps"] = 0
+            
         self._close_sumo()
     
     def render(self) -> Optional[np.ndarray]:
