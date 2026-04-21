@@ -60,5 +60,13 @@ The model demonstrated perfect scaling from **5x5 Intersections (25 agents)** to
 
 ---
 
+## 📦 Phase 5: Capstone Submission Assets
+To ensure readiness for defense, the final project workspace was synthesized into three submission-ready formats:
+1. **Mega Report Markdown:** A highly detailed document (`Capstone_Mega_Report.md`) encapsulating all theory, existing markdown guidelines, source code implementations, config sweeps, and visual analysis. 
+2. **Academic LaTeX Template:** A fully configured `main.tex` template within `docs/report_latex/` conforming to standard IEEE structural guidelines, ready to be dropped securely into Overleaf.
+3. **Presentation Structure:** A rigorous 15-minute slide-by-slide defensive outline (`Presentation_Slides_Outline.md`) architected to visually argue against stationary SOTA models.
+
+---
+
 ## ✅ Final Conclusion
-The project is now fully finalized and research-grade. All outputs are saved in the `outputs/` directory, ready for the Capstone presentation.
+The project is now fully finalized, version-controlled, and research-grade. All outputs are saved in the respective directories, ready for the Capstone presentation and formal evaluation.

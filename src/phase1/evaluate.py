@@ -8,6 +8,7 @@ Use --save-summary to write results to JSON for comparison charts.
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Dict, Any, List, Tuple, Optional
@@ -561,13 +562,22 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
     agent = None
     if model_type == "PPO":
         from stable_baselines3 import PPO
-        # User has marl_ppo_traffic.zip in root
-        checkpoint = "marl_ppo_traffic.zip"
-        if not Path(checkpoint).exists():
-            checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
-            
+        checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
         print(f"Loading PPO model from {checkpoint}")
-        model = PPO.load(checkpoint, env=env)
+        try:
+            model = PPO.load(checkpoint, env=env)
+        except ValueError as exc:
+            msg = str(exc)
+            if "Observation spaces do not match" in msg:
+                dims = re.findall(r"\((\d+),\)", msg)
+                expected = dims[0] if len(dims) > 0 else "unknown"
+                current = dims[1] if len(dims) > 1 else "unknown"
+                raise RuntimeError(
+                    "Checkpoint/config mismatch detected for PPO model. "
+                    f"Model expects observation dim {expected}, but current environment provides {current}. "
+                    "Use the same SUMO scenario/config that was used during training."
+                ) from exc
+            raise
         results = evaluate_sb3_agent(model, env, num_episodes, deterministic=True, max_steps_per_episode=max_steps)
     elif model_type == "MaxPressure":
         from src.baselines.max_pressure import MaxPressureAgent
