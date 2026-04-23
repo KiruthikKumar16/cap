@@ -1,4 +1,6 @@
-# CAPSTONE MEGA REPORT: Multi-Agent RL for Traffic Signal Control
+# CAPSTONE MEGA REPORT: Robust Multi-Agent Traffic Control Under Non-Stationarity With Anomaly-Aware Proactive Adaptation
+
+**Core contribution statement:** Robust multi-agent traffic control under non-stationarity with anomaly-aware proactive adaptation.
 
 
 # Chapter 1: Introduction and Comprehensive Theoretical Background

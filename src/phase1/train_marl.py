@@ -23,6 +23,7 @@ from src.phase1.marl_traffic_env import MARLTrafficEnv
 from src.models.predictive_gnn_rl import PredictiveGNNRL
 from src.models.mappo_policy import MAPPOPolicy
 from src.phase1.reward_calculator import RewardCalculator
+from src.utils.model_metadata import build_metadata, save_metadata
 import numpy as np
 import torch
 
@@ -188,6 +189,15 @@ def main():
         # Save model
         ppo_model.save("marl_ppo_traffic")
         print("[OK] Model saved to marl_ppo_traffic.zip")
+        metadata = build_metadata(
+            algorithm="PPO",
+            checkpoint_path="marl_ppo_traffic.zip",
+            config=config,
+            observation_space_repr=str(vec_env.observation_space),
+            action_space_repr=str(vec_env.action_space),
+        )
+        meta_path = save_metadata(metadata, Path("marl_ppo_traffic.zip"))
+        print(f"[OK] Metadata saved to {meta_path}")
         
         # Explicitly close environment to prevent TraCI errors
         print("Closing environment...")

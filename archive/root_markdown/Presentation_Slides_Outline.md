@@ -1,4 +1,6 @@
 # 🎤 Capstone Defense Presentation Deck Outline
+
+**Core contribution statement:** Robust multi-agent traffic control under non-stationarity with anomaly-aware proactive adaptation.
 **Title:** Multi-Agent Reinforcement Learning for Traffic Signal Control in Non-Stationary Environments
 **Target Duration:** 15 Minutes (approx. 1 min per slide)
 

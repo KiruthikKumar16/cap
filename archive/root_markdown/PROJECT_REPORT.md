@@ -1,4 +1,6 @@
-# Project Report: Multi-Agent Reinforcement Learning for Large-Scale Traffic Signal Control
+# Project Report: Robust Multi-Agent Traffic Control Under Non-Stationarity With Anomaly-Aware Proactive Adaptation
+
+**Core contribution statement:** Robust multi-agent traffic control under non-stationarity with anomaly-aware proactive adaptation.
 
 **Status:** Technical Implementation Phase (Ongoing Training & Evaluation)
 

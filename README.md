@@ -1,88 +1,76 @@
-# 🚦 MAPPO-STGNN: Adaptive Traffic Signal Control in Non-Stationary Environments
+# Robust Multi-Agent Traffic Control Under Non-Stationarity With Anomaly-Aware Proactive Adaptation
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)
 ![PyTorch](https://img.shields.io/badge/PyTorch-Framework-red.svg)
 ![SUMO](https://img.shields.io/badge/Simulator-SUMO-green.svg)
 
-> **Abstract:** A robust Multi-Agent Reinforcement Learning (MARL) paradigm for large-scale traffic signal control. Utilizing **Multi-Agent Proximal Policy Optimization (MAPPO)** backed by **Spatial-Temporal Graph Neural Networks (ST-GNN)**, this framework dramatically outperforms SOTA baselines (CoLight, NSTLight) in both zero-shot generalization to unseen geographies and rapid adaptation under non-stationary conditions (accidents, sensor noise).
+This repository presents a unified research pipeline for robust urban traffic signal control under non-stationary conditions.  
+The central contribution is the integration of MAPPO-based multi-agent control, spatio-temporal representation learning, and anomaly-aware proactive adaptation in one reproducible evaluation framework.
 
----
+## Core Contribution Statement
 
-## 🌟 Key Features
+The project introduces a robust multi-agent traffic control framework that:
+- learns coordinated signal policies with MAPPO under CTDE,
+- incorporates spatio-temporal structure for network-level state representation,
+- adapts to non-stationary disturbances (sensor failures, accidents, demand shifts),
+- and evaluates performance using standardized, seed-based, publication-oriented protocols.
 
-- **Spatial-Temporal Embeddings:** Uses ST-GNNs mapped over physical intersection topology to pass hidden state messages effectively upstream and downstream.
-- **CTDE Architecture:** Centralized Training with Decentralized Execution allows scalable deployment while learning cooperative behaviors off-policy.
-- **Zero-Shot Transferability:** Evaluated directly on the vast, organically unpatterned road configurations extracted natively from **Bengaluru OSM data**.
-- **Adversarial Resilience:** Robust against real-world traffic anomalies such as unpredicted lane closures and sudden sensor blackouts.
+## One-Command Reproducibility
 
----
+Run the complete pipeline using:
 
-## 📊 Performance & Visualizations
+```bash
+python scripts/reproduce_main_results.py --mode quick
+```
 
-Our benchmark evaluation conclusively establishes that the MAPPO-STGNN framework provides deeper traffic alleviation.
+or
 
-### Congestion Alleviation (Heatmaps)
-We map the physical delays extracted from the SUMO simulation onto spatial grids.
+```bash
+python scripts/reproduce_main_results.py --mode full
+```
 
-| **MAPPO (Ours)** | **CoLight Baseline** | **NSTLight Baseline** |
-| :---: | :---: | :---: |
-| <img src="FAST_VAL_RESULTS/plots/heatmap_mappo_(ours).png" width="250"> | <img src="FAST_VAL_RESULTS/plots/heatmap_colight.png" width="250"> | <img src="FAST_VAL_RESULTS/plots/heatmap_nstlight.png" width="250"> |
-*Evident reduction in localized bottleneck clustering.*
+The pipeline executes training/evaluation stages and produces standardized artifacts in `results/`.
 
-### Pareto Efficiency & Objective Convergence
-MAPPO achieves higher Pareto efficiency (balancing throughput vs queue lengths) globally.
+For full publication scaffolding (ablation + stress + generalization + latency + stats + artifacts):
 
-| **Convergence** | **Pareto Efficiency Tradeoffs** |
-| :---: | :---: |
-| <img src="FAST_VAL_RESULTS/plots/convergence_avg_queue_length.png" width="400"> | <img src="FAST_VAL_RESULTS/plots/efficiency_pareto.png" width="400"> |
+```bash
+python scripts/run_publication_suite.py --mode full
+```
 
----
+## Reproducibility and Protocol
 
-## 🚀 Installation & Usage
+- Experiment protocol: `docs/EXPERIMENT_PROTOCOL.md`
+- Reproducibility guide: `docs/REPRODUCIBILITY.md`
+- Limitations and failure analysis: `docs/LIMITATIONS.md`
+- Fixed seed list for publication tables: `configs/phase1.yaml` and `docs/APPENDIX_SEEDS.md`
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/KiruthikKumar16/cap.git
-   cd cap
-   ```
-2. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Train the SOTA Baselines:**
-   ```bash
-   python scripts/train_baselines.py
-   python src/phase1/train_marl.py
-   ```
-4. **Run Cross-Evaluation Benchmarks:**
-   ```bash
-   python src/phase1/evaluate.py --gui true
-   ```
-5. **Generate Mega Reports & LaTeX Export:**
-   ```bash
-   python scripts/generate_mega_report.py
-   ```
+## Results Artifacts (Auto-Generated)
 
-6. **Launch Interactive Benchmark Dashboard (Streamlit):**
-   ```bash
-   streamlit run src/dashboard/app.py
-   ```
-   - Enter `config`, `checkpoint`, and `episodes`
-   - Click **Run benchmark**
-   - View side-by-side comparison table/charts for MAPPO-STGNN and baseline models
+- Main tables: `results/main_tables.csv`
+- Statistical summary: `results/statistical_summary.csv`
+- Ablation contributions: `results/ablation_contributions.csv`
+- Generalization table: `results/generalization_table.csv`
+- Stress recovery table: `results/stress_recovery_table.csv`
+- Latency table: `results/latency_table.csv`
+- Scalability scaffold: `results/scalability_table.csv`
+- Main figures: `results/main_figures/`
+- Report-ready summary: `results/summary.md`
+- Fairness checklist: `results/fairness_checklist.csv`
 
----
+## Dashboard
 
-## 🏗 Directory Structure
-- `configs/` - Hyperparameter bounds and simulation flags.
-- `src/models/` - Architectural setups for MAPPO (`mappo_policy.py`) and ST-GNN (`st_gnn.py`).
-- `src/baselines/` - Deep RL comparison baselines (`colight.py`, `nstlight.py`, `max_pressure.py`).
-- `scripts/` - Automated runner scripts for report building / parallelized training.
-- `FAST_VAL_RESULTS/` - Aggregated CSV metrics, episodic rewards, and generated visualizations.
-- `docs/report_latex/` - Final compiled academic literature exports.
+Launch the interactive evaluation dashboard:
 
----
+```bash
+streamlit run src/dashboard/app.py
+```
 
-**Author:** Kiruthik Kumar M  
-**Status:** Capstone Evaluated and Open-Sourced.
+## Repository Layout
+
+- `configs/` experiment and seed configuration
+- `src/` model, environment, training, evaluation, dashboard
+- `scripts/` orchestration, reproducibility, reporting utilities
+- `docs/` protocol, reproducibility, appendix, limitations
+- `results/` generated tables, figures, and summaries
+- `archive/` non-core drafts and legacy artifacts

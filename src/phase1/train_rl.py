@@ -24,6 +24,7 @@ from src.models.predictive_gnn_rl import PredictiveGNNRL
 from src.phase1.reward_calculator import RewardCalculator
 from src.phase1.dqn_agent import create_dqn_agent, TrainingCallback
 from src.phase3.integration import init_anomaly_controller
+from src.utils.model_metadata import build_metadata, save_metadata
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -221,6 +222,15 @@ def main():
     final_model_path = output_cfg["final_model_path"]
     model.save(final_model_path)
     print(f"\n[OK] Final model saved to: {final_model_path}")
+    metadata = build_metadata(
+        algorithm=str(config.get("rl", {}).get("algorithm", "DQN")).upper(),
+        checkpoint_path=final_model_path,
+        config=config,
+        observation_space_repr=str(env.observation_space),
+        action_space_repr=str(env.action_space),
+    )
+    meta_path = save_metadata(metadata, Path(final_model_path))
+    print(f"[OK] Metadata saved to: {meta_path}")
     
     # Close environment
     env.close()

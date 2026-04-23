@@ -24,6 +24,7 @@ from gymnasium import spaces
 
 from src.phase1.train_rl import load_config, create_environment
 from src.phase1.dqn_agent import MultiDiscreteToDiscreteWrapper, GNNObservationWrapper
+from src.utils.model_metadata import load_metadata_for_checkpoint, validate_metadata
 
 try:
     from scipy import stats as scipy_stats
@@ -564,6 +565,18 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
         from stable_baselines3 import PPO
         checkpoint = config.get("output", {}).get("final_model_path", "outputs/phase1/dqn_traffic_final.zip")
         print(f"Loading PPO model from {checkpoint}")
+        checkpoint_path = Path(checkpoint)
+        metadata = load_metadata_for_checkpoint(checkpoint_path)
+        if metadata:
+            mismatch = validate_metadata(
+                metadata=metadata,
+                expected_algorithm="PPO",
+                observation_space_repr=str(env.observation_space),
+                action_space_repr=str(env.action_space),
+                config=config,
+            )
+            if mismatch:
+                raise RuntimeError(f"Metadata compatibility check failed: {mismatch}")
         try:
             model = PPO.load(checkpoint, env=env)
         except ValueError as exc:
@@ -772,6 +785,17 @@ def main():
             env = wrap_env_for_dqn(env)
             model_class = DQN
             
+        metadata = load_metadata_for_checkpoint(checkpoint_path)
+        if metadata:
+            mismatch = validate_metadata(
+                metadata=metadata,
+                expected_algorithm=rl_algo,
+                observation_space_repr=str(env.observation_space),
+                action_space_repr=str(env.action_space),
+                config=config,
+            )
+            if mismatch:
+                raise RuntimeError(f"Metadata compatibility check failed: {mismatch}")
         print(f"  Loading {rl_algo} model from {checkpoint_path}...")
         model = model_class.load(str(checkpoint_path), env=env)
         

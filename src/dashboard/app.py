@@ -174,8 +174,8 @@ def _run_stress_eval(config: Path, checkpoint: str, episodes: int, sensor_noise_
 
 def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[bool, str]:
     try:
-        from stable_baselines3 import PPO
         from src.phase1.marl_traffic_env import MARLTrafficEnv
+        from src.utils.model_metadata import load_metadata_for_checkpoint, validate_metadata
     except Exception as exc:
         return False, (
             f"Precheck import failed: {exc}. "
@@ -185,21 +185,26 @@ def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[
     try:
         cfg = _load_yaml(config)
         env = MARLTrafficEnv(cfg)
-        model = PPO.load(str(checkpoint))
-        model_obs = getattr(model, "observation_space", None)
-        env_obs = getattr(env, "observation_space", None)
-        model_act = getattr(model, "action_space", None)
-        env_act = getattr(env, "action_space", None)
-        obs_ok = str(model_obs) == str(env_obs)
-        act_ok = str(model_act) == str(env_act)
-        env.close()
-        if obs_ok and act_ok:
-            return True, f"Compatible. obs={model_obs}, action={model_act}"
-        return (
-            False,
-            "Mismatch detected. "
-            f"checkpoint obs={model_obs}, env obs={env_obs}, checkpoint action={model_act}, env action={env_act}",
+        env_obs = str(getattr(env, "observation_space", None))
+        env_act = str(getattr(env, "action_space", None))
+        metadata = load_metadata_for_checkpoint(checkpoint)
+        if not metadata:
+            env.close()
+            return (
+                False,
+                "Checkpoint metadata file not found. Train/export metadata first (expected *.metadata.json).",
+            )
+        mismatch = validate_metadata(
+            metadata=metadata,
+            expected_algorithm="PPO",
+            observation_space_repr=env_obs,
+            action_space_repr=env_act,
+            config=cfg,
         )
+        env.close()
+        if mismatch:
+            return False, mismatch
+        return True, f"Compatible. obs={env_obs}, action={env_act}"
     except Exception as exc:
         msg = str(exc)
         if "unexpected keyword argument 'use_sde'" in msg or "DQNPolicy.__init__" in msg:
