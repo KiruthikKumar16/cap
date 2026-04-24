@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import os
 import sys
+import copy
 
 SEED = 42
 
@@ -26,15 +27,20 @@ def run_ablation_study():
     for model_name, config_override in ablation_configs.items():
         print(f"\n--- Running Ablation: {model_name} ---")
         
-        with open("configs/phase2_10x10.yaml", 'r') as f:
+        with open("configs/phase1.yaml", 'r') as f:
             base_config = yaml.safe_load(f)
-        
-        base_config.update(config_override)
-        base_config["experiment"] = {"seed": SEED}
+        local_cfg = copy.deepcopy(base_config)
+        # Merge model overrides safely.
+        local_cfg.setdefault("model", {})
+        local_cfg["model"].update(config_override.get("model", {}))
+        local_cfg.setdefault("experiment", {})
+        local_cfg["experiment"]["seed"] = SEED
+        local_cfg.setdefault("training", {})
+        local_cfg["training"]["total_timesteps"] = 10000
         
         temp_config_path = f"configs/temp_{model_name}_config.yaml"
         with open(temp_config_path, 'w') as f:
-            yaml.dump(base_config, f)
+            yaml.dump(local_cfg, f)
             
         py = sys.executable
         train_cmd = [

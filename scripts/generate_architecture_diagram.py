@@ -1,67 +1,269 @@
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
 from pathlib import Path
 
-def generate_architecture():
-    print("Generating Framework Architecture Diagram...")
-    fig, ax = plt.subplots(figsize=(14, 8))
-    
-    # Define colors
-    color_sumo = '#334E68' # Navy
-    color_gnn = '#199473'  # Emerald
-    color_marl = '#D64545' # Red/Coral
-    color_text = '#333333'
-    
-    # Background
-    ax.set_facecolor('#f9f9f9')
-    
-    # 1. SUMO Environment (Left)
-    sumo_box = patches.FancyBboxPatch((0.05, 0.35), 0.2, 0.3, boxstyle="round,pad=0.02", facecolor=color_sumo, alpha=0.9, edgecolor='white')
-    ax.add_patch(sumo_box)
-    ax.text(0.15, 0.5, "SUMO\nEnvironment\n(TraCI API)", color='white', ha='center', va='center', fontsize=14, fontweight='bold')
-    
-    # 2. ST-GNN Perception (Middle Top)
-    gnn_box = patches.FancyBboxPatch((0.35, 0.6), 0.3, 0.25, boxstyle="round,pad=0.02", facecolor=color_gnn, alpha=0.9, edgecolor='white')
-    ax.add_patch(gnn_box)
-    ax.text(0.5, 0.725, "Spatial-Temporal GNN\n(GAT + GRU)\nTraffic Forecaster", color='white', ha='center', va='center', fontsize=12, fontweight='bold')
-    
-    # 3. MAPPO Controller (Middle Bottom)
-    marl_box = patches.FancyBboxPatch((0.35, 0.15), 0.3, 0.25, boxstyle="round,pad=0.02", facecolor=color_marl, alpha=0.9, edgecolor='white')
-    ax.add_patch(marl_box)
-    ax.text(0.5, 0.275, "Multi-Agent PPO\n(Policy & Value)\nCentralized Training", color='white', ha='center', va='center', fontsize=12, fontweight='bold')
-    
-    # 4. Result/Action (Right)
-    action_box = patches.FancyBboxPatch((0.75, 0.35), 0.2, 0.3, boxstyle="round,pad=0.02", facecolor=color_sumo, alpha=0.9, edgecolor='white')
-    ax.add_patch(action_box)
-    ax.text(0.85, 0.5, "Signal Phase\nOptimization\n(Actions)", color='white', ha='center', va='center', fontsize=14, fontweight='bold')
-    
-    # Arrows
-    # Sumo -> GNN (State)
-    ax.annotate("", xy=(0.35, 0.7), xytext=(0.25, 0.65), arrowprops=dict(arrowstyle="->", lw=2, color=color_text))
-    ax.text(0.3, 0.68, "Telemery\n(Queue/Wait)", fontsize=10, ha='center')
-    
-    # GNN -> MAPPO (Latent Embedding)
-    ax.annotate("", xy=(0.5, 0.4), xytext=(0.5, 0.6), arrowprops=dict(arrowstyle="->", lw=2, color=color_text))
-    ax.text(0.52, 0.5, "Latent\nRepresentation", fontsize=10, ha='left')
-    
-    # MAPPO -> Action (Policy)
-    ax.annotate("", xy=(0.75, 0.3), xytext=(0.65, 0.275), arrowprops=dict(arrowstyle="->", lw=2, color=color_text))
-    ax.text(0.7, 0.28, "Phase\nSelection", fontsize=10, ha='center')
-    
-    # Action -> SUMO (Cycle)
-    ax.annotate("", xy=(0.15, 0.35), xytext=(0.85, 0.35), arrowprops=dict(arrowstyle="->", lw=2, color=color_text, connectionstyle="arc3,rad=0.3"))
-    ax.text(0.5, 0.1, "Simulation Feedback Loop", fontsize=12, style='italic', ha='center')
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+
+ROOT = Path(__file__).resolve().parents[1]
+OUTPUT_DIR = ROOT / "results" / "main_figures"
+
+
+PALETTE = {
+    "navy": "#1F3A5F",
+    "teal": "#2C7A7B",
+    "green": "#2F855A",
+    "amber": "#B7791F",
+    "red": "#C53030",
+    "slate": "#4A5568",
+    "light": "#F7FAFC",
+    "line": "#2D3748",
+    "muted": "#718096",
+}
+
+
+def _rounded_box(ax, x, y, w, h, title, body, color):
+    title_lines = title.count("\n") + 1
+    title_font = 12 if len(title) < 24 and title_lines == 1 else 10.5
+    rect = patches.FancyBboxPatch(
+        (x, y),
+        w,
+        h,
+        boxstyle="round,pad=0.015,rounding_size=0.03",
+        facecolor=color,
+        edgecolor="white",
+        linewidth=1.6,
+    )
+    ax.add_patch(rect)
+    ax.text(
+        x + w / 2,
+        y + h * 0.68,
+        title,
+        ha="center",
+        va="center",
+        fontsize=title_font,
+        fontweight="bold",
+        color="white",
+    )
+    ax.text(
+        x + w / 2,
+        y + h * 0.33,
+        body,
+        ha="center",
+        va="center",
+        fontsize=9.3,
+        color="white",
+        linespacing=1.3,
+    )
+
+
+def _arrow(ax, x1, y1, x2, y2, label=None, curve=0.0, linestyle="-", color=None, label_dx=0.0, label_dy=0.0):
+    ax.annotate(
+        "",
+        xy=(x2, y2),
+        xytext=(x1, y1),
+        arrowprops=dict(
+            arrowstyle="-|>",
+            lw=2.0,
+            color=color or PALETTE["line"],
+            linestyle=linestyle,
+            connectionstyle=f"arc3,rad={curve}",
+            shrinkA=4,
+            shrinkB=4,
+        ),
+    )
+    if label:
+        mx = (x1 + x2) / 2
+        my = (y1 + y2) / 2 + (0.03 if curve >= 0 else -0.03)
+        ax.text(mx + label_dx, my + label_dy, label, fontsize=8.6, color=PALETTE["line"], ha="center", va="center")
+
+
+def _section_label(ax, x, y, text):
+    ax.text(x, y, text, fontsize=10, fontweight="bold", color=PALETTE["muted"], ha="left", va="center")
+
+
+def generate_framework_architecture():
+    fig, ax = plt.subplots(figsize=(16, 9))
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor(PALETTE["light"])
+
+    _section_label(ax, 0.04, 0.93, "Research Inputs")
+    _section_label(ax, 0.29, 0.93, "Perception and Prediction")
+    _section_label(ax, 0.54, 0.93, "Decision and Adaptation")
+    _section_label(ax, 0.79, 0.93, "Evaluation and Publication")
+
+    _rounded_box(
+        ax, 0.04, 0.60, 0.18, 0.23,
+        "Scenario and Config Layer",
+        "YAML experiment settings\nSUMO net/route files\nseed protocol and runtime profiles",
+        PALETTE["navy"],
+    )
+    _rounded_box(
+        ax, 0.04, 0.28, 0.18, 0.23,
+        "Traffic Environment Layer",
+        "SUMO + TraCI execution\nfeature extraction\ntraffic graph construction\nmulti-intersection state history",
+        PALETTE["slate"],
+    )
+
+    _rounded_box(
+        ax, 0.29, 0.60, 0.18, 0.23,
+        "ST-GNN Forecasting Layer",
+        "SpatialTemporalAutoencoder\nGAT-based graph reasoning\nGRU temporal encoder\nmulti-step traffic forecasting",
+        PALETTE["teal"],
+    )
+    _rounded_box(
+        ax, 0.29, 0.28, 0.18, 0.23,
+        "Graph Representation Layer",
+        "TrafficGNNEncoder\nnode and global embeddings\nneighbor-aware observations\nforecast-conditioned features",
+        PALETTE["green"],
+    )
+
+    _rounded_box(
+        ax, 0.54, 0.60, 0.18, 0.23,
+        "Control Learning Layer",
+        "MAPPO / PPO policy\ncentralized training\nshared critic and local actors\nsignal phase action selection",
+        PALETTE["red"],
+    )
+    _rounded_box(
+        ax, 0.54, 0.28, 0.18, 0.23,
+        "Robustness Layer",
+        "Phase 2 anomaly detector\nPhase 3 anomaly-aware integration\nrisk-aware reward shaping\nadaptive thresholds and penalties",
+        PALETTE["amber"],
+    )
+
+    _rounded_box(
+        ax, 0.79, 0.60, 0.18, 0.23,
+        "Benchmarking Layer",
+        "fixed-time, random,\nactuated, CoLight,\nPressLight, NSTLight baselines\nstress and generalization tests",
+        PALETTE["navy"],
+    )
+    _rounded_box(
+        ax, 0.79, 0.28, 0.18, 0.23,
+        "Artifact Layer",
+        "tables, figures, summaries\nlatency and fairness reports\nStreamlit dashboard\nLaTeX-ready publication outputs",
+        PALETTE["slate"],
+    )
+
+    _arrow(ax, 0.22, 0.72, 0.29, 0.72)
+    _arrow(ax, 0.22, 0.39, 0.29, 0.39)
+    _arrow(ax, 0.38, 0.60, 0.38, 0.51)
+    _arrow(ax, 0.47, 0.72, 0.54, 0.72)
+    _arrow(ax, 0.47, 0.39, 0.54, 0.39)
+    _arrow(ax, 0.63, 0.60, 0.63, 0.51)
+    _arrow(ax, 0.72, 0.72, 0.79, 0.72)
+    _arrow(ax, 0.72, 0.39, 0.79, 0.39)
+    _arrow(ax, 0.88, 0.60, 0.13, 0.51, "closed-loop control", curve=0.22, linestyle="--", label_dy=0.04)
+    _arrow(ax, 0.13, 0.51, 0.88, 0.28, "runtime telemetry and artifacts", curve=-0.18, linestyle="--", label_dy=-0.03)
+
+    ax.text(
+        0.5,
+        0.08,
+        "Closed-loop operation: scenario configuration initializes SUMO, the ST-GNN produces forecast-aware embeddings, "
+        "MAPPO selects decentralized signal actions, and the evaluation layer converts runtime outcomes into reproducible publication artifacts.",
+        ha="center",
+        va="center",
+        fontsize=10,
+        color=PALETTE["line"],
+        wrap=True,
+    )
 
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
-    ax.axis('off')
-    
-    plt.title("MAPPO-STGNN Framework Architecture", fontsize=18, fontweight='bold', pad=20)
-    
-    output_path = Path("FAST_VAL_RESULTS/plots/framework_architecture.png")
-    output_path.parent.mkdir(exist_ok=True, parents=True)
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"Created {output_path}")
+    ax.axis("off")
+    ax.set_title(
+        "Whole-Framework Architecture for Robust Multi-Agent Traffic Control",
+        fontsize=18,
+        fontweight="bold",
+        pad=18,
+    )
+    return fig
+
+
+def generate_system_workflow():
+    fig, ax = plt.subplots(figsize=(16, 8.5))
+    fig.patch.set_facecolor("white")
+    ax.set_facecolor(PALETTE["light"])
+
+    stages = [
+        (0.05, "Data and Scenario\nPreparation", "network generation\nSUMO routes\ntraining traces\nconfig selection", PALETTE["navy"]),
+        (0.24, "Phase 1 Controller\nTraining", "SUMOTrafficEnv\nPredictiveGNNRL\nMAPPO/PPO updates\nforecast-loss callback", PALETTE["teal"]),
+        (0.43, "Phase 2 Anomaly\nModeling", "synthetic or SUMO sequences\nSpatialTemporalAutoencoder\nthreshold calibration\nanomaly scoring", PALETTE["amber"]),
+        (0.62, "Phase 3 Robust\nIntegration", "anomaly-aware controller\nrisk model\nadaptive reward shaping\nstress scenario handling", PALETTE["red"]),
+        (0.81, "Evaluation and\nDissemination", "benchmarks and ablations\ngeneralization and latency\nCSV/JSON tables\nfigures and dashboard", PALETTE["green"]),
+    ]
+
+    for x, title, body, color in stages:
+        _rounded_box(ax, x, 0.47, 0.14, 0.28, title, body, color)
+
+    _arrow(ax, 0.19, 0.61, 0.24, 0.61)
+    _arrow(ax, 0.38, 0.61, 0.43, 0.61)
+    _arrow(ax, 0.57, 0.61, 0.62, 0.61)
+    _arrow(ax, 0.76, 0.61, 0.81, 0.61)
+
+    _rounded_box(
+        ax, 0.24, 0.12, 0.18, 0.18,
+        "Baselines",
+        "Fixed-time\nRandom\nActuated\nCoLight / PressLight / NSTLight",
+        PALETTE["slate"],
+    )
+    _rounded_box(
+        ax, 0.46, 0.12, 0.18, 0.18,
+        "Validation Protocol",
+        "seeded evaluation\nstress injection\ngeneralization maps\nstatistical summaries",
+        PALETTE["slate"],
+    )
+    _rounded_box(
+        ax, 0.68, 0.12, 0.18, 0.18,
+        "Publication Outputs",
+        "main tables\nfigure panels\nsummary markdown\nreport integration",
+        PALETTE["slate"],
+    )
+
+    _arrow(ax, 0.33, 0.47, 0.33, 0.30, "compare against")
+    _arrow(ax, 0.52, 0.47, 0.55, 0.30, "validated with")
+    _arrow(ax, 0.71, 0.47, 0.77, 0.30, "rendered as")
+    _arrow(ax, 0.41, 0.21, 0.46, 0.21, "feeds")
+    _arrow(ax, 0.64, 0.21, 0.68, 0.21, "materializes")
+
+    ax.text(
+        0.5,
+        0.87,
+        "System view spanning offline preparation, controller learning, anomaly modeling, robust integration, and final publication artifact generation.",
+        ha="center",
+        va="center",
+        fontsize=10.5,
+        color=PALETTE["line"],
+    )
+
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    ax.set_title(
+        "End-to-End System Workflow and Evaluation Pipeline",
+        fontsize=18,
+        fontweight="bold",
+        pad=18,
+    )
+    return fig
+
+
+def _save(fig, stem):
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    png_path = OUTPUT_DIR / f"{stem}.png"
+    pdf_path = OUTPUT_DIR / f"{stem}.pdf"
+    fig.savefig(png_path, dpi=300, bbox_inches="tight", facecolor="white")
+    fig.savefig(pdf_path, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return png_path, pdf_path
+
+
+def main():
+    framework_paths = _save(generate_framework_architecture(), "framework_architecture_publication")
+    workflow_paths = _save(generate_system_workflow(), "system_workflow_publication")
+    print(f"Created {framework_paths[0]}")
+    print(f"Created {framework_paths[1]}")
+    print(f"Created {workflow_paths[0]}")
+    print(f"Created {workflow_paths[1]}")
+
 
 if __name__ == "__main__":
-    generate_architecture()
+    main()

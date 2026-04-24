@@ -40,6 +40,13 @@ def _safe_rel(path: Path) -> str:
         return str(path)
 
 
+def _resolve_user_path(path_str: str) -> Path:
+    p = Path(path_str)
+    if p.is_absolute():
+        return p
+    return (ROOT / p).resolve()
+
+
 def _load_yaml(path: Path) -> Dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
@@ -228,6 +235,12 @@ def _flatten_results(raw: Dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _is_valid_model_row(row: pd.Series) -> bool:
+    core = ["mean_throughput", "mean_travel_time", "mean_waiting_time", "mean_queue_length"]
+    vals = [float(row.get(c, 0.0) or 0.0) for c in core]
+    return any(v != 0.0 for v in vals)
+
+
 def _latency_df(raw: Dict[str, Any]) -> pd.DataFrame:
     payload = raw.get("latency_ms_per_step", [])
     if isinstance(payload, list) and payload:
@@ -255,15 +268,19 @@ def _score_models(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
-    scored = _score_models(df)
+    valid_df = df[df.apply(_is_valid_model_row, axis=1)].copy()
+    if valid_df.empty:
+        st.warning("No valid model rows available for executive ranking. Run quality may be incomplete.")
+        return
+    scored = _score_models(valid_df)
     leader = scored.iloc[0]
     c1, c2, c3 = st.columns(3)
     c1.metric("Best Overall Model", leader["model"])
     c2.metric("Top Overall Score", f"{leader['overall_score']:.3f}")
-    c3.metric("Models Compared", int(df.shape[0]))
+    c3.metric("Models Compared", int(valid_df.shape[0]))
     k1, k2, k3, k4, k5 = st.columns(5)
     for i, metric in enumerate(METRICS_META.keys()):
-        best_row = df.sort_values(metric, ascending=not METRICS_META[metric]["higher_is_better"]).iloc[0]
+        best_row = valid_df.sort_values(metric, ascending=not METRICS_META[metric]["higher_is_better"]).iloc[0]
         lbl = f"Best {METRICS_META[metric]['label']}"
         val = f"{best_row[metric]:.2f} {METRICS_META[metric]['unit']}"
         if i == 0:
@@ -449,6 +466,21 @@ def _build_demo_report(
     return "\n".join(lines)
 
 
+def _set_last_run(mode: str, command: str, status: str) -> None:
+    st.session_state["last_run_mode"] = mode
+    st.session_state["last_run_command"] = command
+    st.session_state["last_run_status"] = status
+    st.session_state["last_run_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _render_run_banner(current_mode: str) -> None:
+    c1, c2, c3, c4 = st.columns([1, 1, 2, 2])
+    c1.metric("Mode", current_mode)
+    c2.metric("Last Status", st.session_state.get("last_run_status", "Not run"))
+    c3.metric("Last Run", st.session_state.get("last_run_time", "N/A"))
+    c4.metric("Last Command", st.session_state.get("last_run_command", "N/A"))
+
+
 def main() -> None:
     st.set_page_config(page_title="Adaptive Traffic Control Evaluation Suite", layout="wide")
     st.title("Adaptive Traffic Control Evaluation Suite")
@@ -456,114 +488,143 @@ def main() -> None:
         "Evaluate MAPPO-STGNN against CoLight and NSTLight under normal and stress conditions."
     )
 
-    with st.sidebar:
-        st.header("Experiment Setup")
-        preset = st.selectbox("Scenario preset", options=["Normal", "High Demand", "Stress Demo"], index=0)
-        preset_map = {
-            "Normal": {"demand": "medium", "noise": 0.10, "stress": True, "steps": 3600},
-            "High Demand": {"demand": "high", "noise": 0.10, "stress": True, "steps": 3600},
-            "Stress Demo": {"demand": "high", "noise": 0.20, "stress": True, "steps": 4200},
-        }
-        preset_values = preset_map[preset]
-        episodes = st.number_input(
-            "Benchmark episodes [count]",
-            min_value=1,
-            max_value=500,
-            value=3 if preset != "Stress Demo" else 2,
-            step=1,
-            help="Number of full simulation episodes used for aggregate benchmark metrics.",
-        )
-        detailed_required = st.checkbox("Detailed episode evaluation (required)", value=True, disabled=True)
-        detailed_episodes = st.number_input(
-            "Detailed eval episodes [count]",
-            min_value=1,
-            max_value=500,
-            value=25,
-            step=1,
-            help="Per-episode analysis run count used for trend plots and reviewer tables.",
-        )
-        run_stress = st.checkbox("Run adversarial stress test", value=True)
-        stress_noise = st.slider(
-            "Sensor noise level (stress) [ratio]",
-            min_value=0.0,
-            max_value=0.5,
-            value=float(preset_values["noise"]),
-            step=0.01,
-            help="0.10 means 10% effective sensor corruption in stress mode.",
-        )
-
-        st.markdown("### SUMO Runtime Controls")
-        simulation_steps = st.number_input(
-            "SUMO simulation steps [steps]",
-            min_value=100,
-            max_value=20000,
-            value=int(preset_values["steps"]),
-            step=100,
-            help="Total simulation horizon per episode. 3600 steps ~= 1 hour at 1-second step length.",
-        )
-        step_length = st.number_input(
-            "SUMO step length [seconds/step]",
-            min_value=0.1,
-            max_value=5.0,
-            value=1.0,
-            step=0.1,
-            help="Simulation time represented by each SUMO step.",
-        )
-        gui = st.checkbox("SUMO GUI (mandatory)", value=True, disabled=True)
-        st.caption("Algorithm is fixed to PPO (best model). Baseline comparison includes CoLight and NSTLight.")
-
-        with st.expander("Traffic Demand + Reward Weights"):
-            demand_level = st.selectbox(
-                "Traffic demand level",
-                options=["low", "medium", "high"],
-                index=["low", "medium", "high"].index(preset_values["demand"]),
-                help="Route demand profile used during simulation.",
-            )
-            waiting_w = st.number_input(
-                "Waiting time weight [reward units / second]",
-                value=0.1,
-                step=0.01,
-                format="%.4f",
-                help="Penalty multiplier applied to cumulative waiting time.",
-            )
-            queue_w = st.number_input(
-                "Queue length weight [reward units / vehicle]",
-                value=0.05,
-                step=0.01,
-                format="%.4f",
-                help="Penalty multiplier applied to queue length.",
-            )
-            throughput_w = st.number_input(
-                "Throughput weight [reward units / arrived vehicle]",
-                value=0.0,
-                step=0.01,
-                format="%.4f",
-                help="Reward bonus per arrived vehicle (flow incentive).",
-            )
-            pressure_w = st.number_input(
-                "Pressure weight [reward units / pressure score]",
-                value=0.0002,
-                step=0.0001,
-                format="%.4f",
-                help="Weight for pressure-based control signal.",
-            )
-            speed_w = st.number_input(
-                "Speed reward weight [reward units / normalized speed]",
-                value=0.5,
-                step=0.1,
-                format="%.4f",
-                help="Bonus for higher average speed to reduce stop-and-go behavior.",
-            )
-
-        run_now = st.button("Run Evaluation Suite", use_container_width=True)
-        precheck_now = st.button("Checkpoint Compatibility Precheck", use_container_width=True)
-        load_latest = st.button("Load Latest Results", use_container_width=True)
-
+    # Shared state defaults for both dashboard modes.
+    run_now = False
+    precheck_now = False
+    load_latest = False
+    run_stress = True
     run_logs = ""
     detail_logs = ""
     stress_logs = ""
+    dev_logs = ""
+    partial_run = False
     active_config_path = DEFAULT_CONFIG
     active_checkpoint_path = Path()
+
+    with st.sidebar:
+        st.header("Experiment Setup")
+        dashboard_mode = st.selectbox("Dashboard mode", options=["Observation", "Development"], index=0)
+
+        if dashboard_mode == "Observation":
+            preset = st.selectbox("Scenario preset", options=["Normal", "High Demand", "Stress Demo"], index=0)
+            preset_map = {
+                "Normal": {"demand": "medium", "noise": 0.10, "stress": True, "steps": 3600},
+                "High Demand": {"demand": "high", "noise": 0.10, "stress": True, "steps": 3600},
+                "Stress Demo": {"demand": "high", "noise": 0.20, "stress": True, "steps": 4200},
+            }
+            preset_values = preset_map[preset]
+            episodes = st.number_input(
+                "Benchmark episodes [count]",
+                min_value=1,
+                max_value=500,
+                value=3 if preset != "Stress Demo" else 2,
+                step=1,
+                help="Number of full simulation episodes used for aggregate benchmark metrics.",
+            )
+            detailed_required = st.checkbox("Detailed episode evaluation (required)", value=True, disabled=True)
+            detailed_episodes = st.number_input(
+                "Detailed eval episodes [count]",
+                min_value=1,
+                max_value=500,
+                value=25,
+                step=1,
+                help="Per-episode analysis run count used for trend plots and reviewer tables.",
+            )
+            run_stress = st.checkbox("Run adversarial stress test", value=True)
+            stress_noise = st.slider(
+                "Sensor noise level (stress) [ratio]",
+                min_value=0.0,
+                max_value=0.5,
+                value=float(preset_values["noise"]),
+                step=0.01,
+                help="0.10 means 10% effective sensor corruption in stress mode.",
+            )
+
+            st.markdown("### SUMO Runtime Controls")
+            simulation_steps = st.number_input(
+                "SUMO simulation steps [steps]",
+                min_value=100,
+                max_value=20000,
+                value=int(preset_values["steps"]),
+                step=100,
+                help="Total simulation horizon per episode. 3600 steps ~= 1 hour at 1-second step length.",
+            )
+            step_length = st.number_input(
+                "SUMO step length [seconds/step]",
+                min_value=0.1,
+                max_value=5.0,
+                value=1.0,
+                step=0.1,
+                help="Simulation time represented by each SUMO step.",
+            )
+            gui = st.checkbox("SUMO GUI (mandatory)", value=True, disabled=True)
+            st.caption("Algorithm is fixed to PPO (best model). Baseline comparison includes CoLight and NSTLight.")
+
+            with st.expander("Traffic Demand + Reward Weights"):
+                demand_level = st.selectbox(
+                    "Traffic demand level",
+                    options=["low", "medium", "high"],
+                    index=["low", "medium", "high"].index(preset_values["demand"]),
+                    help="Route demand profile used during simulation.",
+                )
+                waiting_w = st.number_input(
+                    "Waiting time weight [reward units / second]",
+                    value=0.1,
+                    step=0.01,
+                    format="%.4f",
+                    help="Penalty multiplier applied to cumulative waiting time.",
+                )
+                queue_w = st.number_input(
+                    "Queue length weight [reward units / vehicle]",
+                    value=0.05,
+                    step=0.01,
+                    format="%.4f",
+                    help="Penalty multiplier applied to queue length.",
+                )
+                throughput_w = st.number_input(
+                    "Throughput weight [reward units / arrived vehicle]",
+                    value=0.0,
+                    step=0.01,
+                    format="%.4f",
+                    help="Reward bonus per arrived vehicle (flow incentive).",
+                )
+                pressure_w = st.number_input(
+                    "Pressure weight [reward units / pressure score]",
+                    value=0.0002,
+                    step=0.0001,
+                    format="%.4f",
+                    help="Weight for pressure-based control signal.",
+                )
+                speed_w = st.number_input(
+                    "Speed reward weight [reward units / normalized speed]",
+                    value=0.5,
+                    step=0.1,
+                    format="%.4f",
+                    help="Bonus for higher average speed to reduce stop-and-go behavior.",
+                )
+
+            run_now = st.button("Run Observation Evaluation Suite", use_container_width=True)
+            precheck_now = st.button("Checkpoint Compatibility Precheck", use_container_width=True)
+            load_latest = st.button("Load Latest Results", use_container_width=True)
+        else:
+            st.subheader("Development Flow")
+            st.caption("Run wrapped publication profiles or execute a fully manual strict run.")
+            run_cpu_quick = st.button("Run wrapped profile: cpu_quick", use_container_width=True)
+            run_gpu_standard = st.button("Run wrapped profile: gpu_standard", use_container_width=True)
+            run_gpu_extreme = st.button("Run wrapped profile: gpu_extreme", use_container_width=True)
+
+            st.markdown("### Manual Strict Run")
+            manual_config = st.text_input("Config path", value="configs/phase1.yaml")
+            manual_checkpoint = st.text_input("Checkpoint path", value="outputs/phase1/dqn_traffic_final.zip")
+            manual_mode = st.selectbox("Mode", options=["quick", "full"], index=1)
+            manual_bench = st.number_input("Benchmark episodes", min_value=1, max_value=500, value=3, step=1)
+            manual_detail = st.number_input("Detailed episodes", min_value=1, max_value=500, value=50, step=1)
+            manual_stress = st.number_input("Stress episodes", min_value=1, max_value=500, value=3, step=1)
+            manual_latency = st.selectbox("Latency device", options=["gpu", "cpu"], index=0)
+            run_manual = st.button("Run manual strict flow", use_container_width=True)
+            load_latest = st.button("Load Latest Results", use_container_width=True)
+
+    _render_run_banner(dashboard_mode)
 
     if precheck_now:
         checkpoint_path = _resolve_checkpoint()
@@ -585,8 +646,18 @@ def main() -> None:
         ok, msg = _precheck_checkpoint_compatibility(temp_cfg, checkpoint_path)
         if ok:
             st.success(f"Compatibility precheck passed. {msg}")
+            _set_last_run(
+                dashboard_mode,
+                "Checkpoint Compatibility Precheck",
+                "Success",
+            )
         else:
             st.error(f"Compatibility precheck failed. {msg}")
+            _set_last_run(
+                dashboard_mode,
+                "Checkpoint Compatibility Precheck",
+                "Failed",
+            )
         return
 
     if run_now:
@@ -641,6 +712,11 @@ def main() -> None:
                     f"Details: {pre_msg}"
                 )
                 st.info("Use a PPO checkpoint trained with the same scenario and configuration.")
+                _set_last_run(
+                    dashboard_mode,
+                    "Observation Evaluation Suite",
+                    "Failed",
+                )
                 return
             progress.progress(0.05)
             st.success(f"Compatibility check passed. {pre_msg}")
@@ -717,12 +793,115 @@ def main() -> None:
                 stage_slot.info("Stage 3/3: Stress test skipped by user. Run complete.")
             if run_stress:
                 stage_slot.success("All stages completed successfully.")
+            _set_last_run(
+                dashboard_mode,
+                "Observation Evaluation Suite",
+                "Success",
+            )
         except Exception as exc:
             try:
                 progress.progress(1.0)
             except Exception:
                 pass
             st.error(f"Execution failed: {exc}")
+            _set_last_run(
+                dashboard_mode,
+                "Observation Evaluation Suite",
+                "Failed",
+            )
+            return
+
+    if dashboard_mode == "Development":
+        try:
+            run_profile = None
+            if run_cpu_quick:
+                run_profile = "cpu_quick"
+            elif run_gpu_standard:
+                run_profile = "gpu_standard"
+            elif run_gpu_extreme:
+                run_profile = "gpu_extreme"
+
+            if run_profile is not None:
+                progress = st.progress(0.01)
+                stage_slot = st.empty()
+                log_slot = st.empty()
+                stage_slot.info(f"Running wrapped profile `{run_profile}`...")
+                dev_logs = _run_command_stream(
+                    [
+                        sys.executable,
+                        "scripts/run_profile.py",
+                        "--profile",
+                        run_profile,
+                    ],
+                    log_slot=log_slot,
+                    progress_bar=progress,
+                    start=0.05,
+                    end=1.0,
+                    title=f"Profile {run_profile}",
+                )
+                stage_slot.success(f"Wrapped profile `{run_profile}` completed.")
+                run_now = True
+                active_config_path = DEFAULT_CONFIG
+                active_checkpoint_path = _resolve_checkpoint()
+                partial_run = "FAILED (allowed)" in dev_logs
+                _set_last_run(
+                    dashboard_mode,
+                    f"python scripts/run_profile.py --profile {run_profile}",
+                    "Success",
+                )
+
+            if run_manual:
+                progress = st.progress(0.01)
+                stage_slot = st.empty()
+                log_slot = st.empty()
+                stage_slot.info("Running manual strict publication flow...")
+                dev_logs = _run_command_stream(
+                    [
+                        sys.executable,
+                        "scripts/run_publication_suite.py",
+                        "--mode",
+                        manual_mode,
+                        "--config",
+                        manual_config,
+                        "--checkpoint",
+                        manual_checkpoint,
+                        "--benchmark-episodes",
+                        str(int(manual_bench)),
+                        "--detailed-episodes",
+                        str(int(manual_detail)),
+                        "--stress-episodes",
+                        str(int(manual_stress)),
+                        "--latency-device",
+                        manual_latency,
+                    ],
+                    log_slot=log_slot,
+                    progress_bar=progress,
+                    start=0.05,
+                    end=1.0,
+                    title="Manual strict flow",
+                )
+                stage_slot.success("Manual strict publication flow completed.")
+                run_now = True
+                active_config_path = _resolve_user_path(manual_config)
+                active_checkpoint_path = _resolve_user_path(manual_checkpoint)
+                partial_run = "FAILED (allowed)" in dev_logs
+                _set_last_run(
+                    dashboard_mode,
+                    (
+                        "python scripts/run_publication_suite.py "
+                        f"--mode {manual_mode} --config {manual_config} --checkpoint {manual_checkpoint} "
+                        f"--benchmark-episodes {int(manual_bench)} --detailed-episodes {int(manual_detail)} "
+                        f"--stress-episodes {int(manual_stress)} --latency-device {manual_latency}"
+                    ),
+                    "Success",
+                )
+        except Exception as exc:
+            st.error(f"Development flow execution failed: {exc}")
+            _set_last_run(
+                dashboard_mode,
+                "Development flow",
+                "Failed",
+            )
             return
 
     if run_logs:
@@ -734,6 +913,9 @@ def main() -> None:
     if stress_logs:
         with st.expander("Stress Test Logs", expanded=False):
             st.code(stress_logs)
+    if dev_logs:
+        with st.expander("Development Flow Logs", expanded=False):
+            st.code(dev_logs)
 
     if not (load_latest or run_now):
         st.info(
@@ -762,6 +944,8 @@ def main() -> None:
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Executive Overview", "All Metrics", "Episode Trends", "Stress Test", "Export"])
 
     with tab1:
+        if partial_run:
+            st.warning("Partial run detected: one or more stages failed. Rankings exclude invalid all-zero rows.")
         _render_overview(df, lat_df)
         _render_data_sanity_warnings(df, DEFAULT_EVAL_SUMMARY)
 

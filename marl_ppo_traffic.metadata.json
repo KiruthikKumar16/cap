@@ -1,0 +1,45 @@
+{
+  "algorithm": "PPO",
+  "checkpoint_path": "marl_ppo_traffic.zip",
+  "observation_space": "Box(-inf, inf, (192,), float32)",
+  "action_space": "Discrete(4)",
+  "config_digest": "87492a259ee36ac118241a0f1a4dc97268e014a283fc9870af07670b7e39c5ab",
+  "sumo": {
+    "config_file": "data/raw/grid_5x5.sumocfg",
+    "gui": false,
+    "net_file": "data/raw/grid_5x5.net.xml",
+    "route_file": "data/raw/grid_5x5_medium.rou.xml",
+    "simulation_steps": 3600,
+    "step_length": 1.0
+  },
+  "model": {
+    "dropout": 0.1,
+    "embedding_dim": 32,
+    "feature_dim": 12,
+    "gat_heads": 2,
+    "gnn_layers": 2,
+    "gnn_type": "gat",
+    "hidden_dim": 64,
+    "use_gnn": false
+  },
+  "reward": {
+    "anomaly_weight": 0.0,
+    "max_throughput_per_step": 20.0,
+    "normalize": true,
+    "pressure_weight": 0.0002,
+    "queue_length_weight": 0.05,
+    "speed_reward_weight": 0.5,
+    "throughput_weight": 0.0,
+    "time_penalty_per_step": 0.01,
+    "waiting_time_weight": 0.1
+  },
+  "evaluation": {
+    "seeds": [
+      42,
+      43,
+      44,
+      45,
+      46
+    ]
+  }
+}

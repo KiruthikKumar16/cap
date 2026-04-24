@@ -38,6 +38,20 @@ For full publication scaffolding (ablation + stress + generalization + latency +
 python scripts/run_publication_suite.py --mode full
 ```
 
+Runtime profiles:
+
+```bash
+python scripts/run_profile.py --profile cpu_quick
+python scripts/run_profile.py --profile gpu_standard
+python scripts/run_profile.py --profile gpu_extreme
+```
+
+GUI diagnostics (step logs + recovery analysis):
+
+```bash
+python scripts/gui_diagnostics.py --controller PPO --config configs/phase1.yaml --checkpoint outputs/phase1/dqn_traffic_final.zip --max-steps 1800
+```
+
 ## Reproducibility and Protocol
 
 - Experiment protocol: `docs/EXPERIMENT_PROTOCOL.md`

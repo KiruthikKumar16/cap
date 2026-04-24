@@ -1,0 +1,16 @@
+model,metric,mean,std,ci95,p_value
+dqn,rewards,-13403.30134734706,3.637978807091713e-12,7.166360293587988e-13,
+dqn,throughputs,3044.0,0.0,0.0,
+dqn,travel_times,85118.0,0.0,0.0,
+dqn,waiting_times,12189.643333333335,1.8189894035458565e-12,3.583180146793994e-13,
+dqn,queue_lengths,84.1111111111111,1.4210854715202004e-14,2.799359489682808e-15,
+fixed_time,rewards,-13403.301346374212,0.0,0.0,
+fixed_time,throughputs,3044.0,0.0,0.0,
+fixed_time,travel_times,85118.0,0.0,0.0,
+fixed_time,waiting_times,12189.643333333335,1.8189894035458565e-12,3.583180146793994e-13,
+fixed_time,queue_lengths,84.1111111111111,1.4210854715202004e-14,2.799359489682808e-15,
+dqn_vs_fixed_time,rewards,,,,0.0
+dqn_vs_fixed_time,throughputs,,,,
+dqn_vs_fixed_time,travel_times,,,,
+dqn_vs_fixed_time,waiting_times,,,,1.0
+dqn_vs_fixed_time,queue_lengths,,,,1.0

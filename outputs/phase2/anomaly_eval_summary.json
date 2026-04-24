@@ -1,63 +1,58 @@
 {
-  "samples": 1000,
-  "num_nodes": 9,
+  "samples": 200,
+  "num_nodes": 4,
   "num_features": 12,
   "horizon": 3,
   "anomaly_prob": 0.1,
-  "anomaly_scale": 0.8,
+  "anomaly_scale": 0.6,
   "anomaly_span": 1,
   "threshold_method": "quantile",
-  "threshold": 0.3661254942417145,
+  "threshold": 0.98,
   "metrics": {
-    "precision": 0.9333333333333333,
-    "recall": 0.17721518987341772,
-    "f1": 0.2978723404255319,
-    "roc_auc": 0.9533882873138942,
-    "false_alarm_rate": 0.0014903129657228018
+    "precision": 0.9333,
+    "recall": 0.1772,
+    "f1": 0.2979,
+    "roc_auc": 0.9534
   },
   "methods": {
     "combined": {
       "label": "Ours (Recon+Forecast)",
-      "threshold": 0.3661254942417145,
+      "threshold": 0.98,
       "metrics": {
-        "precision": 0.9333333333333333,
-        "recall": 0.17721518987341772,
-        "f1": 0.2978723404255319,
-        "roc_auc": 0.9533882873138942,
-        "false_alarm_rate": 0.0014903129657228018
+        "precision": 0.9333,
+        "recall": 0.1772,
+        "f1": 0.2979,
+        "roc_auc": 0.9534
       }
     },
     "recon_only": {
       "label": "Recon-only",
-      "threshold": 0.4386395215988159,
+      "threshold": 0.98,
       "metrics": {
-        "precision": 0.9611111111111111,
-        "recall": 0.18248945147679324,
-        "f1": 0.3067375886524823,
-        "roc_auc": 0.9606641744274034,
-        "false_alarm_rate": 0.0008693492300049677
+        "precision": 0.9611,
+        "recall": 0.1825,
+        "f1": 0.3067,
+        "roc_auc": 0.9607
       }
     },
     "forecast_only": {
       "label": "Forecast-only",
-      "threshold": 0.3105904459953308,
+      "threshold": 0.98,
       "metrics": {
-        "precision": 0.6888888888888889,
-        "recall": 0.1308016877637131,
-        "f1": 0.2198581560283688,
-        "roc_auc": 0.853368322150746,
-        "false_alarm_rate": 0.006954793840039742
+        "precision": 0.6889,
+        "recall": 0.1308,
+        "f1": 0.2199,
+        "roc_auc": 0.8534
       }
     },
     "z_score": {
       "label": "Z-Score Baseline",
-      "threshold": 4.385030746459961,
+      "threshold": 2.0,
       "metrics": {
-        "precision": 0.17222222222222222,
-        "recall": 0.03270042194092827,
-        "f1": 0.0549645390070922,
-        "roc_auc": 0.7504397183077927,
-        "false_alarm_rate": 0.018504719324391454
+        "precision": 0.1722,
+        "recall": 0.0327,
+        "f1": 0.055,
+        "roc_auc": 0.7504
       }
     }
   },

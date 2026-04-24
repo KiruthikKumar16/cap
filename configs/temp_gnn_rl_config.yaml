@@ -20,7 +20,7 @@ model:
   gnn_layers: 2
   gnn_type: gat
   hidden_dim: 64
-  use_gnn: false
+  use_gnn: true
 output:
   best_model_dir: outputs/phase1/best_models
   checkpoint_dir: outputs/phase1/checkpoints

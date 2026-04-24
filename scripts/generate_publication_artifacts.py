@@ -150,6 +150,12 @@ def _write_summary(
     stress_df: pd.DataFrame,
     mode: str,
 ) -> None:
+    def _safe_table(df: pd.DataFrame) -> str:
+        try:
+            return df.to_markdown(index=False)
+        except Exception:
+            return df.to_string(index=False)
+
     lines: List[str] = []
     lines.append("# Main Results Summary")
     lines.append("")
@@ -158,7 +164,7 @@ def _write_summary(
     lines.append("")
     lines.append("## Benchmark Table")
     lines.append("")
-    lines.append(benchmark_df.to_markdown(index=False) if not benchmark_df.empty else "No benchmark data available.")
+    lines.append(_safe_table(benchmark_df) if not benchmark_df.empty else "No benchmark data available.")
     lines.append("")
     lines.append("## Statistical Reporting")
     lines.append("")
@@ -169,7 +175,7 @@ def _write_summary(
     lines.append("")
     lines.append("## Fairness Checklist")
     lines.append("")
-    lines.append(fairness_df.to_markdown(index=False))
+    lines.append(_safe_table(fairness_df))
     lines.append("")
     lines.append("## Hard-Nosed Failure Reporting")
     lines.append("")

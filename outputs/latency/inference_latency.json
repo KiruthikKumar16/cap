@@ -1,38 +1,38 @@
 [
     {
         "model": "MAPPO + ST-GNN (Ours)",
-        "device": "CUDA",
+        "device": "CPU",
         "n_runs": 200,
-        "mean_ms": 0.2794,
-        "std_ms": 0.1381,
-        "p50_ms": 0.2231,
-        "p95_ms": 0.5301,
-        "p99_ms": 0.7802,
-        "min_ms": 0.1657,
-        "max_ms": 1.0936
+        "mean_ms": 0.4717,
+        "std_ms": 0.0875,
+        "p50_ms": 0.4487,
+        "p95_ms": 0.6203,
+        "p99_ms": 0.7697,
+        "min_ms": 0.3436,
+        "max_ms": 0.9707
     },
     {
         "model": "NSTLight (2025 Baseline)",
-        "device": "CUDA",
+        "device": "CPU",
         "n_runs": 200,
-        "mean_ms": 0.1491,
-        "std_ms": 0.0409,
-        "p50_ms": 0.1396,
-        "p95_ms": 0.2593,
-        "p99_ms": 0.2888,
-        "min_ms": 0.0976,
-        "max_ms": 0.3086
+        "mean_ms": 0.2885,
+        "std_ms": 0.0625,
+        "p50_ms": 0.2792,
+        "p95_ms": 0.4084,
+        "p99_ms": 0.4904,
+        "min_ms": 0.187,
+        "max_ms": 0.6058
     },
     {
         "model": "Fixed-Time Controller",
         "device": "CPU",
         "n_runs": 200,
-        "mean_ms": 0.008,
-        "std_ms": 0.0013,
-        "p50_ms": 0.0078,
-        "p95_ms": 0.0084,
-        "p99_ms": 0.0088,
-        "min_ms": 0.0075,
-        "max_ms": 0.0253
+        "mean_ms": 0.0119,
+        "std_ms": 0.0042,
+        "p50_ms": 0.0113,
+        "p95_ms": 0.0118,
+        "p99_ms": 0.0339,
+        "min_ms": 0.0108,
+        "max_ms": 0.0614
     }
 ]

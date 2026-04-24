@@ -1,0 +1,4 @@
+criterion,status,evidence
+Same episode budget,PASS,episodes=100
+Same evaluation horizon,PASS,Single phase1 config used
+Same observation/reward interface,PASS,Unified evaluation entrypoints

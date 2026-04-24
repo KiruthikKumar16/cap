@@ -2,9 +2,9 @@
 
 ## Current Limitations
 
-- Performance depends on checkpoint/config compatibility (now guarded by metadata-based validation in training/evaluation/dashboard prechecks).
-- Some stress and ablation runs are still template-driven and require full execution to finalize publication claims.
-- Cross-city and topology-transfer evidence is still limited to available scenarios.
+- Metadata compatibility is now enforced, but legacy checkpoints without metadata files require retraining or metadata backfill.
+- Full publication claims still depend on executing all ablation/stress/generalization/scalability experiments and filling generated result tables with measured values.
+- Cross-city and topology-transfer evidence is still limited to currently available scenarios and maps.
 
 ## Hard-Nosed Failure Requirements
 
@@ -15,7 +15,7 @@ Publication version must include:
 
 ## Practical Failure Modes to Report
 
-- Observation-space mismatch between checkpoint and environment.
 - Performance drop under severe sensor corruption.
 - Stability loss under sudden demand shocks.
 - Communication overhead growth in larger CTDE setups.
+- Generalization degradation on unseen topology or map distribution shift.

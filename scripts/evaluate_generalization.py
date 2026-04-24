@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 import json
 import copy
+import argparse
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
@@ -17,12 +18,12 @@ def _drop_pct(source: float, target: float, lower_is_better: bool) -> float:
     return ((source - target) / abs(source)) * 100.0
 
 
-def map_generalization():
+def map_generalization(config_path: str, checkpoint: str, episodes: int):
     print("="*60)
     print("Phase 4: SOTA Zero-Shot Routing Generalization Matrix")
     print("="*60)
     
-    config = load_config(project_root / "configs" / "phase1.yaml")
+    config = load_config(project_root / config_path)
     
     # Formal Bengaluru zero-shot protocol: Map A (train distribution) vs Map B (Bengaluru OSM).
     geometries = {
@@ -30,9 +31,12 @@ def map_generalization():
         "Map_B_Large_Grid_10x10": "data/raw/grid_10x10",
     }
     
-    # Hardcode evaluation model PPO
-    config["output"] = {"final_model_path": str(project_root / "marl_ppo_traffic.zip")}
-    config["evaluation"] = {"num_episodes": 1, "adversarial_accidents": False, "sensor_noise": False}
+    # Use user-provided checkpoint/config.
+    cp_path = Path(checkpoint)
+    if not cp_path.is_absolute():
+        cp_path = project_root / cp_path
+    config["output"] = {"final_model_path": str(cp_path)}
+    config["evaluation"] = {"num_episodes": episodes, "adversarial_accidents": False, "sensor_noise": False}
     
     results = {}
     
@@ -88,4 +92,9 @@ def map_generalization():
     print("="*60)
 
 if __name__ == "__main__":
-    map_generalization()
+    parser = argparse.ArgumentParser(description="Map-transfer generalization benchmark")
+    parser.add_argument("--config", type=str, default="configs/phase1.yaml")
+    parser.add_argument("--checkpoint", type=str, default="outputs/phase1/dqn_traffic_final.zip")
+    parser.add_argument("--episodes", type=int, default=1)
+    args = parser.parse_args()
+    map_generalization(args.config, args.checkpoint, args.episodes)
