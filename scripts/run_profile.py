@@ -80,14 +80,11 @@ def _write_profile_config(base_config_path: Path, profile_name: str) -> Path:
 
 def _resolve_checkpoint_for_profile(profile_cfg: Path, requested_checkpoint: str) -> str:
     from src.phase1.marl_traffic_env import MARLTrafficEnv
-    from src.utils.model_metadata import load_metadata_for_checkpoint, validate_metadata
-
-    req = Path(requested_checkpoint)
-    if req.exists():
-        return requested_checkpoint
-    req_abs = (ROOT / requested_checkpoint).resolve()
-    if req_abs.exists():
-        return str(req_abs.relative_to(ROOT))
+    from src.utils.model_metadata import (
+        is_digest_only_mismatch,
+        load_metadata_for_checkpoint,
+        validate_metadata,
+    )
 
     cfg = yaml.safe_load(profile_cfg.read_text(encoding="utf-8"))
     env = MARLTrafficEnv(cfg)
@@ -95,11 +92,20 @@ def _resolve_checkpoint_for_profile(profile_cfg: Path, requested_checkpoint: str
     env_act = str(env.action_space)
     env.close()
 
-    candidates = [
-        ROOT / "outputs/phase1/dqn_traffic_final.zip",
+    requested_candidates = []
+    req = Path(requested_checkpoint)
+    if req.exists():
+        requested_candidates.append(req.resolve())
+    req_abs = (ROOT / requested_checkpoint).resolve()
+    if req_abs.exists() and req_abs not in requested_candidates:
+        requested_candidates.append(req_abs)
+
+    fallback_candidates = [
         ROOT / "marl_ppo_traffic.zip",
+        ROOT / "outputs/phase1/dqn_traffic_final.zip",
         ROOT / "best_model_stage_2.zip",
     ]
+    candidates = requested_candidates + [c for c in fallback_candidates if c not in requested_candidates]
     existing = [c for c in candidates if c.exists()]
     if not existing:
         return requested_checkpoint
@@ -117,16 +123,11 @@ def _resolve_checkpoint_for_profile(profile_cfg: Path, requested_checkpoint: str
         )
         if mismatch is None:
             return str(c.relative_to(ROOT))
-        # For profile runs, allow config-digest mismatch when algorithm and spaces match.
-        if "Config digest mismatch" in mismatch:
-            algo_ok = str(meta.get("algorithm", "")).upper() == "PPO"
-            obs_ok = str(meta.get("observation_space", "")) == env_obs
-            act_ok = str(meta.get("action_space", "")) == env_act
-            if algo_ok and obs_ok and act_ok:
-                return str(c.relative_to(ROOT))
+        if is_digest_only_mismatch(mismatch, meta, "PPO", env_obs, env_act):
+            return str(c.relative_to(ROOT))
 
     # Fallback to first existing checkpoint if no compatible metadata match.
-    # Prefer locally trained PPO checkpoint as fallback.
+    # Prefer the locally trained PPO checkpoint with matching workspace conventions.
     for preferred in ["marl_ppo_traffic.zip", "outputs/phase1/dqn_traffic_final.zip", "best_model_stage_2.zip"]:
         p = ROOT / preferred
         if p.exists():

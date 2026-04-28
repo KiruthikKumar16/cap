@@ -3,7 +3,7 @@
   "checkpoint_path": "marl_ppo_traffic.zip",
   "observation_space": "Box(-inf, inf, (192,), float32)",
   "action_space": "Discrete(4)",
-  "config_digest": "87492a259ee36ac118241a0f1a4dc97268e014a283fc9870af07670b7e39c5ab",
+  "config_digest": "c50f41d08a2a9c8199845ebb3c923baff69d0212329ee549d7ae6a94b44615a9",
   "sumo": {
     "config_file": "data/raw/grid_5x5.sumocfg",
     "gui": false,
@@ -20,7 +20,7 @@
     "gnn_layers": 2,
     "gnn_type": "gat",
     "hidden_dim": 64,
-    "use_gnn": false
+    "use_gnn": true
   },
   "reward": {
     "anomaly_weight": 0.0,

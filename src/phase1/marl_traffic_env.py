@@ -61,14 +61,17 @@ class MARLTrafficEnv(VecEnv):
             net_file=sumo_cfg["net_file"],
             route_file=sumo_cfg["route_file"],
             model=model,
+            config_file=sumo_cfg.get("config_file"),
             reward_calculator=reward_calculator,
             step_length=sumo_cfg.get("step_length", 1.0),
             max_steps=sumo_cfg.get("simulation_steps", 3600),
             use_gui=sumo_cfg.get("gui", False),
             traci_port=sumo_cfg.get("traci_port", 8813),
+            sumo_binary=sumo_cfg.get("sumo_binary"),
             time_penalty_per_step=reward_cfg.get("time_penalty_per_step", 0.0),
             st_gnn_horizon=config.get("data", {}).get("window", {}).get("history", 3),
-            enable_anomaly_awareness=config.get("phase3", {}).get("enable_anomaly_awareness", False)
+            enable_anomaly_awareness=config.get("phase3", {}).get("enable_anomaly_awareness", False),
+            config=config,
         )
         
         num_agents = self.env.num_agents

@@ -638,6 +638,7 @@ class SUMOTrafficEnv(gym.Env):
                 # Step-level metrics
                 info["step_total_waiting_time"] = self._get_waiting_time_step()
                 info["step_total_queue_length"] = self._get_queue_length_step()
+                info["step_travel_time"] = self._travel_time_step
                 info["step_mean_speed"] = self._get_mean_speed()
                 info["step_stopped_vehicles"] = self._get_stopped_vehicles_count()
                 info["step_arrived_vehicles"] = traci.simulation.getArrivedNumber()
@@ -645,6 +646,7 @@ class SUMOTrafficEnv(gym.Env):
                 # Update episode-level metrics
                 self.episode_metrics["episode_total_waiting_time"] += info["step_total_waiting_time"]
                 self.episode_metrics["episode_total_queue_length"] += info["step_total_queue_length"]
+                self.episode_metrics["episode_total_travel_time"] += info["step_travel_time"]
                 self.episode_metrics["episode_stopped_vehicles"] += info["step_stopped_vehicles"]
                 self.episode_metrics["episode_arrived_vehicles"] += traci.simulation.getArrivedNumber()
                 self.episode_metrics["episode_steps"] += 1
@@ -657,6 +659,10 @@ class SUMOTrafficEnv(gym.Env):
                     total_steps = max(1, self.episode_metrics["episode_steps"])
                     info["episode_avg_waiting_time"] = self.episode_metrics["episode_total_waiting_time"] / total_steps
                     info["episode_avg_queue_length"] = self.episode_metrics["episode_total_queue_length"] / total_steps
+                    info["episode_total_travel_time"] = self.episode_metrics["episode_total_travel_time"]
+                    info["episode_avg_travel_time"] = self.episode_metrics["episode_total_travel_time"] / max(
+                        1, self.episode_metrics["episode_arrived_vehicles"]
+                    )
                     info["episode_throughput"] = self.episode_metrics["episode_arrived_vehicles"]
                     info["episode_avg_stopped_vehicles"] = self.episode_metrics["episode_stopped_vehicles"] / total_steps
 

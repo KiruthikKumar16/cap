@@ -16,6 +16,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 DEFAULT_CONFIG = ROOT / "configs" / "phase1.yaml"
 DEFAULT_RESULTS = ROOT / "outputs" / "benchmark_results.json"
+DEFAULT_MEDIA = ROOT / "outputs" / "dashboard_media.json"
 DEFAULT_EVAL_SUMMARY = ROOT / "outputs" / "phase1" / "evaluation_summary.json"
 DEFAULT_STRESS_SUMMARY = ROOT / "outputs" / "phase3" / "adversarial_benchmark.json"
 RUNS_DIR = ROOT / "outputs" / "dashboard_runs"
@@ -31,6 +32,8 @@ METRICS_META: Dict[str, Dict[str, Any]] = {
     "mean_waiting_time": {"label": "Waiting Time", "higher_is_better": False, "unit": "s"},
     "mean_queue_length": {"label": "Queue Length", "higher_is_better": False, "unit": "vehicles"},
 }
+
+FEATURED_MODELS = ["CoLight", "NSTLight", "MAPPO-STGNN"]
 
 
 def _safe_rel(path: Path) -> str:
@@ -81,6 +84,157 @@ def _run_command(cmd: List[str]) -> str:
     return output.strip()
 
 
+def _gpu_snapshot() -> Dict[str, Any]:
+    snapshot: Dict[str, Any] = {"cuda_available": False}
+    try:
+        import torch
+
+        snapshot["cuda_available"] = bool(torch.cuda.is_available())
+        if snapshot["cuda_available"]:
+            snapshot["device_count"] = int(torch.cuda.device_count())
+            snapshot["device_name"] = torch.cuda.get_device_name(0)
+            try:
+                free_mem, total_mem = torch.cuda.mem_get_info(0)
+                snapshot["torch_memory_used_mb"] = round((total_mem - free_mem) / (1024 * 1024), 1)
+                snapshot["torch_memory_total_mb"] = round(total_mem / (1024 * 1024), 1)
+            except Exception:
+                pass
+    except Exception as exc:
+        snapshot["torch_error"] = str(exc)
+
+    try:
+        proc = subprocess.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if proc.returncode == 0 and proc.stdout.strip():
+            first = proc.stdout.strip().splitlines()[0]
+            parts = [p.strip() for p in first.split(",")]
+            if len(parts) >= 5:
+                snapshot["device_name"] = parts[0]
+                snapshot["utilization_pct"] = parts[1]
+                snapshot["memory_used_mb"] = parts[2]
+                snapshot["memory_total_mb"] = parts[3]
+                snapshot["temperature_c"] = parts[4]
+    except Exception:
+        pass
+    return snapshot
+
+
+def _render_gpu_status(slot) -> None:
+    gpu = _gpu_snapshot()
+    with slot.container():
+        st.subheader("GPU Runtime")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("CUDA", "Available" if gpu.get("cuda_available") else "Unavailable")
+        c2.metric("GPU Util", f"{gpu.get('utilization_pct', 'N/A')}%")
+        mem_used = gpu.get("memory_used_mb", gpu.get("torch_memory_used_mb", "N/A"))
+        mem_total = gpu.get("memory_total_mb", gpu.get("torch_memory_total_mb", "N/A"))
+        c3.metric("Memory", f"{mem_used} / {mem_total} MB")
+        c4.metric("Temp", f"{gpu.get('temperature_c', 'N/A')} C")
+        st.caption(gpu.get("device_name", "GPU not detected"))
+
+
+def _model_display_label(model_name: str) -> str:
+    if model_name == "MAPPO-STGNN":
+        return "MAPPO-STGNN"
+    return model_name
+
+
+def _render_model_showcase(raw: Dict[str, Any], featured_models: List[str] = FEATURED_MODELS) -> None:
+    media = raw.get("dashboard_media", {}) if isinstance(raw, dict) else {}
+    metrics_blocks = {k: v for k, v in raw.items() if isinstance(v, dict)} if isinstance(raw, dict) else {}
+    st.subheader("Evaluation Playback")
+    cols = st.columns(len(featured_models))
+    for col, model_name in zip(cols, featured_models):
+        metric_block = metrics_blocks.get(model_name, {})
+        media_block = media.get(model_name, {}) if isinstance(media, dict) else {}
+        with col:
+            st.markdown(f"**{_model_display_label(model_name)}**")
+            gif_path = media_block.get("gif_path")
+            poster_path = media_block.get("poster_path")
+            if gif_path and Path(gif_path).exists():
+                st.image(str(Path(gif_path).resolve()))
+            elif poster_path and Path(poster_path).exists():
+                st.image(str(Path(poster_path).resolve()))
+                st.caption("GIF pending")
+            else:
+                st.info("Run pending")
+
+            if metric_block and "mean_reward" in metric_block:
+                st.metric("Reward", f"{metric_block.get('mean_reward', 0.0):.2f}")
+                st.metric("Waiting", f"{metric_block.get('mean_waiting_time', 0.0):.2f} s")
+                st.metric("Queue", f"{metric_block.get('mean_queue_length', 0.0):.2f}")
+
+
+def _init_live_model_panels(featured_models: List[str] = FEATURED_MODELS) -> Dict[str, Dict[str, Any]]:
+    st.subheader("Live Evaluation Panels")
+    cols = st.columns(len(featured_models))
+    panels: Dict[str, Dict[str, Any]] = {}
+    for col, model_name in zip(cols, featured_models):
+        with col:
+            st.markdown(f"**{_model_display_label(model_name)}**")
+            status_slot = st.empty()
+            image_slot = st.empty()
+            meta_slot = st.empty()
+            status_slot.info("Queued")
+            image_slot.info("Waiting for rollout")
+            meta_slot.caption("No artifact yet")
+            panels[model_name] = {
+                "status": status_slot,
+                "image": image_slot,
+                "meta": meta_slot,
+            }
+    return panels
+
+
+def _update_live_model_panel(
+    panels: Dict[str, Dict[str, Any]],
+    model_name: str,
+    *,
+    status: str,
+    gif_path: str = "",
+) -> None:
+    panel = panels.get(model_name)
+    if not panel:
+        return
+    if status == "running":
+        panel["status"].warning("Running")
+        panel["meta"].caption("Evaluation in progress")
+    elif status == "done":
+        panel["status"].success("Complete")
+        if gif_path and Path(gif_path).exists():
+            panel["image"].image(str(Path(gif_path).resolve()))
+            panel["meta"].caption(Path(gif_path).name)
+        else:
+            panel["image"].info("GIF artifact not found")
+    else:
+        panel["status"].info(status)
+
+
+def _parse_benchmark_progress_line(
+    line: str,
+    panels: Dict[str, Dict[str, Any]],
+) -> None:
+    if line.startswith("[MODEL_START] "):
+        model_name = line.split("]", 1)[1].strip()
+        _update_live_model_panel(panels, model_name, status="running")
+    elif line.startswith("[VISUAL_READY] "):
+        payload = line.split("]", 1)[1].strip()
+        try:
+            model_name, gif_path = payload.split(" ", 1)
+        except ValueError:
+            return
+        _update_live_model_panel(panels, model_name, status="done", gif_path=gif_path.strip())
+
+
 def _run_command_stream(
     cmd: List[str],
     log_slot,
@@ -88,6 +242,8 @@ def _run_command_stream(
     start: float,
     end: float,
     title: str,
+    line_callback=None,
+    gpu_slot=None,
 ) -> str:
     proc = subprocess.Popen(
         cmd,
@@ -105,6 +261,16 @@ def _run_command_stream(
         lines.append(line.rstrip())
         tail = "\n".join(lines[-120:])
         log_slot.code(tail if tail else f"[{title}] running...")
+        if line_callback is not None:
+            try:
+                line_callback(line.rstrip())
+            except Exception:
+                pass
+        if gpu_slot is not None:
+            try:
+                _render_gpu_status(gpu_slot)
+            except Exception:
+                pass
         progress_bar.progress(min(end, start + (end - start) * 0.85))
     return_code = proc.wait()
     progress_bar.progress(end)
@@ -121,9 +287,21 @@ def _resolve_checkpoint() -> Path:
         ROOT / "marl_ppo_traffic.zip",
         ROOT / "outputs/phase1/dqn_traffic_final.zip",
     ]
-    for c in candidates:
-        if c.exists():
+    existing = [c for c in candidates if c.exists()]
+    if not existing:
+        return Path()
+
+    for c in existing:
+        metadata_path = c.with_suffix("").with_suffix(".metadata.json")
+        if metadata_path.exists():
             return c
+
+    for c in existing:
+        if c.name == "marl_ppo_traffic.zip":
+            return c
+
+    for c in existing:
+        return c
     return Path()
 
 
@@ -182,7 +360,11 @@ def _run_stress_eval(config: Path, checkpoint: str, episodes: int, sensor_noise_
 def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[bool, str]:
     try:
         from src.phase1.marl_traffic_env import MARLTrafficEnv
-        from src.utils.model_metadata import load_metadata_for_checkpoint, validate_metadata
+        from src.utils.model_metadata import (
+            is_digest_only_mismatch,
+            load_metadata_for_checkpoint,
+            validate_metadata,
+        )
     except Exception as exc:
         return False, (
             f"Precheck import failed: {exc}. "
@@ -210,6 +392,12 @@ def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[
         )
         env.close()
         if mismatch:
+            if is_digest_only_mismatch(mismatch, metadata, "PPO", env_obs, env_act):
+                return (
+                    True,
+                    "Compatible with warning: checkpoint config digest differs, "
+                    "but algorithm and spaces match the selected evaluation setup.",
+                )
             return False, mismatch
         return True, f"Compatible. obs={env_obs}, action={env_act}"
     except Exception as exc:
@@ -248,12 +436,38 @@ def _latency_df(raw: Dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame()
 
 
-def _score_models(df: pd.DataFrame) -> pd.DataFrame:
+def _action_diagnostics_df(raw: Dict[str, Any]) -> pd.DataFrame:
+    payload = raw.get("action_diagnostics", {})
+    if not isinstance(payload, dict) or not payload:
+        return pd.DataFrame()
+    rows: List[Dict[str, Any]] = []
+    for model_name, diag in payload.items():
+        if not isinstance(diag, dict):
+            continue
+        rows.append(
+            {
+                "model": model_name,
+                "trace_steps": diag.get("trace_steps"),
+                "unique_action_vectors": diag.get("unique_action_vectors"),
+                "dominant_vector_fraction": diag.get("dominant_vector_fraction"),
+                "vector_change_rate": diag.get("vector_change_rate"),
+                "mean_unique_phases_per_step": diag.get("mean_unique_phases_per_step"),
+                "weights_loaded": diag.get("weights_loaded"),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _score_models(df: pd.DataFrame) -> Tuple[pd.DataFrame, List[str]]:
     scored = df.copy()
     total = pd.Series(0.0, index=scored.index)
+    informative_metrics: List[str] = []
     for metric, meta in METRICS_META.items():
         values = scored[metric].astype(float)
         span = values.max() - values.min()
+        if span <= 1e-12:
+            continue
+        informative_metrics.append(metric)
         if span == 0:
             norm = pd.Series(0.5, index=scored.index)
         else:
@@ -263,8 +477,11 @@ def _score_models(df: pd.DataFrame) -> pd.DataFrame:
                 norm = (values.max() - values) / span
         scored[f"{metric}_norm"] = norm
         total += norm
-    scored["overall_score"] = total / len(METRICS_META)
-    return scored.sort_values("overall_score", ascending=False)
+    if informative_metrics:
+        scored["overall_score"] = total / len(informative_metrics)
+    else:
+        scored["overall_score"] = 0.0
+    return scored.sort_values("overall_score", ascending=False), informative_metrics
 
 
 def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
@@ -272,12 +489,15 @@ def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
     if valid_df.empty:
         st.warning("No valid model rows available for executive ranking. Run quality may be incomplete.")
         return
-    scored = _score_models(valid_df)
+    scored, informative_metrics = _score_models(valid_df)
     leader = scored.iloc[0]
     c1, c2, c3 = st.columns(3)
     c1.metric("Best Overall Model", leader["model"])
     c2.metric("Top Overall Score", f"{leader['overall_score']:.3f}")
     c3.metric("Models Compared", int(valid_df.shape[0]))
+    if len(informative_metrics) < len(METRICS_META):
+        excluded = [METRICS_META[m]["label"] for m in METRICS_META if m not in informative_metrics]
+        st.info("Overall ranking excludes non-informative metrics: " + ", ".join(excluded))
     k1, k2, k3, k4, k5 = st.columns(5)
     for i, metric in enumerate(METRICS_META.keys()):
         best_row = valid_df.sort_values(metric, ascending=not METRICS_META[metric]["higher_is_better"]).iloc[0]
@@ -328,6 +548,56 @@ def _render_metrics(df: pd.DataFrame) -> None:
     if selected_models and selected_metrics:
         pivot_df = df[df["model"].isin(selected_models)][["model"] + selected_metrics].set_index("model")
         st.line_chart(pivot_df.T)
+
+
+def _render_action_diagnostics(raw: Dict[str, Any]) -> None:
+    diag_df = _action_diagnostics_df(raw)
+    if diag_df.empty:
+        st.info("Action diagnostics not available yet.")
+        return
+
+    st.subheader("Action Diagnostics")
+    st.dataframe(diag_df, use_container_width=True)
+
+    warnings: List[str] = []
+    missing_weights = diag_df[diag_df["weights_loaded"] == False]["model"].tolist()
+    if missing_weights:
+        warnings.append("These learned baselines are running without trained weights: " + ", ".join(missing_weights))
+    highly_static = diag_df[
+        diag_df["dominant_vector_fraction"].fillna(0) >= 0.95
+    ]["model"].tolist()
+    if highly_static:
+        warnings.append("These controllers are nearly constant over the sampled trace: " + ", ".join(highly_static))
+
+    similarity = raw.get("action_similarity", {})
+    if isinstance(similarity, dict):
+        for ref_name, mapping in similarity.items():
+            if not isinstance(mapping, dict):
+                continue
+            same_as_ref = [
+                model_name
+                for model_name, score in mapping.items()
+                if model_name != ref_name and score is not None and score >= 0.95
+            ]
+            if same_as_ref:
+                warnings.append(
+                    f"Action trace is almost identical to {ref_name} for: " + ", ".join(same_as_ref)
+                )
+
+    if warnings:
+        st.warning("Controller behavior warnings:\n- " + "\n- ".join(warnings))
+
+    similarity = raw.get("action_similarity", {})
+    if isinstance(similarity, dict) and similarity:
+        st.subheader("Action Similarity")
+        sim_rows: List[Dict[str, Any]] = []
+        for ref_name, mapping in similarity.items():
+            if not isinstance(mapping, dict):
+                continue
+            for model_name, score in mapping.items():
+                sim_rows.append({"reference": ref_name, "model": model_name, "same_step_fraction": score})
+        if sim_rows:
+            st.dataframe(pd.DataFrame(sim_rows), use_container_width=True)
 
 
 def _render_episode_analysis(eval_summary_path: Path) -> None:
@@ -447,6 +717,12 @@ def _build_demo_report(
     checkpoint_path: Path,
     run_stress: bool,
 ) -> str:
+    def _table_text(table_df: pd.DataFrame) -> str:
+        try:
+            return table_df.to_markdown(index=False)
+        except Exception:
+            return table_df.to_string(index=False)
+
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [
         "# Adaptive Traffic Control Evaluation Report",
@@ -458,11 +734,11 @@ def _build_demo_report(
         "",
         "## Benchmark Metrics",
         "",
-        df.to_markdown(index=False),
+        _table_text(df),
         "",
     ]
     if not lat_df.empty:
-        lines.extend(["## Latency Metrics", "", lat_df.to_markdown(index=False), ""])
+        lines.extend(["## Latency Metrics", "", _table_text(lat_df), ""])
     return "\n".join(lines)
 
 
@@ -557,8 +833,8 @@ def main() -> None:
                 step=0.1,
                 help="Simulation time represented by each SUMO step.",
             )
-            gui = st.checkbox("SUMO GUI (mandatory)", value=True, disabled=True)
-            st.caption("Algorithm is fixed to PPO (best model). Baseline comparison includes CoLight and NSTLight.")
+            gui = st.checkbox("External SUMO GUI popup", value=False)
+            st.caption("Algorithm is fixed to PPO (best model). Baseline comparison includes CoLight and NSTLight. Dashboard playback is rendered in-page from evaluation rollouts.")
 
             with st.expander("Traffic Demand + Reward Weights"):
                 demand_level = st.selectbox(
@@ -625,6 +901,9 @@ def main() -> None:
             load_latest = st.button("Load Latest Results", use_container_width=True)
 
     _render_run_banner(dashboard_mode)
+    gpu_slot = st.empty()
+    _render_gpu_status(gpu_slot)
+    live_panels = _init_live_model_panels() if dashboard_mode == "Observation" else {}
 
     if precheck_now:
         checkpoint_path = _resolve_checkpoint()
@@ -662,6 +941,11 @@ def main() -> None:
 
     if run_now:
         try:
+            _set_last_run(
+                dashboard_mode,
+                "Observation Evaluation Suite",
+                "Running",
+            )
             progress = st.progress(0.01)
             stage_slot = st.empty()
             stage_slot.info("Stage 0/3: Running compatibility precheck...")
@@ -739,6 +1023,8 @@ def main() -> None:
                 start=0.05,
                 end=0.35,
                 title="Benchmark",
+                line_callback=lambda line: _parse_benchmark_progress_line(line, live_panels),
+                gpu_slot=gpu_slot,
             )
             st.success(f"Benchmark completed with config `{_safe_rel(temp_cfg)}`.")
 
@@ -763,6 +1049,7 @@ def main() -> None:
                 start=0.35,
                 end=0.75,
                 title="Detailed Evaluation",
+                gpu_slot=gpu_slot,
             )
             st.success("Detailed episode evaluation completed.")
 
@@ -786,6 +1073,7 @@ def main() -> None:
                     start=0.75,
                     end=1.0,
                     title="Stress Test",
+                    gpu_slot=gpu_slot,
                 )
                 st.success("Adversarial stress test completed.")
             else:
@@ -822,6 +1110,11 @@ def main() -> None:
                 run_profile = "gpu_extreme"
 
             if run_profile is not None:
+                _set_last_run(
+                    dashboard_mode,
+                    f"python scripts/run_profile.py --profile {run_profile}",
+                    "Running",
+                )
                 progress = st.progress(0.01)
                 stage_slot = st.empty()
                 log_slot = st.empty()
@@ -838,6 +1131,7 @@ def main() -> None:
                     start=0.05,
                     end=1.0,
                     title=f"Profile {run_profile}",
+                    gpu_slot=gpu_slot,
                 )
                 stage_slot.success(f"Wrapped profile `{run_profile}` completed.")
                 run_now = True
@@ -851,6 +1145,16 @@ def main() -> None:
                 )
 
             if run_manual:
+                _set_last_run(
+                    dashboard_mode,
+                    (
+                        "python scripts/run_publication_suite.py "
+                        f"--mode {manual_mode} --config {manual_config} --checkpoint {manual_checkpoint} "
+                        f"--benchmark-episodes {int(manual_bench)} --detailed-episodes {int(manual_detail)} "
+                        f"--stress-episodes {int(manual_stress)} --latency-device {manual_latency}"
+                    ),
+                    "Running",
+                )
                 progress = st.progress(0.01)
                 stage_slot = st.empty()
                 log_slot = st.empty()
@@ -879,6 +1183,7 @@ def main() -> None:
                     start=0.05,
                     end=1.0,
                     title="Manual strict flow",
+                    gpu_slot=gpu_slot,
                 )
                 stage_slot.success("Manual strict publication flow completed.")
                 run_now = True
@@ -934,6 +1239,11 @@ def main() -> None:
 
     with DEFAULT_RESULTS.open("r", encoding="utf-8") as f:
         raw = json.load(f)
+    if "dashboard_media" not in raw and DEFAULT_MEDIA.exists():
+        try:
+            raw["dashboard_media"] = json.loads(DEFAULT_MEDIA.read_text(encoding="utf-8"))
+        except Exception:
+            pass
 
     df = _flatten_results(raw)
     if df.empty:
@@ -941,6 +1251,7 @@ def main() -> None:
         return
 
     lat_df = _latency_df(raw)
+    _render_model_showcase(raw)
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["Executive Overview", "All Metrics", "Episode Trends", "Stress Test", "Export"])
 
     with tab1:
@@ -951,6 +1262,7 @@ def main() -> None:
 
     with tab2:
         _render_metrics(df)
+        _render_action_diagnostics(raw)
 
     with tab3:
         _render_episode_analysis(DEFAULT_EVAL_SUMMARY)
@@ -987,4 +1299,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

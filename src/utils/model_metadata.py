@@ -88,3 +88,20 @@ def validate_metadata(
             "Checkpoint was produced with a different configuration snapshot."
         )
     return None
+
+
+def is_digest_only_mismatch(
+    mismatch: Optional[str],
+    metadata: Optional[Dict[str, Any]],
+    expected_algorithm: str,
+    observation_space_repr: str,
+    action_space_repr: str,
+) -> bool:
+    if not mismatch or not metadata:
+        return False
+    if "Config digest mismatch" not in mismatch:
+        return False
+    algo_ok = str(metadata.get("algorithm", "")).upper() == expected_algorithm.upper()
+    obs_ok = str(metadata.get("observation_space", "")) == observation_space_repr
+    act_ok = str(metadata.get("action_space", "")) == action_space_repr
+    return algo_ok and obs_ok and act_ok

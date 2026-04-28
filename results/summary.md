@@ -5,15 +5,14 @@
 
 ## Benchmark Table
 
-| model       |   mean_reward |   mean_throughput_veh_per_h |   mean_travel_time_s |   mean_waiting_time_s |   mean_queue_length_vehicles |
-|:------------|--------------:|----------------------------:|---------------------:|----------------------:|-----------------------------:|
-| MAPPO-STGNN |      -4953.7  |                        7488 |            4.687e+06 |                185548 |                      1170.43 |
-| MaxPressure |      -4992.93 |                        7488 |          468.7       |                185548 |                      1170.43 |
-| PressLight  |      -5072.66 |                        7488 |          468.7       |                185548 |                      1170.43 |
-| CoLight     |      -5020.26 |                        7488 |          468.7       |                185548 |                      1170.43 |
-| NSTLight    |      -4985.96 |                        7488 |          468.7       |                185548 |                      1170.43 |
-| FixedTime   |      -5174.73 |                        7488 |            4.687e+06 |                185548 |                      1170.43 |
-| Random      |      -3792.92 |                           0 |            0         |                     0 |                         0    |
+      model  mean_reward  mean_throughput_veh_per_h  mean_travel_time_s  mean_waiting_time_s  mean_queue_length_vehicles
+MAPPO-STGNN  -939.229770                     2108.0           50.720114         44721.148333                  316.338333
+MaxPressure  -953.907471                     2108.0           50.720114         44721.148333                  316.338333
+ PressLight  -995.012024                     2108.0           50.720114         44721.148333                  316.338333
+    CoLight  -930.293579                     2108.0           50.720114         44721.148333                  316.338333
+   NSTLight  -971.757385                     2108.0           50.720114         44721.148333                  316.338333
+  FixedTime  -975.661658                     2108.0           50.720114         44721.148333                  316.338333
+     Random  -941.172385                        0.0            0.000000             0.000000                    0.000000
 
 ## Statistical Reporting
 
@@ -21,16 +20,15 @@
 
 ## Fairness Checklist
 
-| criterion                         | status   | evidence                       |
-|:----------------------------------|:---------|:-------------------------------|
-| Same episode budget               | PASS     | episodes=100                   |
-| Same evaluation horizon           | PASS     | Single phase1 config used      |
-| Same observation/reward interface | PASS     | Unified evaluation entrypoints |
+                        criterion status                       evidence
+              Same episode budget   PASS                    episodes=10
+          Same evaluation horizon   PASS      Single phase1 config used
+Same observation/reward interface   PASS Unified evaluation entrypoints
 
 ## Hard-Nosed Failure Reporting
 
-- Baseline-win scenario: `Random` exceeds `MAPPO-STGNN` on mean reward (-3792.915 vs -4953.699).
-- Identified degradation mode: `mappo` shows 0.00% waiting-time increase under stress.
+- Baseline-win scenario: `CoLight` exceeds `MAPPO-STGNN` on mean reward (-930.294 vs -939.230).
+- Identified degradation mode: `mappo` shows 27.49% waiting-time increase under stress.
 - Mitigation plan: apply adaptive anomaly threshold + noise-aware observation masking, then rerun stress benchmark and target >=20% reduction in waiting-time increase for the worst-case model.
 
 ## Limitations
