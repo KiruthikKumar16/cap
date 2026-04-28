@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -84,23 +85,73 @@ def _run_command(cmd: List[str]) -> str:
     return output.strip()
 
 
-def _gpu_snapshot() -> Dict[str, Any]:
-    snapshot: Dict[str, Any] = {"cuda_available": False}
+def _probe_python_runtime(python_exe: Path) -> Dict[str, Any]:
+    if not python_exe.exists():
+        return {
+            "python": str(python_exe),
+            "exists": False,
+            "cuda_available": False,
+            "torch_import_ok": False,
+        }
+    code = (
+        "import json,sys\n"
+        "payload={'python':sys.executable,'exists':True,'cuda_available':False,'torch_import_ok':False}\n"
+        "try:\n"
+        " import torch\n"
+        " payload['torch_import_ok']=True\n"
+        " payload['torch_version']=torch.__version__\n"
+        " payload['cuda_available']=bool(torch.cuda.is_available())\n"
+        " payload['device_count']=int(torch.cuda.device_count()) if torch.cuda.is_available() else 0\n"
+        " payload['device_name']=torch.cuda.get_device_name(0) if torch.cuda.is_available() else ''\n"
+        "except Exception as exc:\n"
+        " payload['torch_error']=str(exc)\n"
+        "print(json.dumps(payload))\n"
+    )
+    proc = subprocess.run(
+        [str(python_exe), "-c", code],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0 or not proc.stdout.strip():
+        return {
+            "python": str(python_exe),
+            "exists": True,
+            "cuda_available": False,
+            "torch_import_ok": False,
+            "probe_error": (proc.stderr or proc.stdout or "").strip(),
+        }
     try:
-        import torch
+        return json.loads(proc.stdout.strip().splitlines()[-1])
+    except Exception:
+        return {
+            "python": str(python_exe),
+            "exists": True,
+            "cuda_available": False,
+            "torch_import_ok": False,
+            "probe_error": proc.stdout.strip(),
+        }
 
-        snapshot["cuda_available"] = bool(torch.cuda.is_available())
-        if snapshot["cuda_available"]:
-            snapshot["device_count"] = int(torch.cuda.device_count())
-            snapshot["device_name"] = torch.cuda.get_device_name(0)
-            try:
-                free_mem, total_mem = torch.cuda.mem_get_info(0)
-                snapshot["torch_memory_used_mb"] = round((total_mem - free_mem) / (1024 * 1024), 1)
-                snapshot["torch_memory_total_mb"] = round(total_mem / (1024 * 1024), 1)
-            except Exception:
-                pass
-    except Exception as exc:
-        snapshot["torch_error"] = str(exc)
+
+@lru_cache(maxsize=1)
+def _preferred_python_runtime() -> Dict[str, Any]:
+    current_runtime = _probe_python_runtime(Path(sys.executable))
+    gpu_runtime = _probe_python_runtime(ROOT / "venv_gpu" / "Scripts" / "python.exe")
+    if gpu_runtime.get("cuda_available"):
+        gpu_runtime["source"] = "venv_gpu"
+        return gpu_runtime
+    current_runtime["source"] = "current"
+    return current_runtime
+
+
+def _preferred_python_executable() -> str:
+    return str(_preferred_python_runtime().get("python", sys.executable))
+
+
+def _gpu_snapshot() -> Dict[str, Any]:
+    snapshot: Dict[str, Any] = dict(_preferred_python_runtime())
+    snapshot.setdefault("cuda_available", False)
 
     try:
         proc = subprocess.run(
@@ -140,6 +191,7 @@ def _render_gpu_status(slot) -> None:
         c3.metric("Memory", f"{mem_used} / {mem_total} MB")
         c4.metric("Temp", f"{gpu.get('temperature_c', 'N/A')} C")
         st.caption(gpu.get("device_name", "GPU not detected"))
+        st.caption(f"Execution Python: {gpu.get('python', sys.executable)}")
 
 
 def _model_display_label(model_name: str) -> str:
@@ -308,7 +360,7 @@ def _resolve_checkpoint() -> Path:
 def _run_benchmark(config: Path, checkpoint: str, episodes: int) -> str:
     return _run_command(
         [
-            sys.executable,
+            _preferred_python_executable(),
             "scripts/run_benchmarks.py",
             "--config",
             _safe_rel(config),
@@ -322,7 +374,7 @@ def _run_benchmark(config: Path, checkpoint: str, episodes: int) -> str:
 
 def _run_detailed_eval(config: Path, checkpoint: str, episodes: int, include_random: bool, include_fixed: bool) -> str:
     cmd = [
-        sys.executable,
+        _preferred_python_executable(),
         "src/phase1/evaluate.py",
         "--config",
         _safe_rel(config),
@@ -343,7 +395,7 @@ def _run_detailed_eval(config: Path, checkpoint: str, episodes: int, include_ran
 def _run_stress_eval(config: Path, checkpoint: str, episodes: int, sensor_noise_rate: float) -> str:
     return _run_command(
         [
-            sys.executable,
+            _preferred_python_executable(),
             "scripts/accident_injection.py",
             "--config",
             _safe_rel(config),
@@ -1009,7 +1061,7 @@ def main() -> None:
             stage_slot.info("Stage 1/3: Running benchmark comparison...")
             run_logs = _run_command_stream(
                 [
-                    sys.executable,
+                    _preferred_python_executable(),
                     "scripts/run_benchmarks.py",
                     "--config",
                     _safe_rel(temp_cfg),
@@ -1031,7 +1083,7 @@ def main() -> None:
             stage_slot.info("Stage 2/3: Running detailed episode evaluation...")
             detail_logs = _run_command_stream(
                 [
-                    sys.executable,
+                    _preferred_python_executable(),
                     "src/phase1/evaluate.py",
                     "--config",
                     _safe_rel(temp_cfg),
@@ -1057,7 +1109,7 @@ def main() -> None:
                 stage_slot.info("Stage 3/3: Running adversarial stress test...")
                 stress_logs = _run_command_stream(
                     [
-                        sys.executable,
+                        _preferred_python_executable(),
                         "scripts/accident_injection.py",
                         "--config",
                         _safe_rel(temp_cfg),
@@ -1121,7 +1173,7 @@ def main() -> None:
                 stage_slot.info(f"Running wrapped profile `{run_profile}`...")
                 dev_logs = _run_command_stream(
                     [
-                        sys.executable,
+                        _preferred_python_executable(),
                         "scripts/run_profile.py",
                         "--profile",
                         run_profile,
@@ -1161,7 +1213,7 @@ def main() -> None:
                 stage_slot.info("Running manual strict publication flow...")
                 dev_logs = _run_command_stream(
                     [
-                        sys.executable,
+                        _preferred_python_executable(),
                         "scripts/run_publication_suite.py",
                         "--mode",
                         manual_mode,
