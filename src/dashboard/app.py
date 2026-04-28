@@ -77,6 +77,32 @@ def _write_temp_config(base_cfg: Dict[str, Any], overrides: Dict[Tuple[str, ...]
     return target
 
 
+def _align_config_with_checkpoint_metadata(base_cfg: Dict[str, Any], checkpoint_path: Path) -> Dict[str, Any]:
+    cfg = copy.deepcopy(base_cfg)
+    try:
+        from src.utils.model_metadata import load_metadata_for_checkpoint
+    except Exception:
+        return cfg
+
+    metadata = load_metadata_for_checkpoint(checkpoint_path)
+    if not metadata:
+        return cfg
+
+    for key in ["model", "sumo", "reward"]:
+        block = metadata.get(key)
+        if isinstance(block, dict) and block:
+            cfg[key] = copy.deepcopy(block)
+
+    eval_block = metadata.get("evaluation")
+    if isinstance(eval_block, dict) and eval_block:
+        cfg.setdefault("evaluation", {})
+        cfg["evaluation"].update(copy.deepcopy(eval_block))
+
+    cfg.setdefault("rl", {})
+    cfg["rl"]["algorithm"] = str(metadata.get("algorithm", cfg["rl"].get("algorithm", "PPO")))
+    return cfg
+
+
 def _run_command(cmd: List[str]) -> str:
     proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True, check=False)
     output = (proc.stdout or "") + ("\n" + proc.stderr if proc.stderr else "")
@@ -963,7 +989,7 @@ def main() -> None:
             st.error("No checkpoint found for compatibility precheck.")
             return
         cfg_path = DEFAULT_CONFIG
-        base_cfg = _load_yaml(cfg_path)
+        base_cfg = _align_config_with_checkpoint_metadata(_load_yaml(cfg_path), checkpoint_path)
         overrides = {
             ("sumo", "simulation_steps"): int(simulation_steps),
             ("sumo", "step_length"): float(step_length),
@@ -1013,7 +1039,7 @@ def main() -> None:
             if not cfg_path.exists():
                 st.error(f"Config not found: {cfg_path}")
                 return
-            base_cfg = _load_yaml(cfg_path)
+            base_cfg = _align_config_with_checkpoint_metadata(_load_yaml(cfg_path), checkpoint_path)
             route_map = {
                 "low": "data/raw/grid_5x5_low.rou.xml",
                 "medium": FIXED_ROUTE_FILE,
