@@ -379,13 +379,7 @@ def _run_command_stream(
 
 
 def _resolve_checkpoint() -> Path:
-    candidates = [
-        ROOT / BEST_CHECKPOINT,
-        ROOT / "best_model_stage_2.zip",
-        ROOT / "marl_ppo_traffic.zip",
-        ROOT / "outputs/phase1/dqn_traffic_final.zip",
-    ]
-    existing = [c for c in candidates if c.exists()]
+    existing = _checkpoint_candidates()
     if not existing:
         return Path()
 
@@ -401,6 +395,22 @@ def _resolve_checkpoint() -> Path:
     for c in existing:
         return c
     return Path()
+
+
+def _checkpoint_candidates() -> List[Path]:
+    candidates = [
+        ROOT / BEST_CHECKPOINT,
+        ROOT / "best_model_stage_2.zip",
+        ROOT / "marl_ppo_traffic.zip",
+        ROOT / "outputs/phase1/dqn_traffic_final.zip",
+    ]
+    existing: List[Path] = []
+    seen = set()
+    for candidate in candidates:
+        if candidate.exists() and candidate not in seen:
+            existing.append(candidate)
+            seen.add(candidate)
+    return existing
 
 
 def _run_benchmark(config: Path, checkpoint: str, episodes: int) -> str:
@@ -469,6 +479,7 @@ def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[
             "Ensure dashboard is launched from project environment and dependencies are installed."
         )
 
+    env = None
     try:
         cfg = _load_yaml(config)
         env = MARLTrafficEnv(cfg)
@@ -476,28 +487,31 @@ def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[
         env_act = str(getattr(env, "action_space", None))
         metadata = load_metadata_for_checkpoint(checkpoint)
         if not metadata:
-            env.close()
-            return (
-                False,
-                "Checkpoint metadata file not found. Train/export metadata first (expected *.metadata.json).",
+            metadata_note = "Checkpoint metadata file not found; validated by loading checkpoint binary."
+        else:
+            mismatch = validate_metadata(
+                metadata=metadata,
+                expected_algorithm="PPO",
+                observation_space_repr=env_obs,
+                action_space_repr=env_act,
+                config=cfg,
             )
-        mismatch = validate_metadata(
-            metadata=metadata,
-            expected_algorithm="PPO",
-            observation_space_repr=env_obs,
-            action_space_repr=env_act,
-            config=cfg,
-        )
-        env.close()
-        if mismatch:
-            if is_digest_only_mismatch(mismatch, metadata, "PPO", env_obs, env_act):
-                return (
-                    True,
-                    "Compatible with warning: checkpoint config digest differs, "
-                    "but algorithm and spaces match the selected evaluation setup.",
-                )
-            return False, mismatch
-        return True, f"Compatible. obs={env_obs}, action={env_act}"
+            if mismatch:
+                if is_digest_only_mismatch(mismatch, metadata, "PPO", env_obs, env_act):
+                    metadata_note = (
+                        "Compatible with warning: checkpoint config digest differs, "
+                        "but metadata spaces match the selected evaluation setup."
+                    )
+                else:
+                    return False, mismatch
+            else:
+                metadata_note = f"Metadata compatible. obs={env_obs}, action={env_act}"
+
+        load_ok, load_msg = _precheck_checkpoint_binary_load(config, checkpoint)
+        if not load_ok:
+            return False, load_msg
+
+        return True, f"{metadata_note}; checkpoint load passed."
     except Exception as exc:
         msg = str(exc)
         if "unexpected keyword argument 'use_sde'" in msg or "DQNPolicy.__init__" in msg:
@@ -507,6 +521,59 @@ def _precheck_checkpoint_compatibility(config: Path, checkpoint: Path) -> Tuple[
                 "(possible DQN/SB3 format mismatch). Please provide a PPO checkpoint matching this configuration.",
             )
         return False, f"Precheck failed: {exc}"
+    finally:
+        if env is not None:
+            try:
+                env.close()
+            except Exception:
+                pass
+
+
+def _precheck_checkpoint_binary_load(config: Path, checkpoint: Path) -> Tuple[bool, str]:
+    code = (
+        "import sys\n"
+        "from pathlib import Path\n"
+        "import yaml\n"
+        "from stable_baselines3 import PPO\n"
+        "from src.phase1.marl_traffic_env import MARLTrafficEnv\n"
+        "config_path=Path(sys.argv[1])\n"
+        "checkpoint_path=Path(sys.argv[2])\n"
+        "with config_path.open('r', encoding='utf-8') as f:\n"
+        " cfg=yaml.safe_load(f)\n"
+        "env=MARLTrafficEnv(cfg)\n"
+        "try:\n"
+        " PPO.load(str(checkpoint_path), env=env)\n"
+        " print('OK')\n"
+        "finally:\n"
+        " env.close()\n"
+    )
+    proc = subprocess.run(
+        [_preferred_python_executable(), "-c", code, str(config), str(checkpoint)],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode == 0:
+        return True, "Checkpoint binary load passed."
+    output = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    if "Observation spaces do not match" in output or "Action spaces do not match" in output:
+        return (
+            False,
+            "Checkpoint binary does not match the selected evaluation environment. "
+            f"{output}. Metadata may be stale for `{_safe_rel(checkpoint)}`.",
+        )
+    return False, f"Checkpoint load failed during compatibility precheck: {output}"
+
+
+def _resolve_compatible_checkpoint(config: Path) -> Tuple[Path, str]:
+    failures: List[str] = []
+    for candidate in _checkpoint_candidates():
+        ok, msg = _precheck_checkpoint_compatibility(config, candidate)
+        if ok:
+            return candidate, msg
+        failures.append(f"- `{_safe_rel(candidate)}`: {msg}")
+    return Path(), "\n".join(failures) if failures else "No checkpoint files were found."
 
 
 def _flatten_results(raw: Dict[str, Any]) -> pd.DataFrame:
@@ -1204,16 +1271,20 @@ def main() -> None:
             ("rl", "algorithm"): "PPO",
         }
         temp_cfg = _write_temp_config(base_cfg, overrides)
-        ok, msg = _precheck_checkpoint_compatibility(temp_cfg, checkpoint_path)
+        compatible_checkpoint, msg = _resolve_compatible_checkpoint(temp_cfg)
+        ok = bool(compatible_checkpoint)
         if ok:
-            st.success(f"Compatibility precheck passed. {msg}")
+            st.success(
+                "Compatibility precheck passed. "
+                f"Using `{_safe_rel(compatible_checkpoint)}`. {msg}"
+            )
             _set_last_run(
                 dashboard_mode,
                 "Checkpoint Compatibility Precheck",
                 "Success",
             )
         else:
-            st.error(f"Compatibility precheck failed. {msg}")
+            st.error(f"Compatibility precheck failed for all known checkpoints:\n{msg}")
             _set_last_run(
                 dashboard_mode,
                 "Checkpoint Compatibility Precheck",
@@ -1266,6 +1337,22 @@ def main() -> None:
             }
             temp_cfg = _write_temp_config(base_cfg, overrides)
             active_config_path = temp_cfg
+            compatible_checkpoint, compatible_msg = _resolve_compatible_checkpoint(temp_cfg)
+            if not compatible_checkpoint:
+                progress.progress(1.0)
+                st.error(
+                    "No compatible PPO checkpoint was found for the selected dashboard configuration.\n\n"
+                    f"{compatible_msg}\n\n"
+                    "This usually means the checkpoint was trained with a different SUMO scenario "
+                    "or a stale `.metadata.json` is next to the checkpoint."
+                )
+                _set_last_run(
+                    dashboard_mode,
+                    "Observation Evaluation Suite",
+                    "Failed",
+                )
+                return
+            checkpoint_path = compatible_checkpoint
             active_checkpoint_path = checkpoint_path
 
             # Mandatory compatibility gate before long benchmark jobs.
@@ -1285,7 +1372,7 @@ def main() -> None:
                 )
                 return
             progress.progress(0.05)
-            st.success(f"Compatibility check passed. {pre_msg}")
+            st.success(f"Compatibility check passed. Using `{_safe_rel(checkpoint_path)}`. {pre_msg}")
 
             log_slot = st.empty()
             stage_slot.info("Stage 1/3: Running benchmark comparison...")
