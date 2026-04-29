@@ -321,6 +321,11 @@ class SUMOTrafficEnv(gym.Env):
         """Resolve path to sumo/sumo-gui. Prefer sumo_binary, then SUMO_HOME/bin, then PATH."""
         name = "sumo-gui" if self.use_gui else "sumo"
         if self.sumo_binary:
+            configured = Path(self.sumo_binary)
+            if self.use_gui and configured.name.lower() in {"sumo", "sumo.exe"}:
+                gui_binary = configured.with_name("sumo-gui.exe" if configured.suffix.lower() == ".exe" else "sumo-gui")
+                if gui_binary.exists():
+                    return str(gui_binary)
             return self.sumo_binary
         import os
         sumo_home = os.environ.get("SUMO_HOME", "").strip()

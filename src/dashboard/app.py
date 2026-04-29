@@ -1,4 +1,5 @@
 import copy
+import base64
 import json
 import subprocess
 import sys
@@ -7,6 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 import yaml
@@ -35,6 +37,7 @@ METRICS_META: Dict[str, Dict[str, Any]] = {
 }
 
 FEATURED_MODELS = ["CoLight", "NSTLight", "MAPPO-STGNN"]
+CHART_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#7c3aed", "#64748b", "#14b8a6"]
 
 
 def _safe_rel(path: Path) -> str:
@@ -226,6 +229,14 @@ def _model_display_label(model_name: str) -> str:
     return model_name
 
 
+def _render_local_gif(path: Path) -> None:
+    data = base64.b64encode(path.read_bytes()).decode("ascii")
+    st.markdown(
+        f'<img src="data:image/gif;base64,{data}" style="width:100%; border-radius:8px; border:1px solid #e2e8f0;" />',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_model_showcase(raw: Dict[str, Any], featured_models: List[str] = FEATURED_MODELS) -> None:
     media = raw.get("dashboard_media", {}) if isinstance(raw, dict) else {}
     metrics_blocks = {k: v for k, v in raw.items() if isinstance(v, dict)} if isinstance(raw, dict) else {}
@@ -238,10 +249,12 @@ def _render_model_showcase(raw: Dict[str, Any], featured_models: List[str] = FEA
             st.markdown(f"**{_model_display_label(model_name)}**")
             gif_path = media_block.get("gif_path")
             poster_path = media_block.get("poster_path")
-            if gif_path and Path(gif_path).exists():
-                st.image(str(Path(gif_path).resolve()))
-            elif poster_path and Path(poster_path).exists():
-                st.image(str(Path(poster_path).resolve()))
+            gif_file = _resolve_user_path(gif_path) if gif_path else None
+            poster_file = _resolve_user_path(poster_path) if poster_path else None
+            if gif_file and gif_file.exists():
+                _render_local_gif(gif_file)
+            elif poster_file and poster_file.exists():
+                st.image(str(poster_file.resolve()))
                 st.caption("GIF pending")
             else:
                 st.info("Run pending")
@@ -514,6 +527,34 @@ def _latency_df(raw: Dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame()
 
 
+def _chart_bar(
+    df: pd.DataFrame,
+    *,
+    x: str,
+    y: str,
+    color: str,
+    title: str,
+    y_title: str,
+    higher_is_better: bool = True,
+    height: int = 320,
+) -> alt.Chart:
+    order = "descending" if higher_is_better else "ascending"
+    return (
+        alt.Chart(df)
+        .mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5)
+        .encode(
+            x=alt.X(f"{x}:N", sort=alt.EncodingSortField(field=y, order=order), title=None, axis=alt.Axis(labelAngle=-20)),
+            y=alt.Y(f"{y}:Q", title=y_title),
+            color=alt.Color(f"{color}:N", scale=alt.Scale(range=CHART_COLORS), legend=None),
+            tooltip=[
+                alt.Tooltip(f"{x}:N", title=x.replace("_", " ").title()),
+                alt.Tooltip(f"{y}:Q", title=y_title, format=",.2f"),
+            ],
+        )
+        .properties(title=title, height=height)
+    )
+
+
 def _action_diagnostics_df(raw: Dict[str, Any]) -> pd.DataFrame:
     payload = raw.get("action_diagnostics", {})
     if not isinstance(payload, dict) or not payload:
@@ -593,6 +634,22 @@ def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
             k5.metric(lbl, val, best_row["model"])
 
     st.subheader("Overall Ranking (Normalized Multi-Metric Score)")
+    rank_chart_df = scored[["model", "overall_score"]].copy()
+    rank_chart = (
+        alt.Chart(rank_chart_df)
+        .mark_bar(cornerRadiusTopRight=5, cornerRadiusBottomRight=5)
+        .encode(
+            y=alt.Y("model:N", sort=alt.EncodingSortField(field="overall_score", order="descending"), title=None),
+            x=alt.X("overall_score:Q", title="Normalized score", scale=alt.Scale(domain=[0, 1])),
+            color=alt.Color("model:N", scale=alt.Scale(range=CHART_COLORS), legend=None),
+            tooltip=[
+                alt.Tooltip("model:N", title="Model"),
+                alt.Tooltip("overall_score:Q", title="Score", format=".3f"),
+            ],
+        )
+        .properties(height=260)
+    )
+    st.altair_chart(rank_chart, use_container_width=True)
     st.dataframe(
         scored[["model", "overall_score"] + list(METRICS_META.keys())],
         use_container_width=True,
@@ -600,9 +657,21 @@ def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
 
     if not lat_df.empty and "mean_ms" in lat_df:
         st.subheader("Inference Latency")
+        lat_chart_df = lat_df[["model", "mean_ms"]].dropna()
+        st.altair_chart(
+            _chart_bar(
+                lat_chart_df,
+                x="model",
+                y="mean_ms",
+                color="model",
+                title="Mean Inference Time per Control Step",
+                y_title="Milliseconds",
+                higher_is_better=False,
+                height=260,
+            ),
+            use_container_width=True,
+        )
         st.dataframe(lat_df, use_container_width=True)
-        lat_chart = lat_df[["model", "mean_ms"]].dropna().set_index("model")
-        st.bar_chart(lat_chart)
 
 
 def _render_metrics(df: pd.DataFrame) -> None:
@@ -610,11 +679,24 @@ def _render_metrics(df: pd.DataFrame) -> None:
     st.dataframe(df.sort_values("mean_reward", ascending=False), use_container_width=True)
 
     st.subheader("Metric Charts")
-    for metric, meta in METRICS_META.items():
-        st.markdown(f"**{meta['label']} ({meta['unit']})**")
+    chart_cols = st.columns(2)
+    for idx, (metric, meta) in enumerate(METRICS_META.items()):
         chart_df = df[["model", metric]].dropna()
         chart_df = chart_df.sort_values(metric, ascending=not meta["higher_is_better"])
-        st.bar_chart(chart_df.set_index("model"))
+        with chart_cols[idx % 2]:
+            st.altair_chart(
+                _chart_bar(
+                    chart_df,
+                    x="model",
+                    y=metric,
+                    color="model",
+                    title=f"{meta['label']} ({meta['unit']})",
+                    y_title=meta["unit"],
+                    higher_is_better=bool(meta["higher_is_better"]),
+                    height=270,
+                ),
+                use_container_width=True,
+            )
 
     st.subheader("Cross-Metric View")
     selected_models = st.multiselect("Models to plot", options=df["model"].tolist(), default=df["model"].tolist())
@@ -624,8 +706,42 @@ def _render_metrics(df: pd.DataFrame) -> None:
         default=list(METRICS_META.keys()),
     )
     if selected_models and selected_metrics:
-        pivot_df = df[df["model"].isin(selected_models)][["model"] + selected_metrics].set_index("model")
-        st.line_chart(pivot_df.T)
+        plot_df = df[df["model"].isin(selected_models)][["model"] + selected_metrics].copy()
+        normalized_rows: List[Dict[str, Any]] = []
+        for metric in selected_metrics:
+            values = plot_df[metric].astype(float)
+            span = values.max() - values.min()
+            if span <= 1e-12:
+                norm = pd.Series(0.5, index=plot_df.index)
+            elif METRICS_META[metric]["higher_is_better"]:
+                norm = (values - values.min()) / span
+            else:
+                norm = (values.max() - values) / span
+            for row_idx, score in norm.items():
+                normalized_rows.append(
+                    {
+                        "model": plot_df.loc[row_idx, "model"],
+                        "metric": METRICS_META[metric]["label"],
+                        "normalized_score": float(score),
+                    }
+                )
+        norm_df = pd.DataFrame(normalized_rows)
+        line = (
+            alt.Chart(norm_df)
+            .mark_line(point=True, strokeWidth=3)
+            .encode(
+                x=alt.X("metric:N", title=None),
+                y=alt.Y("normalized_score:Q", title="Normalized score", scale=alt.Scale(domain=[0, 1])),
+                color=alt.Color("model:N", scale=alt.Scale(range=CHART_COLORS)),
+                tooltip=[
+                    alt.Tooltip("model:N", title="Model"),
+                    alt.Tooltip("metric:N", title="Metric"),
+                    alt.Tooltip("normalized_score:Q", title="Score", format=".3f"),
+                ],
+            )
+            .properties(height=330)
+        )
+        st.altair_chart(line, use_container_width=True)
 
 
 def _render_action_diagnostics(raw: Dict[str, Any]) -> None:
@@ -718,7 +834,22 @@ def _render_episode_analysis(eval_summary_path: Path) -> None:
         return
 
     episode_df = pd.DataFrame(episode_rows)
-    st.line_chart(episode_df.pivot(index="episode", columns="model", values="value"))
+    episode_chart = (
+        alt.Chart(episode_df)
+        .mark_line(point=True, strokeWidth=3)
+        .encode(
+            x=alt.X("episode:O", title="Episode"),
+            y=alt.Y("value:Q", title=metric_map[choice]),
+            color=alt.Color("model:N", scale=alt.Scale(range=CHART_COLORS)),
+            tooltip=[
+                alt.Tooltip("episode:O", title="Episode"),
+                alt.Tooltip("model:N", title="Model"),
+                alt.Tooltip("value:Q", title=metric_map[choice], format=",.2f"),
+            ],
+        )
+        .properties(height=330)
+    )
+    st.altair_chart(episode_chart, use_container_width=True)
     st.dataframe(episode_df, use_container_width=True)
 
 
@@ -747,8 +878,32 @@ def _render_stress_analysis(stress_summary_path: Path) -> None:
             }
         )
     df = pd.DataFrame(rows)
+    stress_long = df.melt(id_vars="model", var_name="metric", value_name="percent")
+    stress_long["metric"] = stress_long["metric"].map(
+        {
+            "throughput_drop_pct": "Throughput Drop",
+            "waiting_time_increase_pct": "Waiting Increase",
+            "queue_length_increase_pct": "Queue Increase",
+        }
+    )
+    stress_chart = (
+        alt.Chart(stress_long)
+        .mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5)
+        .encode(
+            x=alt.X("metric:N", title=None),
+            y=alt.Y("percent:Q", title="Percent change under stress"),
+            xOffset="model:N",
+            color=alt.Color("model:N", scale=alt.Scale(range=CHART_COLORS)),
+            tooltip=[
+                alt.Tooltip("model:N", title="Model"),
+                alt.Tooltip("metric:N", title="Metric"),
+                alt.Tooltip("percent:Q", title="Percent", format=".2f"),
+            ],
+        )
+        .properties(height=330)
+    )
+    st.altair_chart(stress_chart, use_container_width=True)
     st.dataframe(df, use_container_width=True)
-    st.bar_chart(df.set_index("model"))
 
 
 def _render_data_sanity_warnings(df: pd.DataFrame, eval_summary_path: Path) -> None:
@@ -911,7 +1066,7 @@ def main() -> None:
                 step=0.1,
                 help="Simulation time represented by each SUMO step.",
             )
-            gui = st.checkbox("External SUMO GUI popup", value=False)
+            gui = st.checkbox("External SUMO GUI popup", value=True)
             st.caption("Algorithm is fixed to PPO (best model). Baseline comparison includes CoLight and NSTLight. Dashboard playback is rendered in-page from evaluation rollouts.")
 
             with st.expander("Traffic Demand + Reward Weights"):
@@ -1322,6 +1477,12 @@ def main() -> None:
             raw["dashboard_media"] = json.loads(DEFAULT_MEDIA.read_text(encoding="utf-8"))
         except Exception:
             pass
+    artifact_meta = raw.get("artifact_metadata", {}) if isinstance(raw, dict) else {}
+    if artifact_meta.get("artifact_type") == "presentation_demo":
+        st.warning(
+            "Presentation demo artifacts loaded. These values are synthetic/sample outputs for UI demonstration, "
+            "not benchmark evidence. Use a real evaluation run for final reported metrics."
+        )
 
     df = _flatten_results(raw)
     if df.empty:

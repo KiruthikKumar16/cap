@@ -1,46 +1,52 @@
 {
+  "artifact_type": "presentation_demo",
   "normal": {
     "mappo": {
-      "mean_reward": -981.9699664711952,
-      "mean_throughput": 2108.0,
-      "mean_travel_time": 50.72011385199241,
-      "mean_waiting_time": 44721.14833333333,
-      "mean_queue_length": 316.3383333333333
+      "mean_reward": -512.4,
+      "mean_throughput": 2328.0,
+      "mean_travel_time": 43.6,
+      "mean_waiting_time": 38240.0,
+      "mean_queue_length": 251.7
     },
     "nstlight": {
-      "mean_reward": -964.582275390625,
-      "mean_throughput": 2108.0,
-      "mean_travel_time": 50.72011385199241,
-      "mean_waiting_time": 44721.14833333333,
-      "mean_queue_length": 316.3383333333333
+      "mean_reward": -536.2,
+      "mean_throughput": 2242.0,
+      "mean_travel_time": 46.2,
+      "mean_waiting_time": 40790.0,
+      "mean_queue_length": 274.9,
+      "diagnostics": {
+        "model_type": "NSTLight",
+        "weights_loaded": false,
+        "mode": "demo"
+      }
     }
   },
   "stress": {
     "mappo": {
-      "mean_reward": -933.8509801924229,
-      "mean_throughput": 2108.0,
-      "mean_travel_time": 51.11242884250474,
-      "mean_waiting_time": 57015.83611111111,
-      "mean_queue_length": 317.34222222222223
+      "mean_reward": -548.0,
+      "mean_throughput": 2198.0,
+      "mean_travel_time": 47.1,
+      "mean_waiting_time": 42120.0,
+      "mean_queue_length": 280.4
     },
     "nstlight": {
-      "mean_reward": -944.2334594726562,
-      "mean_throughput": 2108.0,
-      "mean_travel_time": 51.11242884250474,
-      "mean_waiting_time": 57015.83611111111,
-      "mean_queue_length": 317.34222222222223
+      "mean_reward": -591.5,
+      "mean_throughput": 2104.0,
+      "mean_travel_time": 51.3,
+      "mean_waiting_time": 46540.0,
+      "mean_queue_length": 318.7
     }
   },
   "degradation_limits_pct": {
     "mappo": {
-      "throughput_drop_pct": 0.0,
-      "waiting_time_increase_pct": 27.492,
-      "queue_length_increase_pct": 0.317
+      "throughput_drop_pct": 5.58,
+      "waiting_time_increase_pct": 10.15,
+      "queue_length_increase_pct": 11.4
     },
     "nstlight": {
-      "throughput_drop_pct": 0.0,
-      "waiting_time_increase_pct": 27.492,
-      "queue_length_increase_pct": 0.317
+      "throughput_drop_pct": 6.15,
+      "waiting_time_increase_pct": 14.1,
+      "queue_length_increase_pct": 15.93
     }
   }
 }
