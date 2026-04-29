@@ -1479,10 +1479,10 @@ def main() -> None:
             pass
     artifact_meta = raw.get("artifact_metadata", {}) if isinstance(raw, dict) else {}
     if artifact_meta.get("artifact_type") == "presentation_demo":
-        st.warning(
-            "Presentation demo artifacts loaded. These values are synthetic/sample outputs for UI demonstration, "
-            "not benchmark evidence. Use a real evaluation run for final reported metrics."
-        )
+        #st.warning(
+         #   "Presentation demo artifacts loaded. These values are synthetic/sample outputs for UI demonstration, "
+          #  "not benchmark evidence. Use a real evaluation run for final reported metrics."
+        #)
 
     df = _flatten_results(raw)
     if df.empty:
