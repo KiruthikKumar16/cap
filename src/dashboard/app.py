@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import altair as alt
 import pandas as pd
@@ -38,6 +38,13 @@ METRICS_META: Dict[str, Dict[str, Any]] = {
 
 FEATURED_MODELS = ["CoLight", "NSTLight", "MAPPO-STGNN"]
 CHART_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#7c3aed", "#64748b", "#14b8a6"]
+
+
+def _streamlit_fragment(func):
+    fragment = getattr(st, "fragment", None) or getattr(st, "experimental_fragment", None)
+    if fragment is None:
+        return func
+    return fragment(func)
 
 
 def _safe_rel(path: Path) -> str:
@@ -794,6 +801,21 @@ def _render_action_diagnostics(raw: Dict[str, Any]) -> None:
             st.dataframe(pd.DataFrame(sim_rows), use_container_width=True)
 
 
+def _chart_domain(values: pd.Series) -> Optional[Tuple[float, float]]:
+    numeric = pd.to_numeric(values, errors="coerce").dropna()
+    if numeric.empty:
+        return None
+
+    low = float(numeric.min())
+    high = float(numeric.max())
+    if low == high:
+        pad = max(abs(low) * 0.05, 1.0)
+    else:
+        pad = (high - low) * 0.12
+    return low - pad, high + pad
+
+
+@_streamlit_fragment
 def _render_episode_analysis(eval_summary_path: Path) -> None:
     st.subheader("Per-Episode Analysis")
     if not eval_summary_path.exists():
@@ -822,7 +844,12 @@ def _render_episode_analysis(eval_summary_path: Path) -> None:
         "queue_lengths": "Queue Length",
     }
 
-    choice = st.selectbox("Episode metric", options=list(metric_map.keys()), format_func=lambda x: metric_map[x])
+    choice = st.selectbox(
+        "Episode metric",
+        options=list(metric_map.keys()),
+        format_func=lambda x: metric_map[x],
+        key="episode_analysis_metric",
+    )
     episode_rows: List[Dict[str, Any]] = []
     for model_key in available:
         values = raw.get(model_key, {}).get(choice, [])
@@ -834,12 +861,18 @@ def _render_episode_analysis(eval_summary_path: Path) -> None:
         return
 
     episode_df = pd.DataFrame(episode_rows)
+    y_domain = _chart_domain(episode_df["value"])
+    y_scale = alt.Scale(domain=list(y_domain), zero=False) if y_domain else alt.Scale(zero=False)
     episode_chart = (
         alt.Chart(episode_df)
         .mark_line(point=True, strokeWidth=3)
         .encode(
             x=alt.X("episode:O", title="Episode"),
-            y=alt.Y("value:Q", title=metric_map[choice]),
+            y=alt.Y(
+                "value:Q",
+                title=metric_map[choice],
+                scale=y_scale,
+            ),
             color=alt.Color("model:N", scale=alt.Scale(range=CHART_COLORS)),
             tooltip=[
                 alt.Tooltip("episode:O", title="Episode"),
@@ -1009,6 +1042,10 @@ def main() -> None:
     partial_run = False
     active_config_path = DEFAULT_CONFIG
     active_checkpoint_path = Path()
+    run_cpu_quick = False
+    run_gpu_standard = False
+    run_gpu_extreme = False
+    run_manual = False
 
     with st.sidebar:
         st.header("Experiment Setup")
@@ -1133,10 +1170,22 @@ def main() -> None:
             run_manual = st.button("Run manual strict flow", use_container_width=True)
             load_latest = st.button("Load Latest Results", use_container_width=True)
 
-    _render_run_banner(dashboard_mode)
-    gpu_slot = st.empty()
-    _render_gpu_status(gpu_slot)
-    live_panels = _init_live_model_panels() if dashboard_mode == "Observation" else {}
+    execution_requested = (
+        run_now
+        or precheck_now
+        or run_cpu_quick
+        or run_gpu_standard
+        or run_gpu_extreme
+        or run_manual
+    )
+    if execution_requested:
+        _render_run_banner(dashboard_mode)
+        gpu_slot = st.empty()
+        _render_gpu_status(gpu_slot)
+        live_panels = _init_live_model_panels() if dashboard_mode == "Observation" and run_now else {}
+    else:
+        gpu_slot = st.empty()
+        live_panels = {}
 
     if precheck_now:
         checkpoint_path = _resolve_checkpoint()
