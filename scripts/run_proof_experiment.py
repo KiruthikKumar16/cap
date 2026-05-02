@@ -103,6 +103,7 @@ def main() -> int:
         )
 
     _run([sys.executable, "scripts/generate_publication_artifacts.py", "--mode", "quick"])
+    _run([sys.executable, "scripts/audit_proof_results.py"])
     manifest_path = _write_manifest(args)
     print(f"[OK] Proof manifest written to {manifest_path}")
     return 0

@@ -141,12 +141,14 @@ Outputs:
 - `outputs/benchmark_results.json`
 - `results/main_tables.csv`
 - `results/summary.md`
+- `results/proof_audit.json`
 - `results/proof_manifest.json`
 
 Honest interpretation:
 - `episodes 3 --seeds 3` is an early proof run.
 - It is not a publication-grade final benchmark.
 - Use it to decide what to improve next.
+- If `results/proof_audit.json` reports `needs_review`, do not claim model improvement until the warnings are understood and fixed.
 
 ## If Training Is Needed
 
