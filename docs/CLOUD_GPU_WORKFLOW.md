@@ -79,7 +79,15 @@ Then verify:
 !python scripts/check_sumo.py
 ```
 
-If SUMO install fails or `scripts/check_sumo.py` fails, stop and record that failure. Do not report benchmark numbers from a broken simulator setup.
+If SUMO install fails with `ppa.launchpadcontent.net` or `ubuntugis` timeout errors, run the Colab recovery script:
+
+```bash
+!bash scripts/setup_colab_sumo.sh
+```
+
+The script disables unstable Launchpad PPA entries for the current runtime, installs SUMO from Ubuntu repositories, and runs `scripts/check_sumo.py`.
+
+If SUMO still fails or `scripts/check_sumo.py` fails, stop and record that failure. Do not report benchmark numbers from a broken simulator setup.
 
 ## Checkpoint Persistence
 
@@ -97,6 +105,20 @@ Copy a checkpoint into the repo before running proof experiments:
 ```bash
 !cp /content/drive/MyDrive/cap-checkpoints/marl_ppo_traffic.zip ./marl_ppo_traffic.zip
 ```
+
+If you do not already have `marl_ppo_traffic.zip`, train one after SUMO is working:
+
+```bash
+!python src/phase1/train_marl.py --config configs/phase1.yaml --total-timesteps 100000
+```
+
+For a very short pipeline test only, you can use fewer timesteps:
+
+```bash
+!python src/phase1/train_marl.py --config configs/phase1.yaml --total-timesteps 10000
+```
+
+Honesty rule: a 10,000-step checkpoint is a smoke-test checkpoint, not a trained result you should use for paper claims.
 
 Option B: GitHub release artifact or private storage
 - Download the checkpoint at runtime.
