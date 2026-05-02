@@ -152,6 +152,13 @@ class SUMOTrafficEnv(gym.Env):
         self._tl_ids_for_exec: Optional[List[str]] = None  # SUMO TLS IDs at reset (A0,B0,...)
         self._veh_depart_times: Dict[str, float] = {}
         self._queue_length_step = 0.0
+        self._last_action_info: Dict[str, Any] = {
+            "requested_len": 0,
+            "traffic_light_count": 0,
+            "applied_count": 0,
+            "skipped_reason": "not_started",
+            "applied_phases": [],
+        }
         
         # Episode-level metrics for SOTA evaluation
         self.episode_metrics = {
@@ -246,6 +253,13 @@ class SUMOTrafficEnv(gym.Env):
         self._waiting_time_step = 0.0
         self._queue_length_step = 0.0
         self._veh_depart_times = {}
+        self._last_action_info = {
+            "requested_len": 0,
+            "traffic_light_count": len(self._tl_ids_for_exec or []),
+            "applied_count": 0,
+            "skipped_reason": "reset",
+            "applied_phases": [],
+        }
 
         # Reset episode metrics
         self.episode_metrics = {
@@ -381,17 +395,32 @@ class SUMOTrafficEnv(gym.Env):
     
     def _execute_actions(self, actions: np.ndarray) -> None:
         """Execute actions (set signal phases). Use SUMO TLS IDs when available (A0,B0,...)."""
+        self._last_action_info = {
+            "requested_len": 0,
+            "traffic_light_count": 0,
+            "applied_count": 0,
+            "skipped_reason": None,
+            "applied_phases": [],
+        }
         if not self.sumo_running:
+            self._last_action_info["skipped_reason"] = "sumo_not_running"
             return
         use_ids = self._tl_ids_for_exec if self._tl_ids_for_exec is not None else self.intersections
-        # Handle scalar actions (from VecEnv during evaluation callback)
-        if not hasattr(actions, '__len__') or np.ndim(actions) == 0:
-            return
-        if len(use_ids) != len(actions):
+        self._last_action_info["traffic_light_count"] = len(use_ids)
+        action_arr = np.asarray(actions)
+        if action_arr.ndim == 0:
+            action_arr = np.full(len(use_ids), int(action_arr.item()), dtype=np.int32)
+        else:
+            action_arr = action_arr.reshape(-1)
+        self._last_action_info["requested_len"] = int(action_arr.size)
+        if action_arr.size == 1 and len(use_ids) > 1:
+            action_arr = np.full(len(use_ids), int(action_arr[0]), dtype=np.int32)
+        if len(use_ids) != len(action_arr):
+            self._last_action_info["skipped_reason"] = "action_count_mismatch"
             return
         try:
             for i, tl_id in enumerate(use_ids):
-                phase = int(actions[i])
+                phase = int(action_arr[i])
                 max_phase = 3
                 if self._max_phase_per_tl and tl_id in self._max_phase_per_tl:
                     max_phase = self._max_phase_per_tl[tl_id]
@@ -399,8 +428,13 @@ class SUMOTrafficEnv(gym.Env):
                     max_phase = self._get_max_phase_index(tl_id)
                 phase = max(0, min(phase, max_phase))
                 traci.trafficlight.setPhase(tl_id, phase)
+                self._last_action_info["applied_count"] += 1
+                if len(self._last_action_info["applied_phases"]) < 16:
+                    self._last_action_info["applied_phases"].append(phase)
+            self._last_action_info["skipped_reason"] = None
         except Exception as e:
             self.sumo_running = False
+            self._last_action_info["skipped_reason"] = f"traci_error: {e}"
             if not getattr(self, "_sumo_connection_warned", False):
                 self._sumo_connection_warned = True
                 print(f"Warning: SUMO connection lost ({e}). Continuing in placeholder mode.")
@@ -644,6 +678,11 @@ class SUMOTrafficEnv(gym.Env):
             "queue_length": 0.0,
             "departed": 0,
             "placeholder_mode": not self.sumo_running,
+            "actions_requested_len": self._last_action_info.get("requested_len", 0),
+            "traffic_light_count": self._last_action_info.get("traffic_light_count", 0),
+            "actions_applied_count": self._last_action_info.get("applied_count", 0),
+            "actions_skipped_reason": self._last_action_info.get("skipped_reason"),
+            "actions_applied_phases": list(self._last_action_info.get("applied_phases", [])),
         }
         if self.sumo_running and TRACI_AVAILABLE:
             try:
