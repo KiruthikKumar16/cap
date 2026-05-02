@@ -10,7 +10,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def _run_step(name: str, command: List[str], allow_fail: bool = True) -> Tuple[bool, str]:
+def _run_step(name: str, command: List[str]) -> Tuple[bool, str]:
     start = perf_counter()
     proc = subprocess.Popen(
         command,
@@ -34,12 +34,9 @@ def _run_step(name: str, command: List[str], allow_fail: bool = True) -> Tuple[b
     elapsed = perf_counter() - start
     output = "\n".join(lines).strip()
     ok = return_code == 0
-    if not ok and not allow_fail:
-        raise RuntimeError(f"[{name}] failed ({elapsed:.1f}s)\n{output}")
     if not ok:
-        print(f"\n[WARN] {name} failed ({elapsed:.1f}s). Continuing.\n")
-        print(output[:2000])
-    return ok, f"{name}: {'OK' if ok else 'FAILED (allowed)'} ({elapsed:.1f}s)"
+        raise RuntimeError(f"[{name}] failed ({elapsed:.1f}s)\n{output}")
+    return ok, f"{name}: OK ({elapsed:.1f}s)"
 
 
 def _ensure_route_file(config_path: str) -> None:
@@ -66,12 +63,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run publication suite end-to-end")
     parser.add_argument("--mode", choices=["quick", "full"], default="quick")
     parser.add_argument("--config", default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", default="outputs/phase1/dqn_traffic_final.zip")
+    parser.add_argument("--checkpoint", default="marl_ppo_traffic.zip")
     parser.add_argument("--benchmark-episodes", type=int, default=None)
     parser.add_argument("--detailed-episodes", type=int, default=None)
     parser.add_argument("--stress-episodes", type=int, default=None)
     parser.add_argument("--latency-device", choices=["gpu", "cpu"], default="gpu")
     args = parser.parse_args()
+    checkpoint_path = (ROOT / args.checkpoint).resolve()
+    if not checkpoint_path.exists():
+        raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
     _ensure_route_file(args.config)
 
     episodes = str(args.benchmark_episodes if args.benchmark_episodes is not None else (1 if args.mode == "quick" else 3))
@@ -83,8 +83,9 @@ def main() -> None:
 
     # Keep quick mode genuinely interactive for the Streamlit dashboard.
     if args.mode == "quick":
-        steps: List[Tuple[str, List[str], bool]] = [
-            ("SUMO check", [sys.executable, "scripts/check_sumo.py"], True),
+        steps: List[Tuple[str, List[str]]] = [
+            ("Python compile check", [sys.executable, "-m", "compileall", "-q", "src", "scripts"]),
+            ("SUMO check", [sys.executable, "scripts/check_sumo.py"]),
             (
                 "Benchmark comparison",
                 [
@@ -97,7 +98,6 @@ def main() -> None:
                     "--episodes",
                     episodes,
                 ],
-                True,
             ),
             (
                 "Detailed evaluation",
@@ -115,7 +115,6 @@ def main() -> None:
                     "--save-summary",
                     "outputs/phase1/evaluation_summary.json",
                 ],
-                True,
             ),
             (
                 "Stress benchmark",
@@ -131,18 +130,17 @@ def main() -> None:
                     "--sensor-noise-rate",
                     "0.10",
                 ],
-                True,
             ),
-            ("Statistical tables", [sys.executable, "scripts/generate_statistical_tables.py"], True),
+            ("Statistical tables", [sys.executable, "scripts/generate_statistical_tables.py"]),
             (
                 "Publication artifacts",
                 [sys.executable, "scripts/generate_publication_artifacts.py", "--mode", args.mode],
-                True,
             ),
         ]
     else:
         steps = [
-            ("SUMO check", [sys.executable, "scripts/check_sumo.py"], True),
+            ("Python compile check", [sys.executable, "-m", "compileall", "-q", "src", "scripts"]),
+            ("SUMO check", [sys.executable, "scripts/check_sumo.py"]),
             (
                 "Benchmark comparison",
                 [
@@ -155,7 +153,6 @@ def main() -> None:
                     "--episodes",
                     episodes,
                 ],
-                True,
             ),
             (
                 "Detailed evaluation",
@@ -170,15 +167,14 @@ def main() -> None:
                     detailed_eps,
                     "--fixed-time",
                     "--random",
+                    "--require-sumo",
                     "--save-summary",
                     "outputs/phase1/evaluation_summary.json",
                 ],
-                True,
             ),
             (
                 "Ablation study",
                 [sys.executable, "scripts/run_ablation_study.py"],
-                True,
             ),
             (
                 "Stress benchmark",
@@ -194,7 +190,6 @@ def main() -> None:
                     "--sensor-noise-rate",
                     "0.10",
                 ],
-                True,
             ),
             (
                 "Generalization benchmark",
@@ -208,18 +203,15 @@ def main() -> None:
                     "--episodes",
                     episodes,
                 ],
-                True,
             ),
             (
                 "Latency benchmark",
                 latency_cmd,
-                True,
             ),
-            ("Statistical tables", [sys.executable, "scripts/generate_statistical_tables.py"], True),
+            ("Statistical tables", [sys.executable, "scripts/generate_statistical_tables.py"]),
             (
                 "Publication artifacts",
                 [sys.executable, "scripts/generate_publication_artifacts.py", "--mode", args.mode],
-                True,
             ),
         ]
 
@@ -227,8 +219,8 @@ def main() -> None:
     print("Publication Suite")
     print(f"Mode: {args.mode}")
     print("=" * 72)
-    for name, cmd, allow_fail in steps:
-        _, line = _run_step(name, cmd, allow_fail=allow_fail)
+    for name, cmd in steps:
+        _, line = _run_step(name, cmd)
         print(line)
     print("=" * 72)
     print("Suite complete. Review generated artifacts under results/.")

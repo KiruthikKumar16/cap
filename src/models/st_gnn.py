@@ -86,12 +86,12 @@ class SpatialTemporalAutoencoder(nn.Module):
         self.mean_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, horizon * hidden_dim), # Fixed: projects back to hidden_dim sequence
+            nn.Linear(hidden_dim, horizon * in_dim),
         )
         self.var_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, horizon * hidden_dim),
+            nn.Linear(hidden_dim, horizon * in_dim),
         )
 
     def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -115,8 +115,8 @@ class SpatialTemporalAutoencoder(nn.Module):
         recon = self.recon_head(x_temporal).reshape(b, n, f)
 
         # Forecasting
-        mean_forecast = self.mean_head(x_temporal).reshape(b, n, self.horizon, self.hidden_dim).permute(0, 2, 1, 3)
-        log_var_forecast = self.var_head(x_temporal).reshape(b, n, self.horizon, self.hidden_dim).permute(0, 2, 1, 3)
+        mean_forecast = self.mean_head(x_temporal).reshape(b, n, self.horizon, f).permute(0, 2, 1, 3)
+        log_var_forecast = self.var_head(x_temporal).reshape(b, n, self.horizon, f).permute(0, 2, 1, 3)
         
         variance_forecast = torch.exp(log_var_forecast)
         

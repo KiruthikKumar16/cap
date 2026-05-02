@@ -1,6 +1,0 @@
-ablation,status,metric_delta_vs_full
-Without ST-GNN,TODO,
-Without anomaly module,TODO,
-Without predictive phase,TODO,
-Without cross-intersection coordination,TODO,
-Without robustness perturbation handling,TODO,

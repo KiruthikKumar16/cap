@@ -103,7 +103,6 @@ def _resolve_checkpoint_for_profile(profile_cfg: Path, requested_checkpoint: str
     fallback_candidates = [
         ROOT / "marl_ppo_traffic.zip",
         ROOT / "outputs/phase1/dqn_traffic_final.zip",
-        ROOT / "best_model_stage_2.zip",
     ]
     candidates = requested_candidates + [c for c in fallback_candidates if c not in requested_candidates]
     existing = [c for c in candidates if c.exists()]
@@ -128,7 +127,7 @@ def _resolve_checkpoint_for_profile(profile_cfg: Path, requested_checkpoint: str
 
     # Fallback to first existing checkpoint if no compatible metadata match.
     # Prefer the locally trained PPO checkpoint with matching workspace conventions.
-    for preferred in ["marl_ppo_traffic.zip", "outputs/phase1/dqn_traffic_final.zip", "best_model_stage_2.zip"]:
+    for preferred in ["marl_ppo_traffic.zip", "outputs/phase1/dqn_traffic_final.zip"]:
         p = ROOT / preferred
         if p.exists():
             return str(p.relative_to(ROOT))

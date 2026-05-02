@@ -32,7 +32,7 @@ draw_box(ax, 10.5, -0.15, 1.5, 0.3, "Traffic Signal\nPhase Action", '#e6e6fa')
 
 # Draw arrows
 draw_arrow(ax, 2.2, 0.5, 3.5, 0.5, "Local Observation ($o_i$)") # Env to ST-GNN
-draw_arrow(ax, 5.7, 0.6, 7, 0.8, "Global State ($\mathbf{s}$)") # ST-GNN to Critic
+draw_arrow(ax, 5.7, 0.6, 7, 0.8, r"Global State ($\mathbf{s}$)") # ST-GNN to Critic
 draw_arrow(ax, 5.7, 0.3, 7, 0.0, "State Features") # ST-GNN to Actor
 
 # Action Output

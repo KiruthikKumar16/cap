@@ -7,13 +7,13 @@ from typing import Dict, Tuple
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import lightning as L
+import pytorch_lightning as L
 import numpy as np
 import torch
 import torch.nn as nn
 import yaml
-from lightning.pytorch.loggers import CSVLogger
-from torch_geometric.loader import DataLoader
+from pytorch_lightning.loggers import CSVLogger
+from torch.utils.data import DataLoader
 
 from src.data.graph_builder import (
     TemporalGraphDataset,
@@ -33,6 +33,16 @@ def _load_config(path: str) -> Dict:
 
 def _ensure_dir(path: str) -> None:
     Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def _json_safe(value):
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
 
 def _prepare_data(cfg: Dict) -> Tuple[TemporalGraphDataset, TemporalGraphDataset, TemporalGraphDataset, torch.Tensor, torch.Tensor]:
@@ -82,6 +92,7 @@ class STGNNLitModule(L.LightningModule):
         weight_decay: float,
         horizon: int,
         mask_ratio: float,
+        edge_index: torch.Tensor,
     ) -> None:
         super().__init__()
         self.model = model
@@ -90,6 +101,7 @@ class STGNNLitModule(L.LightningModule):
         self.horizon = horizon
         self.criterion = nn.MSELoss()
         self.mask_ratio = mask_ratio
+        self.register_buffer("edge_index", edge_index)
 
     def _mask_input(self, x: torch.Tensor) -> torch.Tensor:
         if self.mask_ratio <= 0:
@@ -100,19 +112,28 @@ class STGNNLitModule(L.LightningModule):
     def forward(self, x, edge_index):
         return self.model(x, edge_index)
 
+    def _split_batch(self, batch):
+        x_plus, labels = batch
+        x_seq = x_plus[:, : -self.horizon]
+        target_last = x_seq[:, -1]
+        target_forecast = x_plus[:, -self.horizon :]
+        return x_seq, target_last, target_forecast, labels
+
     def training_step(self, batch, batch_idx):
-        masked_x = self._mask_input(batch.x)
-        recon, forecast = self.forward(masked_x, batch.edge_index)
-        loss_recon = self.criterion(recon, batch.x[:, -1])
-        loss_forecast = self.criterion(forecast, batch.y)
+        x_seq, target_last, target_forecast, _ = self._split_batch(batch)
+        masked_x = self._mask_input(x_seq)
+        recon, forecast, _ = self.forward(masked_x, self.edge_index)
+        loss_recon = self.criterion(recon, target_last)
+        loss_forecast = self.criterion(forecast, target_forecast)
         loss = loss_recon + loss_forecast
         self.log("train/loss", loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        recon, forecast = self.forward(batch.x, batch.edge_index)
-        loss_recon = self.criterion(recon, batch.x[:, -1])
-        loss_forecast = self.criterion(forecast, batch.y)
+        x_seq, target_last, target_forecast, _ = self._split_batch(batch)
+        recon, forecast, _ = self.forward(x_seq, self.edge_index)
+        loss_recon = self.criterion(recon, target_last)
+        loss_forecast = self.criterion(forecast, target_forecast)
         loss = loss_recon + loss_forecast
         score = (loss_recon + loss_forecast).detach()
         self.log("val/loss", loss, prog_bar=True)
@@ -123,22 +144,20 @@ class STGNNLitModule(L.LightningModule):
         return optimizer
 
 
-def _compute_scores(model: nn.Module, loader: DataLoader, device: torch.device) -> Tuple[list, list]:
+def _compute_scores(model: STGNNLitModule, loader: DataLoader, device: torch.device) -> Tuple[list, list]:
     model.eval()
     scores, labels = [], []
     crit = nn.MSELoss(reduction="none")
     with torch.no_grad():
         for batch in loader:
-            batch = batch.to(device)
-            recon, forecast = model(batch.x, batch.edge_index)
-            recon_err = crit(recon, batch.x[:, -1]).mean(dim=(1, 2))  # [B]
-            forecast_err = crit(forecast, batch.y).mean(dim=(1, 2, 3))  # [B]
+            batch = tuple(item.to(device) for item in batch)
+            x_seq, target_last, target_forecast, batch_labels = model._split_batch(batch)
+            recon, forecast, _ = model(x_seq, model.edge_index)
+            recon_err = crit(recon, target_last).mean(dim=(1, 2))  # [B]
+            forecast_err = crit(forecast, target_forecast).mean(dim=(1, 2, 3))  # [B]
             score = (recon_err + forecast_err).cpu().numpy()
             scores.extend(score.tolist())
-            if hasattr(batch, "incident"):
-                labels.extend(batch.incident.max(dim=1).values.cpu().numpy().tolist())
-            else:
-                labels.extend([0] * len(score))
+            labels.extend(batch_labels.max(dim=1).values.cpu().numpy().tolist())
     return scores, labels
 
 
@@ -163,7 +182,7 @@ def main() -> None:
     }
 
     in_dim = features.shape[-1]
-    temporal_cfg = cfg["model"]["temporal"]
+    temporal_cfg = cfg["model"].get("temporal", {"type": "gru"})
     model = SpatialTemporalAutoencoder(
         in_dim=in_dim,
         hidden_dim=cfg["model"]["hidden_dim"],
@@ -173,16 +192,14 @@ def main() -> None:
         horizon=cfg["data"]["window"]["horizon"],
         use_graph=cfg["model"]["use_graph"],
         temporal_type=temporal_cfg["type"],
-        temporal_heads=temporal_cfg.get("n_heads", 2),
-        temporal_ff_mult=temporal_cfg.get("ff_mult", 2),
-        temporal_layers=temporal_cfg.get("num_layers", 1),
     )
     lit_model = STGNNLitModule(
         model=model,
-        lr=cfg["training"]["learning_rate"],
-        weight_decay=cfg["training"]["weight_decay"],
+        lr=float(cfg["training"]["learning_rate"]),
+        weight_decay=float(cfg["training"]["weight_decay"]),
         horizon=cfg["data"]["window"]["horizon"],
         mask_ratio=cfg["training"]["input_mask_ratio"],
+        edge_index=edge_index,
     )
 
     device = cfg["training"]["device"]
@@ -216,11 +233,11 @@ def main() -> None:
         if lead is not None:
             metrics["lead_time"] = lead
 
-    summary = {
+    summary = _json_safe({
         "threshold": threshold,
         "metrics": metrics,
         "checkpoint": str(ckpt_path),
-    }
+    })
     summary_path = output_dir / "summary.yaml"
     with open(summary_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(summary, f)

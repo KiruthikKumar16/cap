@@ -79,6 +79,7 @@ def test_integration():
     num_intersections = getattr(env, "num_intersections", getattr(env, "num_envs", 0))
     actions = np.zeros(num_intersections, dtype=int) 
     obs, reward, terminated, truncated, info = env.step(actions)
+    info_dict = info[0] if isinstance(info, list) and info else info
     
     print(f"Step Reward: {reward}")
     
@@ -87,8 +88,8 @@ def test_integration():
     assert hasattr(env, "last_variance_forecast"), "Missing variance forecast storage"
     
     # Check if metrics are being calculated
-    assert "step_total_waiting_time" in info, "Missing waiting time metric"
-    assert "step_total_queue_length" in info, "Missing queue length metric"
+    assert "step_total_waiting_time" in info_dict, "Missing waiting time metric"
+    assert "step_total_queue_length" in info_dict, "Missing queue length metric"
     
     print("\n[SUCCESS] SOTA Integration Test Passed!")
     env.close()
@@ -100,3 +101,4 @@ if __name__ == "__main__":
         print(f"\n[FAILED] Test failed: {e}")
         import traceback
         traceback.print_exc()
+        sys.exit(1)

@@ -23,7 +23,7 @@ DEFAULT_MEDIA = ROOT / "outputs" / "dashboard_media.json"
 DEFAULT_EVAL_SUMMARY = ROOT / "outputs" / "phase1" / "evaluation_summary.json"
 DEFAULT_STRESS_SUMMARY = ROOT / "outputs" / "phase3" / "adversarial_benchmark.json"
 RUNS_DIR = ROOT / "outputs" / "dashboard_runs"
-BEST_CHECKPOINT = "outputs/phase1/dqn_traffic_final.zip"
+BEST_CHECKPOINT = "marl_ppo_traffic.zip"
 FIXED_NET_FILE = "data/raw/grid_5x5.net.xml"
 FIXED_ROUTE_FILE = "data/raw/grid_5x5_medium.rou.xml"
 FIXED_SUMOCFG_FILE = "data/raw/grid_5x5.sumocfg"
@@ -400,7 +400,6 @@ def _resolve_checkpoint() -> Path:
 def _checkpoint_candidates() -> List[Path]:
     candidates = [
         ROOT / BEST_CHECKPOINT,
-        ROOT / "best_model_stage_2.zip",
         ROOT / "marl_ppo_traffic.zip",
         ROOT / "outputs/phase1/dqn_traffic_final.zip",
     ]
@@ -1306,7 +1305,7 @@ def main() -> None:
             if not checkpoint_path:
                 st.error(
                     "No PPO checkpoint found. Expected one of: "
-                    "`outputs/phase1/dqn_traffic_final.zip`, `best_model_stage_2.zip`, or `marl_ppo_traffic.zip`. "
+                    "`marl_ppo_traffic.zip` or another compatible PPO checkpoint. "
                     "Train Phase 1 first, then rerun."
                 )
                 return
@@ -1597,7 +1596,7 @@ def main() -> None:
             "or `Load Latest Results` to review previously generated outputs."
         )
         st.markdown(
-            "- Fixed setup: PPO (`best_model_stage_2.zip`) on `grid_5x5` SUMO scenario\n"
+            "- Fixed setup: PPO checkpoint on `grid_5x5` SUMO scenario\n"
             "- Includes benchmark, mandatory detailed episode evaluation, and optional stress test"
         )
         return
@@ -1614,11 +1613,11 @@ def main() -> None:
         except Exception:
             pass
     artifact_meta = raw.get("artifact_metadata", {}) if isinstance(raw, dict) else {}
-    #if artifact_meta.get("artifact_type") == "presentation_demo":
-        #st.warning(
-         #   "Presentation demo artifacts loaded. These values are synthetic/sample outputs for UI demonstration, "
-          #  "not benchmark evidence. Use a real evaluation run for final reported metrics."
-        #)
+    if artifact_meta.get("artifact_type") == "presentation_demo":
+        st.warning(
+            "Presentation demo artifacts loaded. These values are synthetic/sample outputs for UI demonstration, "
+            "not benchmark evidence. Use a real evaluation run for final reported metrics."
+        )
 
     df = _flatten_results(raw)
     if df.empty:

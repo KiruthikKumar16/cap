@@ -45,7 +45,7 @@ def inject_sumo_anomaly(env, probability=0.01):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", type=str, default="best_model_stage_2.zip")
+    parser.add_argument("--checkpoint", type=str, default="marl_ppo_traffic.zip")
     parser.add_argument("--episodes", type=int, default=3)
     parser.add_argument("--max_steps", type=int, default=1500)
     parser.add_argument("--output_file", type=str, default="data/processed/sumo_anomaly_dataset.pt")

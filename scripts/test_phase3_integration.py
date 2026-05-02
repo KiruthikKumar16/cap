@@ -1,152 +1,84 @@
 #!/usr/bin/env python3
 """
-Test Phase 3: Anomaly-Aware Reward Integration
+Test Phase 3 anomaly-aware reward integration.
 
-This script tests the integration between Phase 1 (GNN+RL) and Phase 2 (anomaly detection)
-by training a traffic control agent with anomaly-aware rewards.
+This is a structural readiness test. It intentionally fails when required
+artifacts, configuration, or integration hooks are missing.
 """
 
 import sys
 from pathlib import Path
+
 import yaml
 
-# Add project root to path
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
 
-def test_anomaly_aware_training():
-    """Test anomaly-aware training setup without full PyTorch imports."""
-    print("🧪 Testing Phase 3: Anomaly-Aware Reward Integration")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+
+def _require(condition: bool, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
+def test_anomaly_aware_training() -> bool:
+    print("Testing Phase 3: Anomaly-Aware Reward Integration")
     print("=" * 60)
 
-    # Check if anomaly model exists
-    anomaly_model_path = project_root / "outputs" / "phase2" / "st_gnn_anomaly_detector.pt"
-    if not anomaly_model_path.exists():
-        print(f"❌ Anomaly model not found: {anomaly_model_path}")
-        print("   Please run Phase 2 training first:")
-        print("   python -m src.training.train --config configs/default.yaml")
-        return False
+    anomaly_model_path = PROJECT_ROOT / "outputs" / "phase2" / "st_gnn_anomaly_detector.pt"
+    _require(
+        anomaly_model_path.exists(),
+        f"Anomaly model not found: {anomaly_model_path}. Run Phase 2 training first.",
+    )
+    print(f"[OK] Found anomaly model: {anomaly_model_path}")
 
-    print(f"✅ Found anomaly model: {anomaly_model_path}")
+    config_path = PROJECT_ROOT / "configs" / "phase1_anomaly_aware.yaml"
+    _require(config_path.exists(), f"Config not found: {config_path}")
+    print(f"[OK] Found config: {config_path}")
 
-    # Check if config exists
-    config_path = project_root / "configs" / "phase1_anomaly_aware.yaml"
-    if not config_path.exists():
-        print(f"❌ Config not found: {config_path}")
-        return False
+    with config_path.open("r", encoding="utf-8") as f:
+        config = yaml.safe_load(f)
 
-    print(f"✅ Found config: {config_path}")
+    phase3_config = config.get("phase3", {})
+    _require(phase3_config, "Config missing 'phase3' section")
+    _require(
+        phase3_config.get("enable_anomaly_awareness", False),
+        "Anomaly awareness is not enabled in config",
+    )
+    _require(phase3_config.get("anomaly_weight", 0.0) > 0, "Anomaly weight must be positive")
+    print("[OK] Config loaded and validated")
 
-    # Test config loading
-    try:
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
+    integration_file = PROJECT_ROOT / "src" / "phase3" / "integration.py"
+    _require(integration_file.exists(), f"Integration file not found: {integration_file}")
+    integration_content = integration_file.read_text(encoding="utf-8")
+    for name in ("init_anomaly_controller", "get_anomaly_controller", "AnomalyAwareTrafficController"):
+        _require(name in integration_content, f"Required symbol '{name}' not found in integration.py")
+    print("[OK] Integration module structure validated")
 
-        # Check Phase 3 settings
-        if 'phase3' not in config:
-            print("❌ Config missing 'phase3' section")
-            return False
+    env_file = PROJECT_ROOT / "src" / "phase1" / "traffic_env.py"
+    _require(env_file.exists(), f"Environment file not found: {env_file}")
+    _require(
+        "enable_anomaly_awareness" in env_file.read_text(encoding="utf-8"),
+        "Environment missing anomaly awareness support",
+    )
+    print("[OK] Environment module updated for anomaly awareness")
 
-        phase3_config = config['phase3']
-        if not phase3_config.get('enable_anomaly_awareness', False):
-            print("❌ Anomaly awareness not enabled in config")
-            return False
+    train_file = PROJECT_ROOT / "src" / "phase1" / "train_rl.py"
+    _require(train_file.exists(), f"Training file not found: {train_file}")
+    _require(
+        "init_anomaly_controller" in train_file.read_text(encoding="utf-8"),
+        "Training script missing anomaly controller initialization",
+    )
+    print("[OK] Training script updated for anomaly awareness")
 
-        anomaly_weight = phase3_config.get('anomaly_weight', 0.0)
-        if anomaly_weight <= 0:
-            print("❌ Anomaly weight must be positive")
-            return False
-
-        print("✅ Config loaded and validated")
-        print(f"   Anomaly awareness: {phase3_config['enable_anomaly_awareness']}")
-        print(f"   Anomaly weight: {anomaly_weight}")
-
-    except Exception as e:
-        print(f"❌ Error loading config: {e}")
-        return False
-
-    # Test integration module structure (without importing PyTorch)
-    try:
-        # Check if integration file exists
-        integration_file = project_root / "src" / "phase3" / "integration.py"
-        if not integration_file.exists():
-            print(f"❌ Integration file not found: {integration_file}")
-            return False
-
-        # Read the file to check basic structure
-        with open(integration_file, 'r') as f:
-            content = f.read()
-
-        # Check for required functions
-        required_functions = ['init_anomaly_controller', 'get_anomaly_controller', 'AnomalyAwareTrafficController']
-        for func in required_functions:
-            if func not in content:
-                print(f"❌ Required function '{func}' not found in integration.py")
-                return False
-
-        print("✅ Integration module structure validated")
-
-    except Exception as e:
-        print(f"❌ Error validating integration module: {e}")
-        return False
-
-    # Test environment module updates
-    try:
-        env_file = project_root / "src" / "phase1" / "traffic_env.py"
-        if not env_file.exists():
-            print(f"❌ Environment file not found: {env_file}")
-            return False
-
-        with open(env_file, 'r') as f:
-            content = f.read()
-
-        # Check for anomaly awareness features
-        if 'enable_anomaly_awareness' not in content:
-            print("❌ Environment missing anomaly awareness support")
-            return False
-
-        print("✅ Environment module updated for anomaly awareness")
-
-    except Exception as e:
-        print(f"❌ Error validating environment module: {e}")
-        return False
-
-    # Test training script updates
-    try:
-        train_file = project_root / "src" / "phase1" / "train_rl.py"
-        if not train_file.exists():
-            print(f"❌ Training file not found: {train_file}")
-            return False
-
-        with open(train_file, 'r') as f:
-            content = f.read()
-
-        # Check for anomaly controller initialization
-        if 'init_anomaly_controller' not in content:
-            print("❌ Training script missing anomaly controller initialization")
-            return False
-
-        print("✅ Training script updated for anomaly awareness")
-
-    except Exception as e:
-        print(f"❌ Error validating training script: {e}")
-        return False
-
-    print("\n" + "=" * 60)
-    print("🎉 Phase 3 Integration Setup Test PASSED!")
     print("=" * 60)
-    print("✅ Anomaly model exists")
-    print("✅ Configuration file valid")
-    print("✅ Integration module ready")
-    print("✅ Environment updated")
-    print("✅ Training script ready")
-    print("\n🚀 Ready to run full anomaly-aware training:")
-    print("python -m src.phase1.train_rl --config configs/phase1_anomaly_aware.yaml")
-    print("\n⚠️  Note: Full PyTorch imports may fail due to environment issues,")
-    print("   but the integration code is correctly implemented.")
-
+    print("Phase 3 Integration Setup Test PASSED")
     return True
 
+
 if __name__ == "__main__":
-    success = test_anomaly_aware_training()
-    sys.exit(0 if success else 1)
+    try:
+        test_anomaly_aware_training()
+    except Exception as exc:
+        print(f"[FAIL] {exc}")
+        sys.exit(1)

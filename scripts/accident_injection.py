@@ -22,9 +22,10 @@ def _safe_drop(base: float, stressed: float, lower_is_better: bool) -> float:
 def main():
     parser = argparse.ArgumentParser(description="Adversarial accident injection benchmark")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", type=str, default="best_model_stage_2.zip")
+    parser.add_argument("--checkpoint", type=str, default="marl_ppo_traffic.zip")
     parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--sensor-noise-rate", type=float, default=0.10)
+    parser.add_argument("--mappo-only", action="store_true", help="Run only the MAPPO normal/stress pair.")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -58,15 +59,16 @@ def main():
     print("Evaluating MAPPO-STGNN (stress)...")
     results["stress"]["mappo"] = evaluate_model(stress_cfg, "PPO")
 
-    # NSTLight stress test excludes sensor masking wrapper to keep requirement MAPPO-specific.
-    nst_stress_cfg = copy.deepcopy(stress_cfg)
-    nst_stress_cfg["evaluation"]["sensor_noise"] = False
-    print("Evaluating NSTLight (normal)...")
-    results["normal"]["nstlight"] = evaluate_model(normal_cfg, "NSTLight")
-    print("Evaluating NSTLight (stress)...")
-    results["stress"]["nstlight"] = evaluate_model(nst_stress_cfg, "NSTLight")
+    if not args.mappo_only:
+        # NSTLight stress test excludes sensor masking wrapper to keep requirement MAPPO-specific.
+        nst_stress_cfg = copy.deepcopy(stress_cfg)
+        nst_stress_cfg["evaluation"]["sensor_noise"] = False
+        print("Evaluating NSTLight (normal)...")
+        results["normal"]["nstlight"] = evaluate_model(normal_cfg, "NSTLight")
+        print("Evaluating NSTLight (stress)...")
+        results["stress"]["nstlight"] = evaluate_model(nst_stress_cfg, "NSTLight")
 
-    for model in ("mappo", "nstlight"):
+    for model in results["normal"].keys():
         base = results["normal"][model]
         stressed = results["stress"][model]
         results["degradation_limits_pct"][model] = {
@@ -84,8 +86,11 @@ def main():
     print("\n" + "=" * 60)
     print(f"[OK] Saved adversarial degradation report to {out_file}")
     print(
-        f"MAPPO waiting-time increase: {results['degradation_limits_pct']['mappo']['waiting_time_increase_pct']:.2f}% | "
-        f"NSTLight waiting-time increase: {results['degradation_limits_pct']['nstlight']['waiting_time_increase_pct']:.2f}%"
+        "Waiting-time increases: "
+        + ", ".join(
+            f"{name}={payload['waiting_time_increase_pct']:.2f}%"
+            for name, payload in results["degradation_limits_pct"].items()
+        )
     )
     print("=" * 60)
 

@@ -1,0 +1,6 @@
+ablation,status,metric_delta_vs_full,evidence_status
+Without ST-GNN,not_run,,missing
+Without anomaly module,not_run,,missing
+Without predictive phase,not_run,,missing
+Without cross-intersection coordination,not_run,,missing
+Without robustness perturbation handling,not_run,,missing

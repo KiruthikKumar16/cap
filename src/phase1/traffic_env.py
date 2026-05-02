@@ -8,6 +8,7 @@ Integrates with TraCI API for real-time traffic control.
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+import socket
 import numpy as np
 import torch
 import gymnasium as gym
@@ -85,7 +86,7 @@ class SUMOTrafficEnv(gym.Env):
         self.step_length = step_length
         self.max_steps = max_steps
         self.use_gui = use_gui
-        self.traci_port = traci_port if traci_port is not None else 8813
+        self.traci_port = traci_port if traci_port is not None else self._find_free_port()
         self.sumo_binary = sumo_binary
         self.time_penalty_per_step = float(time_penalty_per_step)
         self.enable_anomaly_awareness = enable_anomaly_awareness
@@ -164,6 +165,12 @@ class SUMOTrafficEnv(gym.Env):
         self.log_file = "episode_metrics.csv"
         self.episode_count = 0
         self._init_log_file()
+
+    @staticmethod
+    def _find_free_port() -> int:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            return int(sock.getsockname()[1])
 
     def _init_log_file(self):
         if not Path(self.log_file).exists():

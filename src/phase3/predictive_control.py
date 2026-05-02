@@ -5,10 +5,9 @@ Implements proactive traffic control by predicting anomalies before they occur,
 allowing the RL agent to preemptively adjust traffic signals.
 """
 
-from typing import Dict, Tuple, Optional, List
+from typing import Dict, Tuple, List
 import numpy as np
 import torch
-from pathlib import Path
 from collections import deque
 
 
@@ -138,7 +137,6 @@ class CongestionWaveForecaster:
         Returns:
             Forecasted density map [steps, N]
         """
-        num_nodes = current_density.shape[0]
         forecasts = []
         
         state = current_density.clone()
@@ -174,22 +172,6 @@ class CongestionWaveForecaster:
         if isinstance(bottlenecks, int):
             return [bottlenecks]
         return bottlenecks or []
-        self, intersection_id: str, threshold: float = 0.5
-    ) -> bool:
-        """
-        Determine if we should preemptively control to avoid predicted anomaly.
-
-        Args:
-            intersection_id: ID of intersection
-            threshold: Anomaly threshold
-
-        Returns:
-            True if preemptive action recommended
-        """
-        if intersection_id not in self.predictions:
-            return False
-
-        return self.predictions[intersection_id] > threshold
 
 
 class PredictiveTrafficController:

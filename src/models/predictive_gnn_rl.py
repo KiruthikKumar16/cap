@@ -8,7 +8,7 @@ with a GNN-based DQN for reinforcement learning-based control.
 
 import torch
 import torch.nn as nn
-from typing import Tuple, Optional
+from typing import Tuple
 
 from src.models.st_gnn import SpatialTemporalAutoencoder
 from src.phase1.gnn_encoder import TrafficGNNEncoder
@@ -49,12 +49,13 @@ class PredictiveGNNRL(nn.Module):
             temporal_type="gru",
         )
 
-        # Bridge for Control (256 -> 12)
-        self.input_proj = nn.Linear(st_gnn_hidden_dim, rl_gnn_in_dim)
+        self.input_proj = (
+            nn.Identity()
+            if st_gnn_in_dim == rl_gnn_in_dim
+            else nn.Linear(st_gnn_in_dim, rl_gnn_in_dim)
+        )
         
-        # Bridge for Forecasting Loss (256 -> 12)
-        # Allows training against raw physical features while keeping latent space expressive.
-        self.forecast_decode = nn.Linear(st_gnn_hidden_dim, st_gnn_in_dim)
+        self.forecast_decode = nn.Identity()
 
         self.controller = TrafficGNNEncoder(
             in_dim=rl_gnn_in_dim,
@@ -72,7 +73,7 @@ class PredictiveGNNRL(nn.Module):
         edge_index = edge_index.to(device)
 
         recon, mean_forecast, variance_forecast = self.forecaster(x_seq, edge_index)
-        predicted_state = mean_forecast[:, -1, :, :] # [B, N, hidden_dim]
+        predicted_state = mean_forecast[:, -1, :, :] # [B, N, feature_dim]
         
         batch_size = predicted_state.shape[0]
         if batch_size > 1:
@@ -100,14 +101,11 @@ class PredictiveGNNRL(nn.Module):
     ) -> torch.Tensor:
         """
         Calculates loss by decoding the latent forecast back to physical dimensions.
-        mean_forecast: [B, H_out, N, hidden_dim]
+        mean_forecast: [B, H_out, N, in_dim]
         actual_next: [B, N, in_dim] or [B, H_out, N, in_dim]
         """
         # Take the last projected step
-        predicted_latent = mean_forecast[:, -1, :, :] # [B, N, 256]
-        
-        # Decode latent prediction back to physical features (12-dim)
-        decoded_prediction = self.forecast_decode(predicted_latent) # [B, N, 12]
+        decoded_prediction = self.forecast_decode(mean_forecast[:, -1, :, :])
         
         if actual_next.dim() == 4:
             actual_next = actual_next[:, -1, :, :]

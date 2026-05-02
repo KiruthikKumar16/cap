@@ -45,7 +45,7 @@ Our framework synthesizes the strengths of these disparate approaches while elim
 3. **Out-of-Distribution (OOD) Resilience:** The ST-GNN explicitly learns localized topological dynamics rather than global grid features, rendering it highly immune to geometric variance in zero-shot deployments (Benglaru benchmark).
 """
 
-CHAPTER_3 = """
+CHAPTER_3 = r"""
 # Chapter 3: Mathematical Problem Formulation
 
 ## 3.1 Network Topology as a Directed Graph
@@ -80,7 +80,7 @@ $$ r_i^{(t)} = - \alpha \sum_{l \in L_i} queue(l)^{(t)} - \beta \sum_{l \in L_i}
 Here, $\alpha$, $\beta$, and $\lambda$ are precisely tuned normalization coefficients to ensure theoretical stability across differing traffic densities. $\text{pressure}_i$ maps the differential vehicle density between incoming and outgoing edges to explicitly combat intersection starvation.
 """
 
-CHAPTER_4 = """
+CHAPTER_4 = r"""
 # Chapter 4: Architecture - MAPPO & ST-GNN
 
 ## 4.1 Proximal Policy Optimization (PPO) Baseline
@@ -110,7 +110,7 @@ $$ h_t = (1 - z_t) * h_{t-1} + z_t * \tilde{h}_t $$
 This recurrent encoding creates a highly dense representation of the moving shockwave, allowing the Actor network to switch traffic lights exactly moments before an incoming congestion wave physically breaches the intersection bounds.
 """
 
-CHAPTER_5 = """
+CHAPTER_5 = r"""
 # Chapter 5: Methodology, Adversarial Stress Testing, and Generalization
 
 ## 5.1 Training Pipeline Configuration

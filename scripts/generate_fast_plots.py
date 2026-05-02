@@ -104,7 +104,7 @@ def generate_summary_bars(models):
             
             # Show Delta vs Baseline for MAPPO
             if names[i] == "MAPPO":
-                delta_str = f"$\Delta$: {improvements[i]:+.1f}%"
+                delta_str = rf"$\Delta$: {improvements[i]:+.1f}%"
                 plt.text(bar.get_x() + bar.get_width()/2, yval - (0.05 * (max_val - min_val)), delta_str, ha='center', va='top', color='white', fontweight='bold')
 
         plt.tight_layout()

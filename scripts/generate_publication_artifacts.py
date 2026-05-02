@@ -19,6 +19,12 @@ def _load_json(path: Path) -> Any:
 
 
 def _benchmark_table(raw: Dict[str, Any]) -> pd.DataFrame:
+    metadata = raw.get("artifact_metadata", {}) if isinstance(raw, dict) else {}
+    if metadata.get("artifact_type") == "presentation_demo":
+        raise ValueError(
+            "outputs/benchmark_results.json is marked as presentation_demo and "
+            "must not be used for publication artifacts."
+        )
     rows: List[Dict[str, Any]] = []
     for name, payload in raw.items():
         if not isinstance(payload, dict) or "mean_reward" not in payload:
@@ -38,27 +44,37 @@ def _benchmark_table(raw: Dict[str, Any]) -> pd.DataFrame:
 
 def _fairness_table(eval_summary: Dict[str, Any], benchmark_df: pd.DataFrame) -> pd.DataFrame:
     horizon = eval_summary.get("num_episodes", "unknown")
+    has_eval = bool(eval_summary)
+    has_benchmark = not benchmark_df.empty
     return pd.DataFrame(
         [
-            {"criterion": "Same episode budget", "status": "PASS", "evidence": f"episodes={horizon}"},
-            {"criterion": "Same evaluation horizon", "status": "PASS", "evidence": "Single phase1 config used"},
+            {
+                "criterion": "Same episode budget",
+                "status": "PASS" if has_eval else "CHECK",
+                "evidence": f"episodes={horizon}" if has_eval else "evaluation summary missing",
+            },
+            {
+                "criterion": "Same evaluation horizon",
+                "status": "PASS" if has_eval else "CHECK",
+                "evidence": "Single phase1 config used" if has_eval else "evaluation summary missing",
+            },
             {
                 "criterion": "Same observation/reward interface",
-                "status": "PASS" if not benchmark_df.empty else "CHECK",
-                "evidence": "Unified evaluation entrypoints",
+                "status": "PASS" if has_benchmark else "CHECK",
+                "evidence": "Unified evaluation entrypoints" if has_benchmark else "benchmark table missing",
             },
         ]
     )
 
 
-def _ablation_template() -> pd.DataFrame:
+def _ablation_gap_table() -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"ablation": "Without ST-GNN", "status": "TODO", "metric_delta_vs_full": ""},
-            {"ablation": "Without anomaly module", "status": "TODO", "metric_delta_vs_full": ""},
-            {"ablation": "Without predictive phase", "status": "TODO", "metric_delta_vs_full": ""},
-            {"ablation": "Without cross-intersection coordination", "status": "TODO", "metric_delta_vs_full": ""},
-            {"ablation": "Without robustness perturbation handling", "status": "TODO", "metric_delta_vs_full": ""},
+            {"ablation": "Without ST-GNN", "status": "not_run", "metric_delta_vs_full": "", "evidence_status": "missing"},
+            {"ablation": "Without anomaly module", "status": "not_run", "metric_delta_vs_full": "", "evidence_status": "missing"},
+            {"ablation": "Without predictive phase", "status": "not_run", "metric_delta_vs_full": "", "evidence_status": "missing"},
+            {"ablation": "Without cross-intersection coordination", "status": "not_run", "metric_delta_vs_full": "", "evidence_status": "missing"},
+            {"ablation": "Without robustness perturbation handling", "status": "not_run", "metric_delta_vs_full": "", "evidence_status": "missing"},
         ]
     )
 
@@ -78,7 +94,7 @@ def _ablation_results_table(ablation_raw: Dict[str, Any]) -> pd.DataFrame:
             }
         )
     if not rows:
-        rows = [{"variant": "pending", "mean_reward": "", "mean_waiting_time_s": "", "mean_queue_length_vehicles": ""}]
+        rows = [{"variant": "not_run", "mean_reward": "", "mean_waiting_time_s": "", "mean_queue_length_vehicles": "", "evidence_status": "missing"}]
     return pd.DataFrame(rows)
 
 
@@ -108,7 +124,7 @@ def _generalization_table(g_raw: Dict[str, Any]) -> pd.DataFrame:
             }
         )
     if not rows:
-        rows = [{"map": "pending", "mean_reward": "", "mean_throughput_veh_per_h": "", "mean_waiting_time_s": "", "mean_queue_length_vehicles": ""}]
+        rows = [{"map": "not_run", "mean_reward": "", "mean_throughput_veh_per_h": "", "mean_waiting_time_s": "", "mean_queue_length_vehicles": "", "evidence_status": "missing"}]
     return pd.DataFrame(rows)
 
 
@@ -125,21 +141,21 @@ def _stress_table(stress_raw: Dict[str, Any]) -> pd.DataFrame:
             }
         )
     if not rows:
-        rows = [{"model": "pending", "throughput_drop_pct": "", "waiting_time_increase_pct": "", "queue_length_increase_pct": ""}]
+        rows = [{"model": "not_run", "throughput_drop_pct": "", "waiting_time_increase_pct": "", "queue_length_increase_pct": "", "evidence_status": "missing"}]
     return pd.DataFrame(rows)
 
 
 def _latency_table(lat_raw: Any) -> pd.DataFrame:
     if isinstance(lat_raw, list) and lat_raw:
         return pd.DataFrame(lat_raw)
-    return pd.DataFrame([{"model": "pending", "device": "", "n_runs": "", "mean_ms": "", "p95_ms": "", "p99_ms": ""}])
+    return pd.DataFrame([{"model": "not_run", "device": "", "n_runs": "", "mean_ms": "", "p95_ms": "", "p99_ms": "", "evidence_status": "missing"}])
 
 
 def _scalability_scaffold() -> pd.DataFrame:
     return pd.DataFrame(
         [
-            {"intersections": 25, "training_wallclock_s": "", "inference_ms_per_step": "", "gpu_memory_mb": "", "ctde_comm_estimate_kb_per_step": ""},
-            {"intersections": 100, "training_wallclock_s": "", "inference_ms_per_step": "", "gpu_memory_mb": "", "ctde_comm_estimate_kb_per_step": ""},
+            {"intersections": 25, "training_wallclock_s": "", "inference_ms_per_step": "", "gpu_memory_mb": "", "ctde_comm_estimate_kb_per_step": "", "evidence_status": "not_run"},
+            {"intersections": 100, "training_wallclock_s": "", "inference_ms_per_step": "", "gpu_memory_mb": "", "ctde_comm_estimate_kb_per_step": "", "evidence_status": "not_run"},
         ]
     )
 
@@ -160,7 +176,7 @@ def _write_summary(
     lines.append("# Main Results Summary")
     lines.append("")
     lines.append(f"- Generation mode: `{mode}`")
-    lines.append("- Core story: robust multi-agent traffic control under non-stationarity with anomaly-aware proactive adaptation.")
+    lines.append("- Status: generated from currently available outputs; missing experiments are reported as gaps.")
     lines.append("")
     lines.append("## Benchmark Table")
     lines.append("")
@@ -201,7 +217,7 @@ def _write_summary(
     lines.append(baseline_win_line)
 
     degradation_line = "- Identified degradation mode: not available yet."
-    mitigation_line = "- Mitigation plan: run stress sweep and target measured reduction in waiting-time increase."
+    mitigation_line = "- Mitigation plan: run a full stress sweep before making robustness claims."
     if not stress_df.empty and "waiting_time_increase_pct" in stress_df.columns:
         valid = stress_df[pd.to_numeric(stress_df["waiting_time_increase_pct"], errors="coerce").notna()].copy()
         if not valid.empty:
@@ -212,8 +228,8 @@ def _write_summary(
                 f"{worst['waiting_time_increase_pct']:.2f}% waiting-time increase under stress."
             )
             mitigation_line = (
-                "- Mitigation plan: apply adaptive anomaly threshold + noise-aware observation masking, "
-                "then rerun stress benchmark and target >=20% reduction in waiting-time increase for the worst-case model."
+                "- Mitigation plan: rerun the full stress benchmark, then evaluate whether adaptive anomaly "
+                "thresholding or noise-aware observation masking improves the measured worst case."
             )
     lines.append(degradation_line)
     lines.append(mitigation_line)
@@ -243,7 +259,7 @@ def main() -> None:
 
     benchmark_df = _benchmark_table(benchmark_raw if isinstance(benchmark_raw, dict) else {})
     fairness_df = _fairness_table(eval_summary_raw if isinstance(eval_summary_raw, dict) else {}, benchmark_df)
-    ablation_template_df = _ablation_template()
+    ablation_gap_df = _ablation_gap_table()
     ablation_results_df = _ablation_results_table(ablation_raw if isinstance(ablation_raw, dict) else {})
     generalization_df = _generalization_table(generalization_raw if isinstance(generalization_raw, dict) else {})
     stress_df = _stress_table(stress_raw if isinstance(stress_raw, dict) else {})
@@ -252,7 +268,7 @@ def main() -> None:
 
     benchmark_df.to_csv(RESULTS_DIR / "main_tables.csv", index=False)
     fairness_df.to_csv(RESULTS_DIR / "fairness_checklist.csv", index=False)
-    ablation_template_df.to_csv(RESULTS_DIR / "ablation_table_template.csv", index=False)
+    ablation_gap_df.to_csv(RESULTS_DIR / "ablation_evidence_gaps.csv", index=False)
     ablation_results_df.to_csv(RESULTS_DIR / "ablation_contributions.csv", index=False)
     generalization_df.to_csv(RESULTS_DIR / "generalization_table.csv", index=False)
     stress_df.to_csv(RESULTS_DIR / "stress_recovery_table.csv", index=False)
@@ -269,7 +285,7 @@ def main() -> None:
     for name in [
         "main_tables.csv",
         "fairness_checklist.csv",
-        "ablation_table_template.csv",
+        "ablation_evidence_gaps.csv",
         "ablation_contributions.csv",
         "generalization_table.csv",
         "stress_recovery_table.csv",
