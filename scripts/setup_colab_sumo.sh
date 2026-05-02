@@ -26,4 +26,4 @@ echo "==> Verifying SUMO binary"
 sumo --version
 
 echo "==> Verifying project TraCI connectivity"
-python scripts/check_sumo.py
+python scripts/check_sumo.py --config configs/phase1_colab.yaml

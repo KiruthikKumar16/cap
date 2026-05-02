@@ -72,11 +72,11 @@ SUMO is required for meaningful Phase 1 traffic simulation. In a Colab Linux run
 !sudo apt-get install -y sumo sumo-tools sumo-doc
 ```
 
-Then verify:
+Then verify against the Colab config, which uses tracked `grid_3x3` files:
 
 ```bash
 !sumo --version
-!python scripts/check_sumo.py
+!python scripts/check_sumo.py --config configs/phase1_colab.yaml
 ```
 
 If SUMO install fails with `ppa.launchpadcontent.net` or `ubuntugis` timeout errors, run the Colab recovery script:
@@ -85,7 +85,7 @@ If SUMO install fails with `ppa.launchpadcontent.net` or `ubuntugis` timeout err
 !bash scripts/setup_colab_sumo.sh
 ```
 
-The script disables unstable Launchpad PPA entries for the current runtime, installs SUMO from Ubuntu repositories, and runs `scripts/check_sumo.py`.
+The script disables unstable Launchpad PPA entries for the current runtime, installs SUMO from Ubuntu repositories, and runs `scripts/check_sumo.py --config configs/phase1_colab.yaml`.
 
 If SUMO still fails or `scripts/check_sumo.py` fails, stop and record that failure. Do not report benchmark numbers from a broken simulator setup.
 
@@ -109,13 +109,13 @@ Copy a checkpoint into the repo before running proof experiments:
 If you do not already have `marl_ppo_traffic.zip`, train one after SUMO is working:
 
 ```bash
-!python src/phase1/train_marl.py --config configs/phase1.yaml --total-timesteps 100000
+!python src/phase1/train_marl.py --config configs/phase1_colab.yaml --total-timesteps 100000
 ```
 
 For a very short pipeline test only, you can use fewer timesteps:
 
 ```bash
-!python src/phase1/train_marl.py --config configs/phase1.yaml --total-timesteps 10000
+!python src/phase1/train_marl.py --config configs/phase1_colab.yaml --total-timesteps 10000
 ```
 
 Honesty rule: a 10,000-step checkpoint is a smoke-test checkpoint, not a trained result you should use for paper claims.
@@ -131,7 +131,7 @@ Run this only after SUMO and the checkpoint are available:
 
 ```bash
 !python scripts/run_proof_experiment.py \
-  --config configs/phase1.yaml \
+  --config configs/phase1_colab.yaml \
   --checkpoint marl_ppo_traffic.zip \
   --episodes 3 \
   --seeds 3

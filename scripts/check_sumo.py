@@ -10,6 +10,7 @@ Checks:
   3. A short simulation runs and returns departed/arrived counts
 """
 
+import argparse
 import os
 import sys
 from pathlib import Path
@@ -19,6 +20,10 @@ sys.path.insert(0, str(project_root))
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Check SUMO and TraCI connectivity.")
+    parser.add_argument("--config", default="configs/phase1.yaml", help="Config path to validate.")
+    args = parser.parse_args()
+
     print("=" * 60)
     print("SUMO + TraCI connectivity check")
     print("=" * 60)
@@ -26,14 +31,14 @@ def main():
     # 1) Config
     try:
         import yaml
-        with open(project_root / "configs" / "phase1.yaml", "r", encoding="utf-8") as f:
+        with open(project_root / args.config, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
         sumo_binary = config.get("sumo", {}).get("sumo_binary")
         net_file = config.get("sumo", {}).get("net_file", "data/raw/grid_2x2.net.xml")
         route_file = config.get("sumo", {}).get("route_file", "data/raw/grid_2x2.rou.xml")
         config_file = config.get("sumo", {}).get("config_file")
     except Exception as e:
-        print(f"  [WARN] Could not load config: {e}")
+        print(f"  [WARN] Could not load config {args.config}: {e}")
         sumo_binary = None
         net_file = "data/raw/grid_2x2.net.xml"
         route_file = "data/raw/grid_2x2.rou.xml"
@@ -74,6 +79,7 @@ def main():
             cmd.extend(["-c", str(project_root / config_file)])
         else:
             cmd.extend(["-n", str(project_root / net_file), "-r", str(project_root / route_file)])
+        print(f"  Config: {args.config}")
         print(f"  Command: {' '.join(cmd)}")
         traci.start(cmd, port=8813)
         print("  [OK] SUMO started (TraCI connected)")
