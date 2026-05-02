@@ -62,7 +62,12 @@ def _run_policy(config: dict[str, Any], policy: str, steps: int) -> dict[str, An
         for step in range(steps):
             action = _policy_action(policy, step, num_agents)
             step_out = env.step(action)
-            obs, reward, terminated, truncated, info = step_out
+            if len(step_out) == 5:
+                obs, reward, terminated, truncated, info = step_out
+            else:
+                obs, reward, done, info = step_out
+                terminated = done
+                truncated = np.array([False]) if np.ndim(done) > 0 else False
             info_dict = info[0] if isinstance(info, list) and info else info
             if not isinstance(info_dict, dict):
                 info_dict = {}
