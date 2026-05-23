@@ -1,6 +1,6 @@
 # Main Results Summary
 
-- Generation mode: `quick`
+- Generation mode: `full`
 - Status: generated from currently available outputs; missing experiments are reported as gaps.
 
 ## Benchmark Table
@@ -9,14 +9,14 @@ No benchmark data available.
 
 ## Statistical Reporting
 
-- Statistical table: `C:\Users\Kiruthik Kumar M\cap\results\statistical_summary.csv`
+- Statistical table: `/home/kk/cap/results/statistical_summary.csv`
 
 ## Fairness Checklist
 
-                        criterion status                  evidence
-              Same episode budget   PASS                episodes=1
-          Same evaluation horizon   PASS Single phase1 config used
-Same observation/reward interface  CHECK   benchmark table missing
+                        criterion status                   evidence
+              Same episode budget  CHECK evaluation summary missing
+          Same evaluation horizon  CHECK evaluation summary missing
+Same observation/reward interface  CHECK    benchmark table missing
 
 ## Hard-Nosed Failure Reporting
 

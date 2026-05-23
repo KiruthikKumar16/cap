@@ -45,6 +45,18 @@ class SpatialEncoder(nn.Module):
         x = self.dropout(x)
         return x.reshape(b, n, -1)
 
+# Gradient Reversal Layer for Domain Adaptation
+class GradientReversalFunction(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, alpha):
+        ctx.alpha = alpha
+        return x.view_as(x)
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        output = grad_output.neg() * ctx.alpha
+        return output, None
+
 class SpatialTemporalAutoencoder(nn.Module):
     def __init__(
         self, 
@@ -93,8 +105,16 @@ class SpatialTemporalAutoencoder(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, horizon * in_dim),
         )
+        
+        # Domain Classifier for Unsupervised Domain Adaptation (UDA)
+        self.domain_classifier = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim // 2, 1) # Binary classification: 0=Sim, 1=Real
+        )
 
-    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, x_seq: torch.Tensor, edge_index: torch.Tensor, alpha: float = 0.0) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, Optional[torch.Tensor]]:
         # x_seq: [B, H, N, F]
         b, h, n, f = x_seq.shape
         
@@ -120,4 +140,11 @@ class SpatialTemporalAutoencoder(nn.Module):
         
         variance_forecast = torch.exp(log_var_forecast)
         
-        return recon, mean_forecast, variance_forecast
+        # Domain classification via GRL
+        if alpha > 0.0:
+            reversed_features = GradientReversalFunction.apply(x_temporal, alpha)
+            domain_pred = self.domain_classifier(reversed_features)
+        else:
+            domain_pred = self.domain_classifier(x_temporal)
+        
+        return recon, mean_forecast, variance_forecast, domain_pred

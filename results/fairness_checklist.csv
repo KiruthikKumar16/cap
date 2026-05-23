@@ -1,4 +1,4 @@
 criterion,status,evidence
-Same episode budget,PASS,episodes=1
-Same evaluation horizon,PASS,Single phase1 config used
+Same episode budget,CHECK,evaluation summary missing
+Same evaluation horizon,CHECK,evaluation summary missing
 Same observation/reward interface,CHECK,benchmark table missing

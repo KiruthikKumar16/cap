@@ -34,37 +34,70 @@ from src.phase2.synthetic_data import (
 
 def train_one_epoch(
     model: SpatialTemporalAutoencoder,
-    data_loader: Iterable[torch.Tensor],
+    source_loader: Iterable[torch.Tensor],
+    target_loader: Iterable[torch.Tensor],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     edge_index: torch.Tensor,
     recon_weight: float = 1.0,
     forecast_weight: float = 1.0,
+    domain_weight: float = 1.0,
 ) -> float:
     """
-    Train the model for one epoch.
+    Train the model for one epoch using UDA.
 
-    Loss = recon_weight * L_recon + forecast_weight * L_forecast,
-    where both terms are MSE losses.
+    Source Loss = recon_weight * L_recon + forecast_weight * L_forecast + domain_weight * L_domain(0)
+    Target Loss = domain_weight * L_domain(1)
     """
     model.train()
     total_loss = 0.0
     num_batches = 0
 
     mse = nn.MSELoss()
+    bce = nn.BCEWithLogitsLoss()
+    
+    target_iter = iter(target_loader)
 
-    for batch in data_loader:
-        # batch: [B, H+1, N, F]
-        batch = batch.to(device)
-        x_seq = batch[:, :-1]  # [B, H, N, F]
-        target_last = batch[:, -1]  # [B, N, F]
-        target_forecast = batch[:, 1:]  # [B, H, N, F]
+    for source_batch in source_loader:
+        # Get target batch
+        try:
+            target_batch = next(target_iter)
+        except StopIteration:
+            target_iter = iter(target_loader)
+            target_batch = next(target_iter)
 
         optimizer.zero_grad()
-        recon, mean_forecast, var_forecast = model(x_seq, edge_index)
-        loss_recon = mse(recon, target_last)
-        loss_forecast = mse(mean_forecast, target_forecast)
-        loss = recon_weight * loss_recon + forecast_weight * loss_forecast
+        
+        # --- Source Domain Pass ---
+        source_batch = source_batch.to(device)
+        s_x_seq = source_batch[:, :-1]
+        s_target_last = source_batch[:, -1]
+        s_target_forecast = source_batch[:, 1:]
+
+        # Alpha is the GRL reversal weight
+        p = float(num_batches) / max(1, len(source_loader))
+        alpha = 2. / (1. + torch.exp(torch.tensor(-10. * p))) - 1
+        alpha = float(alpha)
+
+        s_recon, s_mean, s_var, s_domain = model(s_x_seq, edge_index, alpha=alpha)
+        
+        loss_recon = mse(s_recon, s_target_last)
+        loss_forecast = mse(s_mean, s_target_forecast)
+        
+        s_domain_labels = torch.zeros_like(s_domain)
+        s_domain_loss = bce(s_domain, s_domain_labels)
+        
+        # --- Target Domain Pass ---
+        target_batch = target_batch.to(device)
+        t_x_seq = target_batch[:, :-1]
+        _, _, _, t_domain = model(t_x_seq, edge_index, alpha=alpha)
+        
+        t_domain_labels = torch.ones_like(t_domain)
+        t_domain_loss = bce(t_domain, t_domain_labels)
+        
+        # --- Total Loss ---
+        domain_loss = s_domain_loss + t_domain_loss
+        loss = recon_weight * loss_recon + forecast_weight * loss_forecast + domain_weight * domain_loss
 
         loss.backward()
         optimizer.step()
@@ -88,7 +121,9 @@ def main() -> None:
     parser.add_argument("--dropout", type=float, default=0.1, help="Dropout rate")
     parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate")
     parser.add_argument("--output_dir", type=str, default="outputs/phase2", help="Directory to save model")
-    parser.add_argument("--data_file", type=str, default="", help="Path to real SUMO .pt trajectory dataset. If empty, uses synthetic data.")
+    parser.add_argument("--source_data", type=str, default="", help="Path to source domain SUMO dataset.")
+    parser.add_argument("--target_data", type=str, default="", help="Path to target domain (real-world) dataset.")
+    parser.add_argument("--use_dann", type=bool, default=True, help="Enable UDA via DANN.")
     args = parser.parse_args()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -107,28 +142,31 @@ def main() -> None:
         temporal_type="gru",
     ).to(device)
 
-    if args.data_file and os.path.exists(args.data_file):
-        print(f"Loading real SUMO trajectory dataset from: {args.data_file}")
-        tensor_data = torch.load(args.data_file)
-        from torch.utils.data import TensorDataset
-        dataset = TensorDataset(tensor_data)
-        # TensorDataset returns tuples like (tensor,) on __getitem__
-        # We need a custom collate or simple map to unpack it
-        def collate_unpacked(batch):
-            return torch.stack([item[0] for item in batch], dim=0)
-        data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_unpacked)
-    else:
-        print("Starting Phase 2 anomaly detector training (placeholder synthetic data)...")
-        # Synthetic normal dataset (no anomalies for training)
-        dataset = SyntheticTrafficSequenceDataset(
-            num_samples=512,
-            horizon=args.horizon,
-            num_nodes=args.num_nodes,
-            num_features=args.num_features,
-            anomaly_prob=0.0,
-            return_labels=False,
-        )
-        data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    def get_loader(data_file, is_target=False):
+        if data_file and os.path.exists(data_file):
+            print(f"Loading {'target' if is_target else 'source'} dataset from: {data_file}")
+            tensor_data = torch.load(data_file)
+            from torch.utils.data import TensorDataset
+            dataset = TensorDataset(tensor_data)
+            def collate_unpacked(batch):
+                return torch.stack([item[0] for item in batch], dim=0)
+            return DataLoader(dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_unpacked)
+        else:
+            print(f"Generating synthetic {'target' if is_target else 'source'} dataset...")
+            # If target, inject slight domain shift via noise
+            anomaly_prob = 0.05 if is_target else 0.0
+            dataset = SyntheticTrafficSequenceDataset(
+                num_samples=512,
+                horizon=args.horizon,
+                num_nodes=args.num_nodes,
+                num_features=args.num_features,
+                anomaly_prob=anomaly_prob,
+                return_labels=False,
+            )
+            return DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+
+    source_loader = get_loader(args.source_data, is_target=False)
+    target_loader = get_loader(args.target_data, is_target=True)
 
     edge_index = build_fully_connected_edge_index(args.num_nodes, device)
 
@@ -141,7 +179,8 @@ def main() -> None:
     for epoch in range(1, args.epochs + 1):
         loss = train_one_epoch(
             model=model,
-            data_loader=data_loader,
+            source_loader=source_loader,
+            target_loader=target_loader,
             optimizer=optimizer,
             device=device,
             edge_index=edge_index,

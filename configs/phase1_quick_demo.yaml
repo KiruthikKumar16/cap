@@ -7,11 +7,9 @@ experiment:
 sumo:
   net_file: data/raw/grid_3x3.net.xml
   route_file: data/raw/grid_3x3.rou.xml
-  config_file: data/raw/grid_3x3.sumocfg
+  simulation_steps: 3600
   step_length: 1.0
-  simulation_steps: 3600  # 1 hour simulation
-  gui: false  # Set to true for visualization
-  sumo_binary: "C:/Program Files (x86)/Eclipse/Sumo/bin/sumo.exe"
+  gui: false
 
 # Model Configuration
 model:
@@ -29,9 +27,9 @@ rl:
   algorithm: PPO
   policy: MlpPolicy
   learning_rate: 0.0003
-  n_steps: 2048
-  batch_size: 256
-  n_epochs: 10
+  n_steps: 128  # Reduced for quick demo to respect total_timesteps
+  batch_size: 64
+  n_epochs: 5
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2

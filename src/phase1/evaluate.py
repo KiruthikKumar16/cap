@@ -1009,7 +1009,14 @@ def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
                     "Use the same SUMO scenario/config that was used during training."
                 ) from exc
             raise
-        results = evaluate_sb3_agent(model, env, num_episodes, deterministic=True, max_steps_per_episode=max_steps)
+        results = evaluate_sb3_agent(
+            model, 
+            env, 
+            num_episodes, 
+            deterministic=True, 
+            max_steps_per_episode=max_steps,
+            sensor_noise_rate=config.get("evaluation", {}).get("sensor_noise_rate", 0.0)
+        )
     elif model_type == "MaxPressure":
         agent, diagnostics = _create_baseline_agent(model_type)
     elif model_type == "NSTLight":
@@ -1346,12 +1353,16 @@ def main():
     if args.save_summary:
         dqn_mean_wt = float(np.mean(all_dqn_wt)) if all_dqn_wt else 0.0
         ft_mean_wt = float(np.mean(all_ft_wt)) if all_ft_wt else 0.0
+        
+        # Use a dynamic key based on model_type
+        model_key = "mappo" if model_label == "PPO" else "dqn"
+        
         summary = {
             "num_episodes": num_episodes,
             "num_seeds": len(seeds_to_use),
             "total_runs": len(dqn_rewards),
             "used_sumo": used_sumo,
-            "dqn": {
+            model_key: {
                 "mean_reward": dqn_mean_rew,
                 "std_reward": dqn_std_rew,
                 "mean_throughput": dqn_mean_throughput,

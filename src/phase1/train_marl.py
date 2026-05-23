@@ -38,12 +38,19 @@ def main():
     parser.add_argument("--total-timesteps", type=int, default=None, help="Override total timesteps")
     parser.add_argument("--load-model", type=str, default=None, help="Path to load a pre-trained model")
     parser.add_argument("--require-cuda", action="store_true", help="Fail fast if CUDA is not available")
+    parser.add_argument("--maps_dir", type=str, default=None, help="Path to directory containing procedural maps")
+    parser.add_argument("--use_regional_critics", type=str, default="True", help="Enable Hierarchical Regional Critics (True/False)")
     args = parser.parse_args()
 
     config = load_config(args.config)
     
     if args.total_timesteps:
         config["training"]["total_timesteps"] = args.total_timesteps
+    if args.maps_dir:
+        config["sumo"]["net_file"] = args.maps_dir
+    
+    use_regional_critics = args.use_regional_critics.lower() == "true"
+    
     model_cfg = config["model"]
     reward_cfg = config["reward"]
 
@@ -107,6 +114,18 @@ def main():
     else:
         # Filter out non-PPO kwargs
         ppo_kwargs = {k: v for k, v in config.get("rl", {}).items() if k not in ["algorithm", "policy"]}
+        
+        # SOTA: Adjust n_steps to respect total_timesteps and avoid massive overshooting.
+        # SB3 PPO collects n_steps * num_envs per update, and won't stop until rollout is finished.
+        num_envs = vec_env.num_envs
+        total_timesteps = config["training"]["total_timesteps"]
+        if "n_steps" in ppo_kwargs:
+            rollout_size = ppo_kwargs["n_steps"] * num_envs
+            if rollout_size > total_timesteps:
+                new_n_steps = max(1, total_timesteps // num_envs)
+                print(f"  [Config] Clipping n_steps: {ppo_kwargs['n_steps']} -> {new_n_steps} (total_timesteps={total_timesteps}, agents={num_envs})")
+                ppo_kwargs["n_steps"] = new_n_steps
+
         ppo_model = PPO(
             MAPPOPolicy, # Use custom MAPPO policy
             vec_env,

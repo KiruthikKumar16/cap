@@ -72,7 +72,7 @@ class PredictiveGNNRL(nn.Module):
         x_seq = x_seq.to(device)
         edge_index = edge_index.to(device)
 
-        recon, mean_forecast, variance_forecast = self.forecaster(x_seq, edge_index)
+        recon, mean_forecast, variance_forecast, domain_pred = self.forecaster(x_seq, edge_index)
         predicted_state = mean_forecast[:, -1, :, :] # [B, N, feature_dim]
         
         batch_size = predicted_state.shape[0]

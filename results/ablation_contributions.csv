@@ -1,5 +1,2 @@
-variant,mean_reward,mean_waiting_time_s,mean_queue_length_vehicles
-rl_only,-1610.4980949927121,80304.72333333333,500.17722222222227
-gnn_rl,-1601.4554250668734,80304.72333333333,500.17722222222227
-gnn_rl_forecast,-1576.6062720973666,80304.72333333333,500.17722222222227
-full_model,-1122.914455650646,48267.535833333335,333.8677777777778
+variant,mean_reward,mean_waiting_time_s,mean_queue_length_vehicles,evidence_status
+not_run,,,,missing

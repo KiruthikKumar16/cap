@@ -37,16 +37,20 @@ def main() -> None:
         return
 
     raw = json.loads(EVAL_SUMMARY.read_text(encoding="utf-8"))
-    model_keys = [k for k in ["dqn", "fixed_time", "actuated", "random"] if k in raw]
+    # Support both legacy "dqn" and modern "mappo/ppo" keys
+    model_keys = [k for k in ["dqn", "ppo", "mappo", "fixed_time", "actuated", "random"] if k in raw]
     metric_keys = ["rewards", "throughputs", "travel_times", "waiting_times", "queue_lengths"]
     rows = []
     for mk in model_keys:
+        display_name = "MAPPO-STGNN" if mk in ["dqn", "ppo", "mappo"] else mk.replace("_", " ").title()
         for metric in metric_keys:
             vals = raw.get(mk, {}).get(metric, [])
+            if not vals:
+                continue
             stats = _mean_std_ci(vals)
             rows.append(
                 {
-                    "model": mk,
+                    "model": display_name,
                     "metric": metric,
                     "mean": stats["mean"],
                     "std": stats["std"],
@@ -54,21 +58,22 @@ def main() -> None:
                 }
             )
 
-    # Pairwise significance (dqn vs fixed_time where available).
-    if scipy_stats and "dqn" in model_keys and "fixed_time" in model_keys:
+    # Pairwise significance (ours vs fixed_time where available).
+    ours_key = next((k for k in ["dqn", "ppo", "mappo"] if k in model_keys), None)
+    if scipy_stats and ours_key and "fixed_time" in model_keys:
         for metric in metric_keys:
-            a = raw.get("dqn", {}).get(metric, [])
+            a = raw.get(ours_key, {}).get(metric, [])
             b = raw.get("fixed_time", {}).get(metric, [])
             if len(a) > 1 and len(b) > 1:
-                _, p_val = scipy_stats.ttest_ind(a, b, equal_var=False)
+                t_stat, p_val = scipy_stats.ttest_ind(a, b, equal_var=False)
                 rows.append(
                     {
-                        "model": "dqn_vs_fixed_time",
+                        "model": "Ours_vs_FixedTime",
                         "metric": metric,
                         "mean": "",
                         "std": "",
                         "ci95": "",
-                        "p_value": float(p_val),
+                        "p_value": float(p_val) if not np.isnan(p_val) else 1.0,
                     }
                 )
 

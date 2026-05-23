@@ -79,9 +79,22 @@ class SUMOTrafficEnv(gym.Env):
         """
         super().__init__()
         
-        self.config = config or {}
-        self.net_file = net_file
-        self.route_file = route_file
+        self.net_file_path = Path(net_file)
+        if self.net_file_path.is_dir():
+            self.is_procedural = True
+            self.procedural_maps = list(self.net_file_path.glob("*.net.xml"))
+            if not self.procedural_maps:
+                raise ValueError(f"No .net.xml files in {self.net_file_path}")
+            # Pick first for initialization
+            self.net_file = str(self.procedural_maps[0])
+            prefix = self.procedural_maps[0].name.replace('.net.xml', '')
+            rou_files = list(self.net_file_path.glob(f"{prefix}*.rou.xml"))
+            self.route_file = str(rou_files[0]) if rou_files else route_file
+        else:
+            self.is_procedural = False
+            self.net_file = net_file
+            self.route_file = route_file
+            
         self.config_file = config_file
         self.step_length = step_length
         self.max_steps = max_steps
@@ -90,13 +103,10 @@ class SUMOTrafficEnv(gym.Env):
         self.sumo_binary = sumo_binary
         self.time_penalty_per_step = float(time_penalty_per_step)
         self.enable_anomaly_awareness = enable_anomaly_awareness
+        self.config = config if config is not None else {}
         
         # Initialize components
-        self.graph_builder = TrafficGraphBuilder(net_file)
-        self.intersections = self.graph_builder.intersections
-        self.num_intersections = len(self.intersections)
-        
-        self.feature_extractor = TrafficFeatureExtractor(self.intersections)
+        self._init_graph()
         
         # Predictive GNN model and state history
         self.model = model
@@ -113,10 +123,7 @@ class SUMOTrafficEnv(gym.Env):
             )
         else:
             self.reward_calculator = reward_calculator
-        
-        # Get edge index
-        self.edge_index = self.graph_builder.get_edge_index()
-        
+            
         # Each agent (intersection) observation is a concatenation of:
         #   [self_embedding] + [neighbor_embeddings (max_neighbors)] + [global_embedding]
         # Total length = (1 (self) + max_neighbors + 1 (global)) * embedding_dim.
@@ -131,14 +138,26 @@ class SUMOTrafficEnv(gym.Env):
 
         # 1 self + 4 neighbors + 1 global = 6 embeddings total
         obs_vector_dim = int((2 + self.max_neighbors) * int(embedding_dim))
+        
+        # Hybrid Parameterized Action Space: (Phase, Duration Modifier)
+        self.is_parameterized_action = self.config.get("use_parameterized_actions", False)
+        
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
             shape=(obs_vector_dim,),
             dtype=np.float32,
         )
-        # Assuming 4 phases per intersection (standard for our grid)
-        self.action_space = spaces.Discrete(4)
+        
+        if self.is_parameterized_action:
+            # Tuple: (Discrete Phase, Box Duration Delta [-5s, +5s])
+            self.action_space = spaces.Tuple((
+                spaces.Discrete(4),
+                spaces.Box(low=-5.0, high=5.0, shape=(1,), dtype=np.float32)
+            ))
+        else:
+            # Assuming 4 phases per intersection (standard for our grid)
+            self.action_space = spaces.Discrete(4)
         
         # Internal multi-agent tracking
         self.num_agents = self.num_intersections
@@ -202,6 +221,14 @@ class SUMOTrafficEnv(gym.Env):
         print(f"\n[Episode {episode_idx} Metrics]")
         print(f"  Avg Wait: {avg_wait:.2f}s | Avg Queue: {avg_queue:.2f} | Throughput: {throughput} | Avg Stopped: {avg_stopped:.2f}")
         
+    def _init_graph(self):
+        """Initialize graph builder and extractors for current map."""
+        self.graph_builder = TrafficGraphBuilder(self.net_file)
+        self.intersections = self.graph_builder.intersections
+        self.num_intersections = len(self.intersections)
+        self.feature_extractor = TrafficFeatureExtractor(self.intersections)
+        self.edge_index = self.graph_builder.get_edge_index()
+        
     def reset(
         self,
         seed: Optional[int] = None,
@@ -220,6 +247,16 @@ class SUMOTrafficEnv(gym.Env):
         # Set seed if provided
         if seed is not None:
             self.np_random, seed = seeding.np_random(seed)
+            
+        if self.is_procedural and self.np_random:
+            # Pick a random procedural map
+            map_path = self.np_random.choice(self.procedural_maps)
+            self.net_file = str(map_path)
+            prefix = map_path.name.replace('.net.xml', '')
+            rou_files = list(self.net_file_path.glob(f"{prefix}*.rou.xml"))
+            if rou_files:
+                self.route_file = str(rou_files[0])
+            self._init_graph()
         
         # Close existing SUMO connection if any
         if self.sumo_running:
@@ -407,27 +444,45 @@ class SUMOTrafficEnv(gym.Env):
             return
         use_ids = self._tl_ids_for_exec if self._tl_ids_for_exec is not None else self.intersections
         self._last_action_info["traffic_light_count"] = len(use_ids)
-        action_arr = np.asarray(actions)
-        if action_arr.ndim == 0:
-            action_arr = np.full(len(use_ids), int(action_arr.item()), dtype=np.int32)
+        
+        if self.is_parameterized_action:
+            # actions is a tuple: (discrete_phases, continuous_durations)
+            phase_arr = np.asarray(actions[0]).reshape(-1)
+            duration_arr = np.asarray(actions[1]).reshape(-1)
+            self._last_action_info["requested_len"] = int(phase_arr.size)
         else:
-            action_arr = action_arr.reshape(-1)
-        self._last_action_info["requested_len"] = int(action_arr.size)
-        if action_arr.size == 1 and len(use_ids) > 1:
-            action_arr = np.full(len(use_ids), int(action_arr[0]), dtype=np.int32)
-        if len(use_ids) != len(action_arr):
+            action_arr = np.asarray(actions)
+            if action_arr.ndim == 0:
+                action_arr = np.full(len(use_ids), int(action_arr.item()), dtype=np.int32)
+            else:
+                action_arr = action_arr.reshape(-1)
+            self._last_action_info["requested_len"] = int(action_arr.size)
+            phase_arr = action_arr
+            duration_arr = np.zeros_like(phase_arr, dtype=np.float32)
+
+        if len(use_ids) != len(phase_arr):
             self._last_action_info["skipped_reason"] = "action_count_mismatch"
             return
+            
         try:
             for i, tl_id in enumerate(use_ids):
-                phase = int(action_arr[i])
+                phase = int(phase_arr[i])
+                duration_mod = float(duration_arr[i])
+                
                 max_phase = 3
                 if self._max_phase_per_tl and tl_id in self._max_phase_per_tl:
                     max_phase = self._max_phase_per_tl[tl_id]
                 else:
                     max_phase = self._get_max_phase_index(tl_id)
                 phase = max(0, min(phase, max_phase))
+                
                 traci.trafficlight.setPhase(tl_id, phase)
+                
+                if self.is_parameterized_action and duration_mod != 0.0:
+                    current_duration = traci.trafficlight.getPhaseDuration(tl_id)
+                    new_duration = max(5.0, current_duration + duration_mod) # min 5s safety
+                    traci.trafficlight.setPhaseDuration(tl_id, new_duration)
+                    
                 self._last_action_info["applied_count"] += 1
                 if len(self._last_action_info["applied_phases"]) < 16:
                     self._last_action_info["applied_phases"].append(phase)

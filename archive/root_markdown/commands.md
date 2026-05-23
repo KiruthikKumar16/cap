@@ -1,84 +1,86 @@
-# Commands
+# Research Pipeline Commands
 
-GPU-first command list for this project, in proper order.  
-Run from repo root: `C:\Users\Kiruthik Kumar M\cap-1`
+Standard execution flow for producing research-grade results on Linux.
 
-## 0) GPU preflight (required)
+## 1) Environment Setup
 
-```powershell
-$ErrorActionPreference = "Stop"
-$env:CUDA_VISIBLE_DEVICES="0"
-python -c "import torch,sys; print('CUDA:', torch.cuda.is_available()); print('GPU:', torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'None'); sys.exit(0 if torch.cuda.is_available() else 2)"
-```
-
-## 1) Setup
-
-```powershell
-python -m pip install -r requirements.txt
-python scripts/setup_environment.py
-python scripts/check_sumo.py
-```
-
-## 2) Data / scenario generation (if needed)
-
-```powershell
-python scripts/create_sumo_network.py
-python scripts/create_sumo_scenario.py
-python scripts/generate_anomaly_data.py
-```
-
-## 3) Training
-
-```powershell
-python src/phase1/train_rl.py --config configs/phase1.yaml
-```
-
-## 4) Core evaluations (1 episode where supported)
-
-```powershell
-python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint best_model_stage_2.zip --episodes 1
-python scripts/accident_injection.py --config configs/phase1.yaml --checkpoint best_model_stage_2.zip --episodes 1 --sensor-noise-rate 0.10
-python scripts/evaluate_generalization.py
-python scripts/run_generalization_test.py
-python scripts/real_sumo_evaluation.py
-python scripts/run_ablation_study.py
-```
-
-## 5) Latency (explicit GPU)
-
-```powershell
-python scripts/latency_benchmark.py --gpu
-```
-
-## 6) Visualizations / plots / figures
-
-```powershell
-python scripts/generate_plots.py
-python scripts/generate_heatmap.py
-python scripts/sota_visualizations.py
-python scripts/phase1_generate_figures.py
-python scripts/phase2_generate_figures.py
-```
-
-## 7) Tests
-
-```powershell
+```bash
+source venv/bin/activate
+pip install -r requirements.txt
 python scripts/test_setup.py
-python scripts/test_phase1.py
-python scripts/test_phase2.py
-python scripts/test_phase3.py
-python scripts/test_sota_integration.py
-python scripts/test_phase3_integration.py
 ```
 
-## 8) Demo
+## 2) Phase 1: Foundation & Baselines
 
-```powershell
-python scripts/run_phase1_demo.py
+Generate topologies and train the competitive landscape.
+
+```bash
+# Topology Diversity
+python scripts/generate_random_maps.py --count 10 --output_dir data/raw/procedural/
+
+# SOTA Baseline: CoLight
+python scripts/train_baselines.py --model colight --config configs/phase1.yaml --episodes 150
+
+# SOTA Baseline: NSTLight
+python scripts/train_baselines.py --model nstlight --config configs/phase1.yaml --episodes 150
 ```
 
-## Optional one-shot runner (GPU-enforced)
+## 3) Phase 2: Proposed Model Training
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_end_to_end_gpu.ps1 -Config "configs/phase1.yaml" -Checkpoint "best_model_stage_2.zip" -Episodes 1
+Train the MAPPO-STGNN agent with regional hierarchical coordination.
+
+```bash
+python src/phase1/train_marl.py \
+    --config configs/phase1.yaml \
+    --total-timesteps 100000 \
+    --use_regional_critics True
+```
+
+## 4) Phase 3: Anomaly Detection & Risk Sensing
+
+Train the ST-GNN detector to identify accidents and non-stationary events.
+
+```bash
+# Data Collection
+python scripts/generate_anomaly_data.py --checkpoint marl_ppo_traffic.zip --episodes 10
+# Detector Training
+python src/phase2/anomaly_trainer.py --epochs 30
+```
+
+## 5) Comprehensive Scientific Evaluation
+
+Run the full suite of benchmarks, ablations, and generalization tests.
+
+```bash
+# SOTA Comparison (multi-seed)
+python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint marl_ppo_traffic.zip --episodes 5 --seeds 3
+
+# Ablation Study (Component Attribution)
+python scripts/run_ablation_study.py
+
+# Zero-Shot Generalization (Real-world map)
+python scripts/evaluate_generalization.py --config configs/bengaluru_city.yaml --checkpoint marl_ppo_traffic.zip
+
+# Latency Benchmark (Efficiency)
+python scripts/latency_benchmark.py --cpu
+```
+
+## 6) Publication Artifacts
+
+Generate the final LaTeX tables and statistical summaries.
+
+```bash
+# Statistical Significance (P-values/CI)
+python scripts/generate_statistical_tables.py
+
+# Final PDF/CSV Artifacts
+python scripts/generate_publication_artifacts.py --mode full
+```
+
+## 7) Integrated Demo
+
+Launch the research dashboard for interactive visualization.
+
+```bash
+streamlit run src/dashboard/app.py --server.port 8505
 ```

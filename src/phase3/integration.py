@@ -195,7 +195,7 @@ class AnomalyAwareTrafficController:
 
             # Get anomaly scores
             with torch.no_grad():
-                recon, forecast = self.anomaly_model(x_input, edge_index)
+                recon, forecast, variance, domain = self.anomaly_model(x_input, edge_index)
                 scores, _ = combined_anomaly_score(recon, forecast, x_target)
 
                 # Convert to numpy
