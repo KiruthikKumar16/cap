@@ -19,11 +19,8 @@ def _load_json(path: Path) -> Any:
 
 
 def _benchmark_table(raw: Dict[str, Any]) -> pd.DataFrame:
-    # If primary is empty, check archive
-    if not raw:
-        archive_path = ROOT / "archive" / "unverified_evidence" / "outputs_benchmark_results.json"
-        if archive_path.exists():
-            raw = _load_json(archive_path)
+    # REMOVED: Fallback to archive/unverified_evidence. 
+    # For SOTA results, only real 'outputs/' are acceptable.
 
     metadata = raw.get("artifact_metadata", {}) if isinstance(raw, dict) else {}
     if metadata.get("artifact_type") == "presentation_demo":
@@ -34,10 +31,10 @@ def _benchmark_table(raw: Dict[str, Any]) -> pd.DataFrame:
             if new_raw.get("artifact_metadata", {}).get("artifact_type") != "presentation_demo":
                 raw = new_raw
             else:
-                print("[WARN] benchmark_results.json is still marked as presentation_demo. Skipping table generation.")
+                print("[ERROR] benchmark_results.json is still marked as presentation_demo. Research-grade results must be generated from full runs.")
                 return pd.DataFrame()
         else:
-            print("[WARN] No real benchmark data found. Skipping table generation.")
+            print("[ERROR] No real benchmark data found. Run 'scripts/run_benchmarks.py' first.")
             return pd.DataFrame()
 
     rows: List[Dict[str, Any]] = []
@@ -65,18 +62,18 @@ def _fairness_table(eval_summary: Dict[str, Any], benchmark_df: pd.DataFrame) ->
         [
             {
                 "criterion": "Same episode budget",
-                "status": "PASS" if has_eval else "CHECK",
-                "evidence": f"episodes={horizon}" if has_eval else "evaluation summary missing",
+                "status": "PASS" if has_eval else "FAIL",
+                "evidence": f"episodes={horizon}" if has_eval else "Missing evaluation summary",
             },
             {
                 "criterion": "Same evaluation horizon",
-                "status": "PASS" if has_eval else "CHECK",
-                "evidence": "Single phase1 config used" if has_eval else "evaluation summary missing",
+                "status": "PASS" if has_eval else "FAIL",
+                "evidence": "Single phase1 config used" if has_eval else "Missing evaluation summary",
             },
             {
                 "criterion": "Same observation/reward interface",
-                "status": "PASS" if has_benchmark else "CHECK",
-                "evidence": "Unified evaluation entrypoints" if has_benchmark else "benchmark table missing",
+                "status": "PASS" if has_benchmark else "FAIL",
+                "evidence": "Unified evaluation entrypoints" if has_benchmark else "Missing benchmark table",
             },
         ]
     )
@@ -96,11 +93,7 @@ def _ablation_gap_table() -> pd.DataFrame:
 
 def _ablation_results_table(ablation_raw: Dict[str, Any]) -> pd.DataFrame:
     rows: List[Dict[str, Any]] = []
-    # If primary is empty, check archive
-    if not ablation_raw:
-        archive_path = ROOT / "archive" / "unverified_evidence" / "ablation_results.json"
-        if archive_path.exists():
-            ablation_raw = _load_json(archive_path)
+    # REMOVED: Fallback to archive/unverified_evidence
 
     for variant, payload in ablation_raw.items():
         if not isinstance(payload, dict):
@@ -178,13 +171,14 @@ def _latency_table(lat_raw: Any) -> pd.DataFrame:
     return pd.DataFrame([{"model": "not_run", "device": "", "n_runs": "", "mean_ms": "", "p95_ms": "", "p99_ms": "", "evidence_status": "missing"}])
 
 
-def _scalability_scaffold() -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {"intersections": 25, "training_wallclock_s": "1240", "inference_ms_per_step": "1.8", "gpu_memory_mb": "420", "ctde_comm_estimate_kb_per_step": "12.5", "evidence_status": "VALIDATED"},
-            {"intersections": 100, "training_wallclock_s": "4800", "inference_ms_per_step": "4.2", "gpu_memory_mb": "1150", "ctde_comm_estimate_kb_per_step": "48.2", "evidence_status": "ESTIMATED"},
-        ]
-    )
+def _scalability_table(scalability_raw: Dict[str, Any]) -> pd.DataFrame:
+    if not scalability_raw:
+        return pd.DataFrame([{"intersections": "N/A", "training_wallclock_s": "N/A", "inference_ms_per_step": "N/A", "evidence_status": "PENDING_RUN"}])
+    
+    rows = []
+    for entry in scalability_raw.get("results", []):
+        rows.append(entry)
+    return pd.DataFrame(rows)
 
 
 def _write_summary(
@@ -286,6 +280,7 @@ def main() -> None:
     ablation_raw = _load_json(ROOT / "outputs" / "ablation_results.json")
     generalization_raw = _load_json(ROOT / "outputs" / "phase4" / "zero_shot_generalization.json")
     latency_raw = _load_json(ROOT / "outputs" / "latency" / "inference_latency.json")
+    scalability_raw = _load_json(ROOT / "outputs" / "scalability" / "scalability_results.json")
 
     benchmark_df = _benchmark_table(benchmark_raw if isinstance(benchmark_raw, dict) else {})
     fairness_df = _fairness_table(eval_summary_raw if isinstance(eval_summary_raw, dict) else {}, benchmark_df)
@@ -294,7 +289,7 @@ def main() -> None:
     generalization_df = _generalization_table(generalization_raw if isinstance(generalization_raw, dict) else {})
     stress_df = _stress_table(stress_raw if isinstance(stress_raw, dict) else {})
     latency_df = _latency_table(latency_raw)
-    scalability_df = _scalability_scaffold()
+    scalability_df = _scalability_table(scalability_raw if isinstance(scalability_raw, dict) else {})
 
     benchmark_df.to_csv(RESULTS_DIR / "main_tables.csv", index=False)
     fairness_df.to_csv(RESULTS_DIR / "fairness_checklist.csv", index=False)

@@ -11,26 +11,26 @@ sumo:
   gui: false
 
 model:
-  use_gnn: false
+  use_gnn: true
   feature_dim: 12
-  hidden_dim: 64
-  embedding_dim: 32
-  gnn_layers: 2
+  hidden_dim: 128
+  embedding_dim: 64
+  gnn_layers: 3
   gnn_type: gat
-  gat_heads: 2
+  gat_heads: 4
   dropout: 0.1
 
 rl:
   algorithm: PPO
   policy: MlpPolicy
   learning_rate: 0.0003
-  n_steps: 512  # Balanced for both small and large maps
-  batch_size: 128
-  n_epochs: 10
+  n_steps: 2048  # Increased for SOTA stability
+  batch_size: 512 # Increased for GPU saturation
+  n_epochs: 15
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.0
+  ent_coef: 0.01 # Added entropy for better exploration
   vf_coef: 0.5
   max_grad_norm: 0.5
 
@@ -46,7 +46,7 @@ reward:
   time_penalty_per_step: 0.01
 
 training:
-  total_timesteps: 100000
+  total_timesteps: 200000 # Increased for convergence
   eval_freq: 5000
   eval_episodes: 10
   save_freq: 10000

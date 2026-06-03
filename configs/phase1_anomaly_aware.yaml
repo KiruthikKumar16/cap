@@ -15,26 +15,26 @@ sumo:
 
 # Model Configuration
 model:
-  use_gnn: false  # Set to false for ablation (MLP encoder instead of GNN) - avoids PyG import issues
-  feature_dim: 12  # Signal phase (4) + phase duration (1) + queues (2) + waiting (1) + vehicles (4)
-  hidden_dim: 64
-  embedding_dim: 32
-  gnn_layers: 2
-  gnn_type: gat  # Options: gcn, gat
-  gat_heads: 2
+  use_gnn: true
+  feature_dim: 12
+  hidden_dim: 128
+  embedding_dim: 64
+  gnn_layers: 3
+  gnn_type: gat
+  gat_heads: 4
   dropout: 0.1
 
 # Reinforcement Learning Configuration
 rl:
   algorithm: PPO
   learning_rate: 0.0003
-  n_steps: 2048
-  batch_size: 64
-  n_epochs: 10
+  n_steps: 4096
+  batch_size: 1024
+  n_epochs: 15
   gamma: 0.99
   gae_lambda: 0.95
   clip_range: 0.2
-  ent_coef: 0.0
+  ent_coef: 0.01
   vf_coef: 0.5
   max_grad_norm: 0.5
 

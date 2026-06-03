@@ -24,10 +24,19 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 from src.models.st_gnn import SpatialTemporalAutoencoder
-from src.phase2.synthetic_data import (
-    SyntheticTrafficSequenceDataset,
-    build_fully_connected_edge_index,
-)
+
+
+def build_fully_connected_edge_index(num_nodes: int, device: torch.device) -> torch.Tensor:
+    """
+    Build a fully-connected directed edge_index.
+    """
+    src, dst = torch.meshgrid(
+        torch.arange(num_nodes, dtype=torch.long),
+        torch.arange(num_nodes, dtype=torch.long),
+        indexing="ij",
+    )
+    edge_index = torch.stack([src.reshape(-1), dst.reshape(-1)], dim=0)
+    return edge_index.to(device)
 
 
 
@@ -152,18 +161,11 @@ def main() -> None:
                 return torch.stack([item[0] for item in batch], dim=0)
             return DataLoader(dataset, batch_size=args.batch_size, shuffle=True, collate_fn=collate_unpacked)
         else:
-            print(f"Generating synthetic {'target' if is_target else 'source'} dataset...")
-            # If target, inject slight domain shift via noise
-            anomaly_prob = 0.05 if is_target else 0.0
-            dataset = SyntheticTrafficSequenceDataset(
-                num_samples=512,
-                horizon=args.horizon,
-                num_nodes=args.num_nodes,
-                num_features=args.num_features,
-                anomaly_prob=anomaly_prob,
-                return_labels=False,
+            raise FileNotFoundError(
+                f"Missing {'target' if is_target else 'source'} dataset: {data_file}. "
+                "Research-grade results require real SUMO data. "
+                "Run 'scripts/generate_anomaly_data.py' first."
             )
-            return DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
     source_loader = get_loader(args.source_data, is_target=False)
     target_loader = get_loader(args.target_data, is_target=True)

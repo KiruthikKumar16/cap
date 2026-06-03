@@ -49,25 +49,29 @@ class TrafficFeatureExtractor:
         #   4 one-hot phase bits + 1 phase duration + 2 queue stats + 1 waiting time + 4 directional vehicle counts = 12
         self.feature_dim = 12  # Used by SUMOTrafficEnv for observation space shape
         
-    def extract(self) -> torch.Tensor:
+    def extract(self, allow_placeholder: bool = False) -> torch.Tensor:
         """
         Extract features for all intersections.
         
+        Args:
+            allow_placeholder: If True, fall back to random data if SUMO is missing.
+                             Set to False for research-grade outputs.
+        
         Returns:
             Feature tensor of shape [num_intersections, feature_dim]
-            where feature_dim = 12
         """
-        # Use placeholder mode if TraCI not available or not connected
         if not TRACI_AVAILABLE:
-            return self._extract_placeholder()
+            if allow_placeholder:
+                return self._extract_placeholder()
+            raise RuntimeError("TraCI (SUMO API) is not available. Research-grade results require real SUMO metrics.")
         
-        # Try to extract from SUMO, fallback to placeholder on error
         try:
-            # Check if we can access TraCI (simple test)
+            # Check if we can access TraCI
             _ = traci.simulation.getTime()
         except (AttributeError, RuntimeError, Exception):
-            # TraCI not connected or not available, use placeholder
-            return self._extract_placeholder()
+            if allow_placeholder:
+                return self._extract_placeholder()
+            raise RuntimeError("TraCI is not connected. Connect to SUMO before extracting research-grade features.")
         
         features = []
         
