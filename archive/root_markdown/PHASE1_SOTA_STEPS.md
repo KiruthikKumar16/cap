@@ -1,4 +1,4 @@
-# Phase 1 — Immediate Priority: Steps to Finish All 12 SOTA Items
+# Phase 1 — Immediate Priority: Steps to Finish All 12 Baseline Items
 
 All 12 items are **immediate priority**. Below are concrete steps to finish each. Code changes for items 2–5, 7–8, 11 are implemented or started; items 1, 9, 10, 12 need your environment or scripts.
 

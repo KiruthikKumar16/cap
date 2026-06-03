@@ -39,7 +39,7 @@ python scripts/run_generalization_test.py
 ```
 *Panel Takeaway: High research value and real-world deployment readiness.*
 
-### Step D: Scientific Proof (Ablation & SOTA) (≈ 3 min)
+### Step D: Scientific Proof (Ablation & Baseline) (≈ 3 min)
 Show the comparison against standard models and your own "No-GNN" baseline.
 ```bash
 python scripts/run_ablation_study.py

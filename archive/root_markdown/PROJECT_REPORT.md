@@ -149,7 +149,7 @@ Preliminary observations from early training stages indicate:
 
 ## 11. Conclusion
 
-This project has successfully implemented a high-capacity MARL framework for large-scale traffic control. By combining MAPPO with a predictive GNN, we have built a system capable of coordinating 100 intersections. While training is still in progress, the architectural foundation is complete and ready for final benchmarking against traditional SOTA methods.
+This project has successfully implemented a high-capacity MARL framework for large-scale traffic control. By combining MAPPO with a predictive GNN, we have built a system capable of coordinating 100 intersections. While training is still in progress, the architectural foundation is complete and ready for final benchmarking against traditional Baseline methods.
 
 ---
 *End of Report*

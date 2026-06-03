@@ -91,7 +91,7 @@ def test_integration():
     assert "step_total_waiting_time" in info_dict, "Missing waiting time metric"
     assert "step_total_queue_length" in info_dict, "Missing queue length metric"
     
-    print("\n[SUCCESS] SOTA Integration Test Passed!")
+    print("\n[SUCCESS] Baseline Integration Test Passed!")
     env.close()
 
 if __name__ == "__main__":

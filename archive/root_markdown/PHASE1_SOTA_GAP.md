@@ -27,7 +27,7 @@ This document lists what Phase 1 **already has** and what is **left** to bring i
 
 State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typically adds the following. Items are ordered by impact and feasibility.
 
-### 2.1 Evaluation & Baselines (High impact, expected in SOTA)
+### 2.1 Evaluation & Baselines (High impact, expected in Baseline)
 
 | Item | Status | What to do |
 |------|--------|------------|
@@ -36,7 +36,7 @@ State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typi
 | **Statistical significance** | Not done | When comparing DQN vs baselines, run a simple test (e.g. paired t-test or Wilcoxon) and report p-value. |
 | **CoLight / PressLight comparison** | Not done | Either (a) implement simplified CoLight/PressLight baselines (graph attention / pressure-based reward) or (b) cite their reported numbers and compare your setup (same network, same metrics) so reviewers see you’re in the same league. |
 
-### 2.2 RL Algorithm Upgrades (Medium impact, common in SOTA)
+### 2.2 RL Algorithm Upgrades (Medium impact, common in Baseline)
 
 | Item | Status | What to do |
 |------|--------|------------|
@@ -52,14 +52,14 @@ State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typi
 | **Pressure (PressLight-style)** | Not done | Add optional reward or feature: pressure = queue difference (incoming − outgoing) per movement/lane; often improves coordination. |
 | **Travel time** | Partial | If SUMO available, log travel time (e.g. from `traci.simulation.getArrivedIDList` + travel time subscription); report “average travel time” in evaluation table. |
 
-### 2.4 Scalability & Benchmarks (Medium impact for “SOTA” story)
+### 2.4 Scalability & Benchmarks (Medium impact for “Baseline” story)
 
 | Item | Status | What to do |
 |------|--------|------------|
 | **Larger networks** | Not done | Add 4×4 or 6×6 SUMO grids (or use existing scripts); train and evaluate on 2×2, 4×4, (6×6) to show scalability. |
 | **SUMO runs** | Placeholder only | Install SUMO, add to PATH, create/use `.net.xml` and `.rou.xml`; run training and evaluation with real SUMO so reported numbers are from simulation, not placeholder. |
 
-### 2.5 Reproducibility & Reporting (Needed for SOTA)
+### 2.5 Reproducibility & Reporting (Needed for Baseline)
 
 | Item | Status | What to do |
 |------|--------|------------|
@@ -79,7 +79,7 @@ State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typi
 
 ## 3. Prioritized Checklist (State-of-the-Art Level)
 
-Use this as a concise “what’s left” list. Order is by impact for a SOTA narrative.
+Use this as a concise “what’s left” list. Order is by impact for a Baseline narrative.
 
 - [ ] **SUMO runs** — Install SUMO, run training and evaluation with real simulation (not only placeholder).
 - [ ] **Actuated baseline** — Implement actuated controller; add DQN vs fixed-time vs actuated to `evaluate.py`.
@@ -99,4 +99,4 @@ Use this as a concise “what’s left” list. Order is by impact for a SOTA na
 ## 4. Summary
 
 - **Already at “paper-ready” level:** Graph, GNN (GAT/GCN), DQN, multi-objective reward, fixed-time baseline, config-driven pipeline, placeholder mode, figures, and documentation.
-- **To reach state-of-the-art level:** Add (1) real SUMO runs, (2) actuated baseline and multi-seed evaluation with stats, (3) Double/Dueling DQN and optional pressure, (4) travel time and throughput in the metrics table, (5) comparison with CoLight/PressLight (implementation or cited numbers), and (6) scalability on 4×4 (and optionally 6×6) and a clear hyperparameter table. The checklist in Section 3 is your “what’s left” list for Phase 1 at SOTA level.
+- **To reach state-of-the-art level:** Add (1) real SUMO runs, (2) actuated baseline and multi-seed evaluation with stats, (3) Double/Dueling DQN and optional pressure, (4) travel time and throughput in the metrics table, (5) comparison with CoLight/PressLight (implementation or cited numbers), and (6) scalability on 4×4 (and optionally 6×6) and a clear hyperparameter table. The checklist in Section 3 is your “what’s left” list for Phase 1 at Baseline level.

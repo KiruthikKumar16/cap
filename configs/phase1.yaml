@@ -24,7 +24,7 @@ rl:
   algorithm: PPO
   policy: MlpPolicy
   learning_rate: 0.0003
-  n_steps: 2048  # Increased for SOTA stability
+  n_steps: 2048  # Increased for Baseline stability
   batch_size: 512 # Increased for GPU saturation
   n_epochs: 15
   gamma: 0.99
@@ -62,5 +62,5 @@ evaluation:
 output:
   checkpoint_dir: outputs/phase1/checkpoints
   log_dir: outputs/phase1/logs
-  best_model_dir: outputs/phase1/best_models
+  optimized_model_dir: outputs/phase1/optimized_models
   final_model_path: marl_ppo_traffic.zip

@@ -120,12 +120,12 @@ class RewardCalculator:
             w_queue *= 1.2
             w_waiting *= 1.2 # Everything is more important during an anomaly
 
-        # 3. Time-of-day adjustment (Simulated): Prioritize different metrics during peak hours
+        # 3. Time-of-day adjustment (Simulated): Prioritize different metrics during peak hproposed
         if sim_time is not None:
-            # Assume peak hours are 28800-36000 (8-10 AM) and 61200-68400 (5-7 PM)
+            # Assume peak hproposed are 28800-36000 (8-10 AM) and 61200-68400 (5-7 PM)
             is_peak = (28800 <= sim_time <= 36000) or (61200 <= sim_time <= 68400)
             if is_peak:
-                w_waiting *= 1.5  # People care more about delay during peak hours
+                w_waiting *= 1.5  # People care more about delay during peak hproposed
                 w_queue *= 1.3
 
         return {

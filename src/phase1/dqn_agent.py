@@ -245,7 +245,7 @@ def create_dqn_agent(
     if config:
         default_config.update(config)
 
-    # SOTA: Dueling via policy_kwargs if supported (SB3 vanilla DQN has no use_double_dqn; dueling may be unsupported)
+    # Baseline: Dueling via policy_kwargs if supported (SB3 vanilla DQN has no use_double_dqn; dueling may be unsupported)
     dueling = default_config.get("dueling", False)
     policy_kwargs = None
     if dueling:

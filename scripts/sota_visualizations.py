@@ -1,5 +1,5 @@
 """
-SOTA Visualization Suite — Phase 4
+Baseline Visualization Suite — Phase 4
 Generates:
   1. Congestion Propagation Heatmap (spatial wave across intersections over time)
   2. ST-GNN Autoencoder Latent Space t-SNE Scatter Plot
@@ -50,7 +50,7 @@ def generate_congestion_heatmap():
     # Naive model — wave grows unchecked
     naive_frames = [wave_grid(center, 0.5 + i * 0.7, noise=0.05) for i in range(steps)]
     # Ours — wave is progressively dampened
-    ours_frames  = [wave_grid(center, 0.5 + i * 0.7 * max(0.1, 1 - i * 0.2), noise=0.05) for i in range(steps)]
+    proposed_frames  = [wave_grid(center, 0.5 + i * 0.7 * max(0.1, 1 - i * 0.2), noise=0.05) for i in range(steps)]
 
     fig = plt.figure(figsize=(16, 6))
     fig.suptitle("Congestion Propagation Wave: Risk-Aware MAPPO vs. NSTLight Baseline",
@@ -58,7 +58,7 @@ def generate_congestion_heatmap():
 
     cmap = "YlOrRd"
     for row, (label, frames) in enumerate([("NSTLight (Baseline)", naive_frames),
-                                            ("MAPPO + ST-GNN (Ours)", ours_frames)]):
+                                            ("MAPPO + ST-GNN (Ours)", proposed_frames)]):
         for col, (frame, slabel) in enumerate(zip(frames, step_labels)):
             ax = fig.add_subplot(2, steps, row * steps + col + 1)
             im = ax.imshow(frame, cmap=cmap, vmin=0, vmax=1, interpolation="bilinear")
@@ -193,12 +193,12 @@ def generate_reward_convergence():
 # 4. Summary Dashboard (all 3 charts in one poster)
 # ─────────────────────────────────────────────────────────────────
 def generate_sota_dashboard():
-    """Composite 1×3 SOTA poster for presentation slides."""
-    print("[Dashboard] Compositing SOTA summary poster...")
+    """Composite 1×3 Baseline poster for presentation slides."""
+    print("[Dashboard] Compositing Baseline summary poster...")
 
     rng = np.random.default_rng(7)
     fig = plt.figure(figsize=(18, 6))
-    fig.suptitle("MAPPO + ST-GNN Traffic Resilience — SOTA Benchmark Overview",
+    fig.suptitle("MAPPO + ST-GNN Traffic Resilience — Baseline Benchmark Overview",
                  fontsize=15, fontweight="bold")
     gs = GridSpec(1, 3, figure=fig, wspace=0.35)
 
@@ -248,7 +248,7 @@ def generate_sota_dashboard():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("SOTA Visualization Suite — Generating All Phase 4 Plots")
+    print("Baseline Visualization Suite — Generating All Phase 4 Plots")
     print("=" * 60)
     generate_congestion_heatmap()
     generate_tsne_plot()

@@ -20,7 +20,7 @@ def _drop_pct(source: float, target: float, lower_is_better: bool) -> float:
 
 def map_generalization(config_path: str, checkpoint: str, episodes: int):
     print("="*60)
-    print("Phase 4: SOTA Zero-Shot Routing Generalization Matrix")
+    print("Phase 4: Baseline Zero-Shot Routing Generalization Matrix")
     print("="*60)
     
     config = load_config(project_root / config_path)
@@ -83,7 +83,7 @@ def map_generalization(config_path: str, checkpoint: str, episodes: int):
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
         print(
-            "\n[SOTA RESILIENCE] Zero-shot Map A->B drop | "
+            "\n[Baseline RESILIENCE] Zero-shot Map A->B drop | "
             f"throughput: {drop['throughput_drop_pct']:.2f}% | "
             f"waiting: {drop['waiting_time_increase_pct']:.2f}% | "
             f"queue: {drop['queue_length_increase_pct']:.2f}%"

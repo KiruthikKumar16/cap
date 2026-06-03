@@ -122,11 +122,11 @@ def create_route_file_generic(output_path: str, grid_size: int):
         edges_rl = [f"{chr(65+col+1)}{row}{chr(65+col)}{row}" for col in range(grid_size-2, -1, -1)]
         if edges_lr:
             routes.append(f'    <route id="h_r{row}_lr" edges="{" ".join(edges_lr)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_lr" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_lr" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
         if edges_rl:
             routes.append(f'    <route id="h_r{row}_rl" edges="{" ".join(edges_rl)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_rl" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_rl" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
     
     # Vertical routes (top to bottom and bottom to top)
@@ -135,11 +135,11 @@ def create_route_file_generic(output_path: str, grid_size: int):
         edges_bt = [f"{chr(65+col)}{row+1}{chr(65+col)}{row}" for row in range(grid_size-2, -1, -1)]
         if edges_tb:
             routes.append(f'    <route id="v_c{col}_tb" edges="{" ".join(edges_tb)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_tb" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_tb" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
         if edges_bt:
             routes.append(f'    <route id="v_c{col}_bt" edges="{" ".join(edges_bt)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_bt" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_bt" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
     
     route_content = f"""<?xml version="1.0" encoding="UTF-8"?>

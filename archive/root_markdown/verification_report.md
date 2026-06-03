@@ -1,4 +1,4 @@
-# Project Verification & SOTA Status Report
+# Project Verification & Baseline Status Report
 
 This report provides a critical analysis of the current project state, output legitimacy, and the authenticity of the "NSTLight" baseline.
 
@@ -36,13 +36,13 @@ The `MAPPO-STGNN` model shows zeros because:
 
 ---
 
-## 3. Comparison with Actual SOTA Models
+## 3. Comparison with Actual Baseline Models
 Since our current baseline (NSTLight Dummy) is untrained, the "Ours is better" claim in the generated charts is currently unsubstantiated.
 
-### Better SOTA Models to Consider (Actual 2025/2026 Models):
+### Better Baseline Models to Consider (Actual 2025/2026 Models):
 1. **GTLight (2024/2025)**: Uses Graph Transformers for network-wide coordination. Generally outperforms basic GNN-based MAPPO.
 2. **TransferLight (2025)**: Focused on zero-shot generalization across different cities using meta-reinforcement learning.
-3. **MPLight (SOTA Baseline)**: A classic strong baseline using Max-Pressure with RL. Our current model should be compared against a *real* MPLight implementation.
+3. **MPLight (Baseline Baseline)**: A classic strong baseline using Max-Pressure with RL. Our current model should be compared against a *real* MPLight implementation.
 4. **ResilienceNet (2025)**: Specifically designed for traffic resilience under sensor failures (directly competing with our ST-GNN objective).
 
 ---
@@ -55,7 +55,7 @@ Since our current baseline (NSTLight Dummy) is untrained, the "Ours is better" c
 
 ## 💡 Recommended Next Steps (If permitted)
 1. **Fix Metric Collection**: Update `evaluate.py` to correctly pull lane-level metrics from the MARL wrapper to eliminate the 0.0 values.
-2. **Implement Real Baselines**: Replace the dummy NSTLight with a functional Actuated controller or a pre-trained SOTA checkpoint.
+2. **Implement Real Baselines**: Replace the dummy NSTLight with a functional Actuated controller or a pre-trained Baseline checkpoint.
 3. **Re-run Valid Benchmarks**: Execute a clean evaluation run to get real numbers for the presentation.
 
 ---
@@ -77,7 +77,7 @@ Viewed presslight.py:1-31
 Viewed feature_extractor.py:1-231
 Edited implementation_plan.md
 
-I have developed a plan to restore the project's legitimacy by fixing the broken metric collection and replacing the dummy baselines with a functional **Max Pressure** controller (a standard and powerful SOTA comparison).
+I have developed a plan to restore the project's legitimacy by fixing the broken metric collection and replacing the dummy baselines with a functional **Max Pressure** controller (a standard and powerful Baseline comparison).
 
 You can review the full [Implementation Plan](file:///C:/Users/suganprasath/.gemini/antigravity/brain/3f5de58b-1231-4467-9525-db9794d5f1dc/implementation_plan.md) for details on the technical changes.
 

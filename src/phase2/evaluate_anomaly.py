@@ -123,7 +123,7 @@ def main() -> None:
     )
     
     # NOTE: Labels are typically not available in real traffic unless specifically injected
-    # We report the score distribution for SOTA evidence.
+    # We report the score distribution for Baseline evidence.
     summary = {
         "num_nodes": args.num_nodes,
         "num_features": args.num_features,

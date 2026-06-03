@@ -65,11 +65,11 @@
 - **Bullet Claims:** Demonstrate that maximizing throughput didn’t sacrifice extreme localized waiting queues (Pareto superiority).
 
 ## Slide 12: Results - Spatial Congestion Avoidance
-- **Visuals:** MAPPO Heatmap vs CoLight Heatmap (`heatmap_mappo_(ours).png` vs `heatmap_colight.png`).
+- **Visuals:** MAPPO Heatmap vs CoLight Heatmap (`heatmap_mappo_(proposed).png` vs `heatmap_colight.png`).
 - **Bullet Claims:** Visual proof that MAPPO distributes load cleanly instead of creating massive localized clusters.
 
 ## Slide 13: Zero-Shot Generalization (Bengaluru Validation)
-- **Content:** Talk about the 40% performance drop-off SOTA models experienced compared to the much lighter 15% drop-off in our ST-GNN based model on the Bengaluru grid.
+- **Content:** Talk about the 40% performance drop-off Baseline models experienced compared to the much lighter 15% drop-off in our ST-GNN based model on the Bengaluru grid.
 
 ## Slide 14: Analyzing the Latent Learning Space
 - **Visuals:** `latent_cluster_map.png` (t-SNE).

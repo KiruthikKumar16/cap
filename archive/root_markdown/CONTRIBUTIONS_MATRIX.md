@@ -23,7 +23,7 @@ This document maps the final implemented features to their respective novelty le
 ### 2.1 Breakthrough 1: Self-Adaptive Reward Shaping
 - **What Exists**: Fixed weights for waiting time and queue length.
 - **Our Novelty**: A dynamic mechanism in `reward_calculator.py` that recalculates weights based on real-time density, anomaly severity, and peak-hour simulation.
-- **Impact**: Allows the AI to prioritize safety during crashes and throughput during rush hours automatically.
+- **Impact**: Allows the AI to prioritize safety during crashes and throughput during rush hproposed automatically.
 - **Patent Status**: ✅ **Primary Claim**
 
 ### 2.2 Breakthrough 2: Spatio-Temporal Wave Forecasting

@@ -78,7 +78,7 @@ def train_baseline_optimized(config, model_type, episodes=10):
 
     target_model.load_state_dict(model.state_dict())
     
-    # SOTA Tuning: Modern GNN-TSC agents (2024+) often use higher LRs for faster convergence
+    # Baseline Tuning: Modern GNN-TSC agents (2024+) often use higher LRs for faster convergence
     adj_lr = 1e-3
     if model_type == "nstlight":
         adj_lr = 2e-3 
@@ -155,7 +155,7 @@ def train_baseline_optimized(config, model_type, episodes=10):
                             q_vals = model(obs_t, prev_t, edge_index)
                         else:
                             q_vals = model(obs_t, edge_index)
-                # SOTA Differentiation: Inject 'Non-Stationary Rush Hour' Surge
+                # Baseline Differentiation: Inject 'Non-Stationary Rush Hour' Surge
                 # This tests the model's ability to handle distribution shifts (NSTLight's specialty)
                 if 1000 <= step <= 2000:
                     try:

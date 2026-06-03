@@ -6,7 +6,7 @@
 # Chapter 1: Introduction and Comprehensive Theoretical Background
 
 ## 1.1 Introduction
-The rapid urbanization and exponential growth in the number of vehicles have led to unprecedented traffic congestion. Fixed-time traffic light controllers and even rule-based adaptive algorithms (like Webster's method or SCATS) fall short because they cannot adequately capture the extremely non-linear, non-stationary dynamics of modern urban traffic. Our capstone project explicitly addresses this fundamental gap by proposing, developing, and evaluating a Multi-Agent Reinforcement Learning (MARL) approach, fortified with Spatial-Temporal Graph Neural Networks (ST-GNN).
+The rapid urbanization and exponential growth in the number of vehicles have led to unprecedented traffic congestion. Fixed-time traffic light controllers and even rule-based adaptive algorithms (like Webster's method or SCATS) fall short because they cannot adequately capture the extremely non-linear, non-stationary dynamics of modern urban traffic. This project explicitly addresses this fundamental gap by proposing, developing, and evaluating a Multi-Agent Reinforcement Learning (MARL) approach, fortified with Spatial-Temporal Graph Neural Networks (ST-GNN).
 
 ## 1.2 Theoretical Foundation of Neural Networks
 Before delving into advanced RL, we must formalize the building blocks. An artificial neural network consists of layers of interconnected nodes. The dynamics of a single feedforward layer are described as:
@@ -25,7 +25,7 @@ The agent's objective is to find an optimal policy `pi*` which maximizes the exp
 `V(s) = E_pi [ sum_{t=0}^{inf} gamma^t R(S_t, A_t) | S_0 = s ]`
 
 ## 1.4 Proximal Policy Optimization (PPO) 
-Our foundational training algorithm is PPO. Given the high variance in policy gradient methods like REINFORCE, PPO utilizes a clipped surrogate objective:
+The foundational training algorithm is PPO. Given the high variance in policy gradient methods like REINFORCE, PPO utilizes a clipped surrogate objective:
 `L^{CLIP}(theta) = E [ min( r_t(theta) * A_t , clip(r_t(theta), 1-epsilon, 1+epsilon) * A_t ) ]`
 where `r_t(theta)` is the probability ratio between the new policy and the old policy, and `A_t` is the advantage estimate.
 
@@ -51,7 +51,7 @@ Traffic data exhibits both strong spatial correlations (upstream/downstream inte
 # Activity Chart & Gantt Chart: Project Completion Report
 
 ## Final Project Status: 100% Complete
-All milestones from Week 1 to Week 16 have been successfully achieved, resulting in a fully integrated, patent-worthy Smart Traffic Management System.
+All milestones from Week 1 to Week 16 have been successfully achieved, resulting in a fully integrated Smart Traffic Management System.
 
 ---
 
@@ -84,7 +84,7 @@ Patent:  ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅ (100% Complete)
 | **M3: GNN-RL Base** | Week 5 | Week 4 | ✅ Done | Adaptive signal control |
 | **M4: Anomaly Detection** | Week 8 | Week 7 | ✅ Done | ST-GNN with Bayesian Uncertainty |
 | **M5: Integration** | Week 11 | Week 10 | ✅ Done | Proactive Wave Forecasting |
-| **M6: Evaluation** | Week 13 | Week 12 | ✅ Done | SOTA Benchmarks (CoLight/PressLight) |
+| **M6: Evaluation** | Week 13 | Week 12 | ✅ Done | Reference Benchmarks (CoLight/PressLight) |
 | **M7: Documentation** | Week 15 | Week 14 | ✅ Done | Final Thesis & Guides |
 | **M8: Patent & Submission**| Week 16 | Week 15 | ✅ Done | Provisional Patent & Final Repo |
 
@@ -113,7 +113,7 @@ The project **"Robust Multi-Agent Traffic Control Under Non-Stationarity With An
 
 ### **Summary of Achievement**
 - **Algorithmic Novelty**: Developed a dual-stream ST-GNN encoder that combines spatial graph attention with temporal forecasting to identify traffic anomalies before they cause network-wide congestion.
-- **MARL Excellence**: Implemented MAPPO with regional hierarchical coordination, outperforming standard SOTA baselines (CoLight, NSTLight) in throughput and stability.
+- **MARL Excellence**: Implemented MAPPO with regional hierarchical coordination, outperforming comparative baselines (CoLight, NSTLight) in throughput and stability.
 - **Robustness**: Proved system resilience against sensor noise and accident-induced non-stationarity through proactive reward shaping.
 - **Generalization**: Validated zero-shot transferability from synthetic training environments to real-world city maps (Bengaluru).
 
@@ -171,7 +171,7 @@ Urban traffic congestion is a multi-billion dollar challenge that traditional re
 
 The system achieves 100% implementation across three critical phases: (1) **Adaptive Control**, using Graph Attention Networks (GAT) to encode spatial intersection dependencies; (2) **Self-Supervised Anomaly Detection**, utilizing a dual-head ST-GNN with Bayesian uncertainty to predict incidents before they occur; and (3) **Proactive Integration**, featuring a novel self-adaptive reward mechanism and congestion wave forecasting. 
 
-Experimental results on both synthetic grids (up to 10x10) and real-world maps (Bengaluru) demonstrate a **20-40% reduction in average waiting time** and a **25% improvement in throughput**. The system's "Zero-Shot" generalization capability allows a model trained on a 5x5 grid to be deployed on complex urban layouts without retraining. This work establishes a new state-of-the-art for intelligent transportation systems by shifting the paradigm from reactive management to proactive crisis prevention.
+Experimental results on both synthetic grids (up to 10x10) and real-world maps (Bengaluru) demonstrate a **20-40% reduction in average waiting time** and a **25% improvement in throughput**. The system's "Zero-Shot" generalization capability allows a model trained on a 5x5 grid to be deployed on complex urban layouts without retraining. This work establishes an integrated framework for intelligent transportation systems by shifting the paradigm from reactive management to proactive crisis prevention.
 
 ---
 
@@ -196,8 +196,8 @@ The architecture is a three-tier intelligence stack:
 2. **Cognition Layer**: ST-GNN with MC Dropout for anomaly detection and GAT-encoders for RL state representation.
 3. **Action Layer**: Decentralized PPO/DQN agents coordinating via a Hierarchical Regional Controller.
 
-## 2.2 NOVELTY & PATENT CLAIMS
-The implementation includes four breakthrough innovations:
+## 2.2 NOVELTY
+The implementation includes four innovations:
 - **Self-Adaptive Reward Shaping**: Dynamic recalculation of RL priorities based on real-time severity.
 - **Congestion Wave Forecasting**: Graph-based simulation of traffic pressure spread.
 - **Uncertainty-Aware Detection**: Bayesian filtering to reduce false-positive alerts.
@@ -249,7 +249,7 @@ The project successfully demonstrates that integrated, proactive AI can solve th
 # Contributions Matrix: Novelty & Impact Analysis (Final)
 
 ## Overview
-This document maps the final implemented features to their respective novelty levels and research impact. The project has transitioned from an incremental GNN-RL setup to a **Breakthrough Predictive-Proactive Framework**.
+This document maps the final implemented features to their respective novelty levels and research impact. The project has transitioned from an incremental GNN-RL setup to an **Integrated Predictive-Proactive Framework**.
 
 ---
 
@@ -268,29 +268,25 @@ This document maps the final implemented features to their respective novelty le
 
 ## 2. Detailed Contribution Analysis
 
-### 2.1 Breakthrough 1: Self-Adaptive Reward Shaping
+### 2.1 Self-Adaptive Reward Shaping
 - **What Exists**: Fixed weights for waiting time and queue length.
-- **Our Novelty**: A dynamic mechanism in `reward_calculator.py` that recalculates weights based on real-time density, anomaly severity, and peak-hour simulation.
-- **Impact**: Allows the AI to prioritize safety during crashes and throughput during rush hours automatically.
-- **Patent Status**: ✅ **Primary Claim**
+- **Contribution**: A dynamic mechanism in `reward_calculator.py` that recalculates weights based on real-time density, anomaly severity, and peak-hour simulation.
+- **Impact**: Allows the AI to prioritize safety during crashes and throughput during rush hproposed automatically.
 
-### 2.2 Breakthrough 2: Spatio-Temporal Wave Forecasting
+### 2.2 Spatio-Temporal Wave Forecasting
 - **What Exists**: Predicting future traffic speed or volume at a single point.
-- **Our Novelty**: A graph-based simulation of how congestion "waves" propagate and dissipate across the network (`predictive_control.py`).
+- **Contribution**: A graph-based simulation of how congestion "waves" propagate and dissipate across the network (`predictive_control.py`).
 - **Impact**: Enables proactive clearing of intersections before the traffic wave arrives.
-- **Patent Status**: ✅ **Primary Claim**
 
-### 2.3 Breakthrough 3: Hierarchical Regional Consensus
+### 2.3 Hierarchical Regional Consensus
 - **What Exists**: Independent agents that only look at their immediate neighbors.
-- **Our Novelty**: A two-tier architecture where a Regional Controller aggregates neighborhood embeddings to guide local agents (`multi_agent_coordination.py`).
+- **Contribution**: A two-tier architecture where a Regional Controller aggregates neighborhood embeddings to guide local agents (`multi_agent_coordination.py`).
 - **Impact**: Solves coordination deadlocks in large-scale urban grids (10x10+).
-- **Patent Status**: ✅ **Primary Claim**
 
-### 2.4 Breakthrough 4: Zero-Shot Generalization
+### 2.4 Zero-Shot Generalization
 - **What Exists**: Models that degrade significantly when moving from a grid to a real city map.
-- **Our Novelty**: A graph-agnostic MARL policy that successfully transferred from a 5x5 grid to a complex Bengaluru City map without any retraining.
+- **Contribution**: A graph-agnostic MARL policy that successfully transferred from a 5x5 grid to a complex Bengaluru City map without any retraining.
 - **Impact**: Drastically reduces deployment costs for new cities.
-- **Patent Status**: ⭐⭐⭐⭐ (High Research Value)
 
 ---
 
@@ -343,7 +339,7 @@ This project has achieved **100% implementation** of a unified framework for pre
 - ✅ **Graph Construction**: Dynamic building of traffic graphs from SUMO `.net.xml` files.
 - ✅ **GNN Encoder**: Implemented GAT (Graph Attention Networks) for spatial state encoding.
 - ✅ **MARL Environment**: Multi-agent PPO/DQN setup enabling zero-shot generalization.
-- ✅ **Evaluation**: Full comparison against Fixed-Time, Actuated, and SOTA (CoLight/PressLight) baselines.
+- ✅ **Evaluation**: Full comparison against Fixed-Time, Actuated, and Baseline (CoLight/PressLight) baselines.
 
 ### Phase 2: Anomaly Detection (ST-GNN)
 **Status: 100% Complete**
@@ -354,7 +350,7 @@ This project has achieved **100% implementation** of a unified framework for pre
 
 ### Phase 3: Proactive Integration & Advanced Features
 **Status: 100% Complete**
-- ✅ **Self-Adaptive Rewards**: Dynamic reward weighting based on density, anomaly severity, and peak hours.
+- ✅ **Self-Adaptive Rewards**: Dynamic reward weighting based on density, anomaly severity, and peak hproposed.
 - ✅ **Congestion Wave Forecasting**: Graph-based propagation modeling to predict bottlenecks 5-10 steps ahead.
 - ✅ **Hierarchical Coordination**: Regional controllers providing guidance to local intersection agents.
 - ✅ **Risk Modeling**: Probabilistic calculation of Spillback Probability and Accident Likelihood.
@@ -452,7 +448,7 @@ The project is fully implemented and ready for final submission. The system demo
 **Caption:** "Phase 2: Anomaly Detection Metrics - ST-GNN Performance"
 
 **Alternative Options:**
-- `phase2_anomaly_sota_comparison.png` (41 KB) - SOTA comparison
+- `phase2_anomaly_sota_comparison.png` (41 KB) - Baseline comparison
 
 **Action:** ✅ **READY TO ATTACH**
 
@@ -665,7 +661,7 @@ The core novelty of this project lies in the **Unified Predictive-Proactive Fram
 
 ## PHASE1_HYPERPARAMETERS.md
 ```markdown
-# Phase 1 — Hyperparameter Table (SOTA)
+# Phase 1 — Hyperparameter Table (Baseline)
 
 Use this table in your report or README for reproducibility. All values are from `configs/phase1.yaml` unless noted.
 
@@ -775,12 +771,12 @@ Use this table in your report or README for reproducibility. All values are from
 |-----------|--------|
 | Checkpoint dir | outputs/phase1/checkpoints |
 | Log dir | outputs/phase1/logs |
-| Best model dir | outputs/phase1/best_models |
+| Optimized model dir | outputs/phase1/optimized_models |
 | Final model path | outputs/phase1/dqn_traffic_final.zip |
 
 ```
 
-## PHASE1_SOTA_GAP.md
+## PHASE1_Baseline_GAP.md
 ```markdown
 # Phase 1 — What’s Left to Reach State-of-the-Art Level
 
@@ -811,7 +807,7 @@ This document lists what Phase 1 **already has** and what is **left** to bring i
 
 State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typically adds the following. Items are ordered by impact and feasibility.
 
-### 2.1 Evaluation & Baselines (High impact, expected in SOTA)
+### 2.1 Evaluation & Baselines (High impact, expected in Baseline)
 
 | Item | Status | What to do |
 |------|--------|------------|
@@ -820,7 +816,7 @@ State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typi
 | **Statistical significance** | Not done | When comparing DQN vs baselines, run a simple test (e.g. paired t-test or Wilcoxon) and report p-value. |
 | **CoLight / PressLight comparison** | Not done | Either (a) implement simplified CoLight/PressLight baselines (graph attention / pressure-based reward) or (b) cite their reported numbers and compare your setup (same network, same metrics) so reviewers see you’re in the same league. |
 
-### 2.2 RL Algorithm Upgrades (Medium impact, common in SOTA)
+### 2.2 RL Algorithm Upgrades (Medium impact, common in Baseline)
 
 | Item | Status | What to do |
 |------|--------|------------|
@@ -836,14 +832,14 @@ State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typi
 | **Pressure (PressLight-style)** | Not done | Add optional reward or feature: pressure = queue difference (incoming − outgoing) per movement/lane; often improves coordination. |
 | **Travel time** | Partial | If SUMO available, log travel time (e.g. from `traci.simulation.getArrivedIDList` + travel time subscription); report “average travel time” in evaluation table. |
 
-### 2.4 Scalability & Benchmarks (Medium impact for “SOTA” story)
+### 2.4 Scalability & Benchmarks (Medium impact for “Baseline” story)
 
 | Item | Status | What to do |
 |------|--------|------------|
 | **Larger networks** | Not done | Add 4×4 or 6×6 SUMO grids (or use existing scripts); train and evaluate on 2×2, 4×4, (6×6) to show scalability. |
 | **SUMO runs** | Placeholder only | Install SUMO, add to PATH, create/use `.net.xml` and `.rou.xml`; run training and evaluation with real SUMO so reported numbers are from simulation, not placeholder. |
 
-### 2.5 Reproducibility & Reporting (Needed for SOTA)
+### 2.5 Reproducibility & Reporting (Needed for Baseline)
 
 | Item | Status | What to do |
 |------|--------|------------|
@@ -863,7 +859,7 @@ State-of-the-art traffic signal control (e.g. CoLight, PressLight, MPLight) typi
 
 ## 3. Prioritized Checklist (State-of-the-Art Level)
 
-Use this as a concise “what’s left” list. Order is by impact for a SOTA narrative.
+Use this as a concise “what’s left” list. Order is by impact for a Baseline narrative.
 
 - [ ] **SUMO runs** — Install SUMO, run training and evaluation with real simulation (not only placeholder).
 - [ ] **Actuated baseline** — Implement actuated controller; add DQN vs fixed-time vs actuated to `evaluate.py`.
@@ -883,13 +879,13 @@ Use this as a concise “what’s left” list. Order is by impact for a SOTA na
 ## 4. Summary
 
 - **Already at “paper-ready” level:** Graph, GNN (GAT/GCN), DQN, multi-objective reward, fixed-time baseline, config-driven pipeline, placeholder mode, figures, and documentation.
-- **To reach state-of-the-art level:** Add (1) real SUMO runs, (2) actuated baseline and multi-seed evaluation with stats, (3) Double/Dueling DQN and optional pressure, (4) travel time and throughput in the metrics table, (5) comparison with CoLight/PressLight (implementation or cited numbers), and (6) scalability on 4×4 (and optionally 6×6) and a clear hyperparameter table. The checklist in Section 3 is your “what’s left” list for Phase 1 at SOTA level.
+- **To reach state-of-the-art level:** Add (1) real SUMO runs, (2) actuated baseline and multi-seed evaluation with stats, (3) Double/Dueling DQN and optional pressure, (4) travel time and throughput in the metrics table, (5) comparison with CoLight/PressLight (implementation or cited numbers), and (6) scalability on 4×4 (and optionally 6×6) and a clear hyperparameter table. The checklist in Section 3 is your “what’s left” list for Phase 1 at Baseline level.
 
 ```
 
-## PHASE1_SOTA_STEPS.md
+## PHASE1_Baseline_STEPS.md
 ```markdown
-# Phase 1 — Immediate Priority: Steps to Finish All 12 SOTA Items
+# Phase 1 — Immediate Priority: Steps to Finish All 12 Baseline Items
 
 All 12 items are **immediate priority**. Below are concrete steps to finish each. Code changes for items 2–5, 7–8, 11 are implemented or started; items 1, 9, 10, 12 need your environment or scripts.
 
@@ -1427,7 +1423,7 @@ Preliminary observations from early training stages indicate:
 
 ## 11. Conclusion
 
-This project has successfully implemented a high-capacity MARL framework for large-scale traffic control. By combining MAPPO with a predictive GNN, we have built a system capable of coordinating 100 intersections. While training is still in progress, the architectural foundation is complete and ready for final benchmarking against traditional SOTA methods.
+This project has successfully implemented a high-capacity MARL framework for large-scale traffic control. By combining MAPPO with a predictive GNN, we have built a system capable of coordinating 100 intersections. While training is still in progress, the architectural foundation is complete and ready for final benchmarking against traditional Baseline methods.
 
 ---
 *End of Report*
@@ -1477,7 +1473,7 @@ python scripts/run_generalization_test.py
 ```
 *Panel Takeaway: High research value and real-world deployment readiness.*
 
-### Step D: Scientific Proof (Ablation & SOTA) (≈ 3 min)
+### Step D: Scientific Proof (Ablation & Baseline) (≈ 3 min)
 Show the comparison against standard models and your own "No-GNN" baseline.
 ```bash
 python scripts/run_ablation_study.py
@@ -1528,7 +1524,7 @@ streamlit run src/dashboard/app.py
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-EE4C2C.svg)
 ![SUMO](https://img.shields.io/badge/Eclipse-SUMO-orange.svg)
 ![Baseline](https://img.shields.io/badge/Baseline-NSTLight_2025-purple.svg)
-![Status](https://img.shields.io/badge/Status-SOTA_Research-brightgreen.svg)
+![Status](https://img.shields.io/badge/Status-Baseline_Research-brightgreen.svg)
 
 </div>
 
@@ -1555,8 +1551,8 @@ Phase 3 ── Risk-Aware Reward Shaping ──▶ Resilience Under Uncertainty
 | `GATv2Conv` Graph Encoder | Maps road topology → dense intersection embeddings |
 | ST-GNN Autoencoder | Detects congestion anomalies without human labelling |
 | MAPPO Policy Network | Decentralised joint-action optimisation across all agents |
-| Risk Penalty Term | Penalises actions that propagate congestion to neighbours |
-| NSTLight (2025) | Primary SOTA baseline for degradation benchmarking |
+| Risk Penalty Term | Penalises actions that propagate congestion to neighbproposed |
+| NSTLight (2025) | Primary Baseline baseline for degradation benchmarking |
 
 ---
 
@@ -1579,7 +1575,7 @@ Phase 3 ── Risk-Aware Reward Shaping ──▶ Resilience Under Uncertainty
  ┃  ┣ 📂 phase2/           # Autoencoder anomaly detector
  ┃  ┗ 📂 phase3/           # Risk-aware reward integration
  ┣ 📂 outputs/             # Metrics, checkpoints, visualisation PNGs
- ┣ 📜 SOTA_PROGRESS_REPORT.md
+ ┣ 📜 Baseline_PROGRESS_REPORT.md
  ┗ 📜 README.md
 ```
 
@@ -1613,7 +1609,7 @@ python src/phase1/train_rl.py --config configs/phase1.yaml
 python scripts/accident_injection.py
 ```
 
-### 5. Generate All SOTA Visualisations
+### 5. Generate All Baseline Visualisations
 ```powershell
 python scripts/sota_visualizations.py
 ```
@@ -1630,7 +1626,7 @@ python scripts/evaluate_generalization.py
 
 ---
 
-## 📊 SOTA Benchmark Results
+## 📊 Baseline Benchmark Results
 
 > Evaluated on 10×10 synthetic SUMO grid, 10 episodes each.
 
@@ -1690,7 +1686,7 @@ obs[mask] = 0.0
 | Congestion Propagation Heatmap | `generate_plots.py` |
 | ST-GNN Latent Space (t-SNE) | `generate_plots.py` |
 | Reward Convergence Comparison | `generate_plots.py` |
-| SOTA Benchmark Dashboard | `sota_visualizations.py` |
+| Baseline Benchmark Dashboard | `sota_visualizations.py` |
 | Architecture Flowchart | `phase1_generate_figures.py` |
 | Anomaly Detection Metrics | `generate_plots.py` |
 
@@ -2564,14 +2560,14 @@ Figures are automatically generated in `outputs/phase1/figures/` and `outputs/ph
 
 ```
 
-## SOTA_EVALUATION_GUIDE.md
+## Baseline_EVALUATION_GUIDE.md
 ```markdown
-# SOTA Evaluation Guide & Setup Document
+# Baseline Evaluation Guide & Setup Document
 
-This document tracks all recent architectural/benchmarking modifications and provides a unified, step-by-step guide for new users to train, evaluate, and authenticate State-of-the-Art (SOTA) claims within the **Traffic Resilience Engine**.
+This document tracks all recent architectural/benchmarking modifications and provides a unified, step-by-step guide for new users to train, evaluate, and authenticate State-of-the-Art (Baseline) claims within the **Traffic Resilience Engine**.
 
-## 🛠️ Summary of SOTA Legitimization Upgrades
-To ensure our SOTA claim is rigorous, repeatable, and mathematically sound, the following crucial modifications were implemented:
+## 🛠️ Summary of Baseline Legitimization Upgrades
+To ensure our Baseline claim is rigorous, repeatable, and mathematically sound, the following crucial modifications were implemented:
 1. **Metric Pipeline Fixed (Accumulative TraCI):** Corrected `traffic_env.py` to recursively accumulate simulation metrics (`step_arrived_vehicles`) instead of overwriting them, restoring correct throughput metrics for our models during evaluations.
 2. **NSTLight Architecture Authenticification:** Upgraded `src/baselines/nstlight.py` to explicitly enforce Non-Stationary differencing (`X_t - X_{t-1}`) combined with a 5-head Graph Attention Network. Zero-step evaluation tracks `prev_obs` to mirror conditions.
 3. **CoLight Validation:** Explicitly labelled and mapped `colight.py` to natively process neighbor dependencies using standard Graph Attention components perfectly parallel to 2019 specifications. 
@@ -2581,7 +2577,7 @@ To ensure our SOTA claim is rigorous, repeatable, and mathematically sound, the 
 ---
 
 ## 🚀 Running the Project from Scratch
-For a fresh user dropping into the codebase, follow these exact linear steps to replicate full SOTA capabilities:
+For a fresh user dropping into the codebase, follow these exact linear steps to replicate full Baseline capabilities:
 
 ### Step 1. Installation 
 ```bash
@@ -2600,7 +2596,7 @@ Train your custom predictive resilience engine. Note that checkpoints will autom
 python src/phase1/train_marl.py --config configs/phase2_10x10.yaml
 ```
 
-### Step 3. Train the SOTA Baselines
+### Step 3. Train the Baseline Baselines
 You must train the baselines on your exact grid setup to authenticate valid 12-feature comparisons. (Using 150 episodes natively supports sufficient convergence).
 ```bash
 python scripts/train_baselines.py --model nstlight --episodes 150
@@ -2620,16 +2616,16 @@ Lastly, synthesize the raw JSON datasets into visual charts and markdown-certifi
 # Output Bar-Charts, Heatmaps, and t-SNE files to outputs/plots/
 python scripts/generate_plots.py
 
-# Auto-write the unified Markdown SOTA summary for presentations into outputs/sota_claim.md
+# Auto-write the unified Markdown Baseline summary for presentations into outputs/sota_claim.md
 python scripts/generate_sota_report.py
 ```
 Preview `outputs/sota_claim.md` directly for the final presentation thesis phrasing.
 
 ```
 
-## SOTA_PROGRESS_REPORT.md
+## Baseline_PROGRESS_REPORT.md
 ```markdown
-# SOTA Enhancement Progress Report (Phase 4)
+# Baseline Enhancement Progress Report (Phase 4)
 **Date:** April 9, 2026
 **Status:** 85% Complete (Phase 4 Benchmarking Active)
 
@@ -2677,7 +2673,7 @@ All files are staged for `git push`.
 - **Phase 1: Adaptive Control (GNN + RL)**: 100% (Complete Implementation + Evaluation)
 - **Phase 2: Anomaly Detection (ST-GNN)**: 100% (Bayesian Uncertainty + Validation)
 - **Phase 3: System Integration**: 100% (Proactive Control + Hierarchical Coordination)
-- **Scientific Validation**: 100% (Ablation Studies + SOTA Benchmarking)
+- **Scientific Validation**: 100% (Ablation Studies + Baseline Benchmarking)
 - **Documentation**: 100% (Final Thesis, Implementation Guides, Patent Analysis)
 
 ---
@@ -2716,7 +2712,7 @@ We have successfully integrated adaptive signal control with proactive anomaly d
 
 **Documentation & Results:**
 - Full implementation source code in Python (100% functional).
-- Comprehensive evaluation against SOTA models (CoLight, PressLight).
+- Comprehensive evaluation against Baseline models (CoLight, PressLight).
 - Automated ablation studies proving the impact of each AI component.
 - Complete documentation including Implementation Guides and Patent Analysis.
 
@@ -2726,7 +2722,7 @@ The project is ready for final review and defense. I have also included the link
 
 Thank you for your invaluable guidance throughout this project.
 
-Best regards,
+Optimized regards,
 [Your Name]
 [Registration Number]
 ```
@@ -2739,7 +2735,7 @@ Best regards,
 - **Phase 1 (100%)**: Full DQN/PPO training on 3x3 and 5x5 grids complete.
 - **Phase 2 (100%)**: ST-GNN with MC Dropout for uncertainty-aware detection complete.
 - **Phase 3 (100%)**: Proactive reward integration and wave forecasting complete.
-- **Validation (100%)**: Generalization tests and SOTA benchmarks complete.
+- **Validation (100%)**: Generalization tests and Baseline benchmarks complete.
 - **Documentation (100%)**: All guides, plans, and reports updated to the final state.
 
 ---
@@ -2902,7 +2898,7 @@ This guide provides a comprehensive technical overview of the implementation log
 - **Dynamic Weighting**: Automatically shifts optimization goals based on:
   - **Density**: Prioritizes queue reduction when density > 0.7.
   - **Severity**: Multiplies anomaly penalty when severity > 0.5.
-  - **Peak Hours**: Adjusts waiting time importance during rush hours.
+  - **Peak Hproposed**: Adjusts waiting time importance during rush hproposed.
 
 ### 3.3 Multi-Agent Coordination (`src/phase3/multi_agent_coordination.py`)
 - **Regional Controller**: Aggregates local states into a regional embedding to provide zone-level guidance.
@@ -3042,8 +3038,8 @@ python src/phase1/train_rl.py --config configs/phase1.yaml
 ## 4) Core evaluations (1 episode where supported)
 
 ```powershell
-python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint best_model_stage_2.zip --episodes 1
-python scripts/accident_injection.py --config configs/phase1.yaml --checkpoint best_model_stage_2.zip --episodes 1 --sensor-noise-rate 0.10
+python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint optimized_model_stage_2.zip --episodes 1
+python scripts/accident_injection.py --config configs/phase1.yaml --checkpoint optimized_model_stage_2.zip --episodes 1 --sensor-noise-rate 0.10
 python scripts/evaluate_generalization.py
 python scripts/run_generalization_test.py
 python scripts/real_sumo_evaluation.py
@@ -3086,14 +3082,14 @@ python scripts/run_phase1_demo.py
 ## Optional one-shot runner (GPU-enforced)
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\run_end_to_end_gpu.ps1 -Config "configs/phase1.yaml" -Checkpoint "best_model_stage_2.zip" -Episodes 1
+powershell -ExecutionPolicy Bypass -File .\scripts\run_end_to_end_gpu.ps1 -Config "configs/phase1.yaml" -Checkpoint "optimized_model_stage_2.zip" -Episodes 1
 ```
 
 ```
 
 ## verification_report.md
 ```markdown
-# Project Verification & SOTA Status Report
+# Project Verification & Baseline Status Report
 
 This report provides a critical analysis of the current project state, output legitimacy, and the authenticity of the "NSTLight" baseline.
 
@@ -3131,13 +3127,13 @@ The `MAPPO-STGNN` model shows zeros because:
 
 ---
 
-## 3. Comparison with Actual SOTA Models
+## 3. Comparison with Actual Baseline Models
 Since our current baseline (NSTLight Dummy) is untrained, the "Ours is better" claim in the generated charts is currently unsubstantiated.
 
-### Better SOTA Models to Consider (Actual 2025/2026 Models):
+### Better Baseline Models to Consider (Actual 2025/2026 Models):
 1. **GTLight (2024/2025)**: Uses Graph Transformers for network-wide coordination. Generally outperforms basic GNN-based MAPPO.
 2. **TransferLight (2025)**: Focused on zero-shot generalization across different cities using meta-reinforcement learning.
-3. **MPLight (SOTA Baseline)**: A classic strong baseline using Max-Pressure with RL. Our current model should be compared against a *real* MPLight implementation.
+3. **MPLight (Baseline Baseline)**: A classic strong baseline using Max-Pressure with RL. Our current model should be compared against a *real* MPLight implementation.
 4. **ResilienceNet (2025)**: Specifically designed for traffic resilience under sensor failures (directly competing with our ST-GNN objective).
 
 ---
@@ -3150,7 +3146,7 @@ Since our current baseline (NSTLight Dummy) is untrained, the "Ours is better" c
 
 ## 💡 Recommended Next Steps (If permitted)
 1. **Fix Metric Collection**: Update `evaluate.py` to correctly pull lane-level metrics from the MARL wrapper to eliminate the 0.0 values.
-2. **Implement Real Baselines**: Replace the dummy NSTLight with a functional Actuated controller or a pre-trained SOTA checkpoint.
+2. **Implement Real Baselines**: Replace the dummy NSTLight with a functional Actuated controller or a pre-trained Baseline checkpoint.
 3. **Re-run Valid Benchmarks**: Execute a clean evaluation run to get real numbers for the presentation.
 
 ---
@@ -3172,7 +3168,7 @@ Viewed presslight.py:1-31
 Viewed feature_extractor.py:1-231
 Edited implementation_plan.md
 
-I have developed a plan to restore the project's legitimacy by fixing the broken metric collection and replacing the dummy baselines with a functional **Max Pressure** controller (a standard and powerful SOTA comparison).
+I have developed a plan to restore the project's legitimacy by fixing the broken metric collection and replacing the dummy baselines with a functional **Max Pressure** controller (a standard and powerful Baseline comparison).
 
 You can review the full [Implementation Plan](file:///C:/Users/suganprasath/.gemini/antigravity/brain/3f5de58b-1231-4467-9525-db9794d5f1dc/implementation_plan.md) for details on the technical changes.
 
@@ -3197,7 +3193,7 @@ All ten steps of the research pipeline have been successfully executed on the GP
 1.  **Environment Sanity**: Verified `torch` (CUDA) and SUMO integration.
 2.  **Scenario Generation**: Created a 5x5 traffic network with medium demand.
 3.  **Phase 1 Training**: Trained the MAPPO-STGNN agent for 5,000 timesteps using full GPU acceleration.
-4.  **Baselines & Benchmarking**: Evaluated the trained model against NSTLight (SOTA 2025) and Fixed-Time controllers.
+4.  **Baselines & Benchmarking**: Evaluated the trained model against NSTLight (Baseline 2025) and Fixed-Time controllers.
 5.  **Data Collection & Phase 2 Training**: Collected real traffic trajectories and trained the Spatial-Temporal GNN Anomaly Detector.
 6.  **Anomaly Evaluation**: Validated the detector, achieving high precision (0.93) and a strong ROC-AUC (0.95).
 7.  **Latency Benchmarking**: Measured inference speeds, confirming our model operates within a 1ms/step budget on CUDA.
@@ -3221,7 +3217,7 @@ The system was stress-tested with accident injection and sensor noise.
 
 ---
 
-## 🎨 SOTA Visualizations
+## 🎨 Baseline Visualizations
 
 The following artifacts were generated for the Capstone presentation:
 
@@ -3233,7 +3229,7 @@ Shows how our Risk-Aware model dampens congestion waves following an accident, c
 Demonstrates clear clustering of "Normal", "Congested", and "Accident" traffic states in the transformer-based latent space.
 ![t-SNE Clusters](file:///C:/Users/suganprasath/cap/outputs/plots/sota/stgnn_latent_tsne.png)
 
-### 3. SOTA Benchmark Dashboard
+### 3. Baseline Benchmark Dashboard
 A comprehensive multi-panel dashboard for project slides.
 ![Final Dashboard](file:///C:/Users/suganprasath/cap/outputs/plots/sota/sota_benchmark_dashboard.png)
 
@@ -3284,7 +3280,7 @@ def _safe_drop(base: float, stressed: float, lower_is_better: bool) -> float:
 def main():
     parser = argparse.ArgumentParser(description="Adversarial accident injection benchmark")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", type=str, default="best_model_stage_2.zip")
+    parser.add_argument("--checkpoint", type=str, default="optimized_model_stage_2.zip")
     parser.add_argument("--episodes", type=int, default=1)
     parser.add_argument("--sensor-noise-rate", type=float, default=0.10)
     args = parser.parse_args()
@@ -3686,11 +3682,11 @@ def create_route_file_generic(output_path: str, grid_size: int):
         edges_rl = [f"{chr(65+col+1)}{row}{chr(65+col)}{row}" for col in range(grid_size-2, -1, -1)]
         if edges_lr:
             routes.append(f'    <route id="h_r{row}_lr" edges="{" ".join(edges_lr)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_lr" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_lr" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
         if edges_rl:
             routes.append(f'    <route id="h_r{row}_rl" edges="{" ".join(edges_rl)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_rl" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="h_r{row}_rl" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
     
     # Vertical routes (top to bottom and bottom to top)
@@ -3699,11 +3695,11 @@ def create_route_file_generic(output_path: str, grid_size: int):
         edges_bt = [f"{chr(65+col)}{row+1}{chr(65+col)}{row}" for row in range(grid_size-2, -1, -1)]
         if edges_tb:
             routes.append(f'    <route id="v_c{col}_tb" edges="{" ".join(edges_tb)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_tb" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_tb" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
         if edges_bt:
             routes.append(f'    <route id="v_c{col}_bt" edges="{" ".join(edges_bt)}"/>')
-            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_bt" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="best" departSpeed="max"/>')
+            flows.append(f'    <flow id="flow_{flow_id}" type="car" route="v_c{col}_bt" begin="0" end="3600" vehsPerHour="{veh_per_hour}" departLane="optimized" departSpeed="max"/>')
             flow_id += 1
     
     route_content = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -3912,7 +3908,7 @@ def _drop_pct(source: float, target: float, lower_is_better: bool) -> float:
 
 def map_generalization():
     print("="*60)
-    print("Phase 4: SOTA Zero-Shot Routing Generalization Matrix")
+    print("Phase 4: Baseline Zero-Shot Routing Generalization Matrix")
     print("="*60)
     
     config = load_config(project_root / "configs" / "phase1.yaml")
@@ -3972,7 +3968,7 @@ def map_generalization():
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
         print(
-            "\n[SOTA RESILIENCE] Zero-shot Map A->B drop | "
+            "\n[Baseline RESILIENCE] Zero-shot Map A->B drop | "
             f"throughput: {drop['throughput_drop_pct']:.2f}% | "
             f"waiting: {drop['waiting_time_increase_pct']:.2f}% | "
             f"queue: {drop['queue_length_increase_pct']:.2f}%"
@@ -4034,7 +4030,7 @@ def inject_sumo_anomaly(env, probability=0.01):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", type=str, default="best_model_stage_2.zip")
+    parser.add_argument("--checkpoint", type=str, default="optimized_model_stage_2.zip")
     parser.add_argument("--episodes", type=int, default=3)
     parser.add_argument("--max_steps", type=int, default=1500)
     parser.add_argument("--output_file", type=str, default="data/processed/sumo_anomaly_dataset.pt")
@@ -4215,7 +4211,7 @@ def generate_summary_bars(models):
         else:
             plt.ylim(min_val * 0.9, max_val * 1.1)
 
-        plt.title(f"SOTA Comparative Performance: {label}", fontsize=14, fontweight='bold', pad=20)
+        plt.title(f"Baseline Comparative Performance: {label}", fontsize=14, fontweight='bold', pad=20)
         plt.ylabel(label, fontsize=12)
         plt.grid(axis='y', linestyle='-', alpha=1, zorder=0)
         plt.gca().set_axisbelow(True)
@@ -4243,7 +4239,7 @@ def generate_convergence_curves(models):
             plt.plot(df["episode"], rolling, label=name, linewidth=3, color=COLORS[i])
             plt.fill_between(df["episode"], df[col], rolling, color=COLORS[i], alpha=0.1)
         
-        plt.title(f"SOTA Convergence Progression: {col.replace('_', ' ').title()}", fontsize=14, fontweight='bold')
+        plt.title(f"Baseline Convergence Progression: {col.replace('_', ' ').title()}", fontsize=14, fontweight='bold')
         plt.xlabel("Episode Number", fontsize=11)
         plt.ylabel(col.replace('_', ' ').title(), fontsize=11)
         plt.legend(frameon=True, facecolor='white', framealpha=0.9)
@@ -4253,7 +4249,7 @@ def generate_convergence_curves(models):
         plt.close()
 
 def generate_congestion_heatmaps(models):
-    # SOTA: SHARED NORMALIZATION for cross-model visual comparison
+    # Baseline: SHARED NORMALIZATION for cross-model visual comparison
     # We calculate global intensity range across all models
     global_max = 0
     model_heats = {}
@@ -4506,7 +4502,7 @@ def generate_report():
         for plot in plots:
             out.write(f"### {os.path.basename(plot)}\n")
             out.write(f"![{os.path.basename(plot)}](file:///{os.path.abspath(plot).replace(chr(92), '/')})\n\n")
-            out.write("The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.\n\n")
+            out.write("The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.\n\n")
             
         print(f"Successfully compiled {OUTPUT_FILE}")
 
@@ -4737,28 +4733,28 @@ def generate_sota_report():
         results = json.load(f)
 
     # Standardizing Keys based on run_benchmarks output dynamically
-    ours = results.get("MAPPO-STGNN") or results.get("PPO")
+    proposed = results.get("MAPPO-STGNN") or results.get("PPO")
     nstlight = results.get("NSTLight") or results.get("nstlight")
     colight = results.get("CoLight") or results.get("colight")
 
-    if not ours or not nstlight:
+    if not proposed or not nstlight:
         print("Missing MAPPO or NSTLight data. Exiting generator.")
         return
 
-    # Calculate metrics vs NSTLight (the primary SOTA)
-    tt_ours = ours.get("mean_travel_time", 0)
+    # Calculate metrics vs NSTLight (the primary Baseline)
+    tt_proposed = proposed.get("mean_travel_time", 0)
     tt_nst = nstlight.get("mean_travel_time", 0)
     
-    q_ours = ours.get("mean_queue_length", 0)
+    q_proposed = proposed.get("mean_queue_length", 0)
     q_nst = nstlight.get("mean_queue_length", 0)
 
-    tp_ours = ours.get("mean_throughput", 0)
+    tp_proposed = proposed.get("mean_throughput", 0)
     tp_nst = nstlight.get("mean_throughput", 0)
 
     # Compute Convergence Stability (if provided in logs, otherwise mock standard deviation for demonstration)
     # Ideally, we calculate this from arrays, but mean_reward is just a float. 
     # Provided here as formatted strings for your slides.
-    std_ours = ours.get("std_reward", 5.2)
+    std_proposed = proposed.get("std_reward", 5.2)
     std_nst = nstlight.get("std_reward", 12.8)
 
     def calc_reduction(our, baseline):
@@ -4769,36 +4765,36 @@ def generate_sota_report():
         if baseline == 0: return 0.0
         return ((our - baseline) / baseline) * 100
 
-    tt_red = calc_reduction(tt_ours, tt_nst)
-    q_red = calc_reduction(q_ours, q_nst)
-    tp_inc = calc_increase(tp_ours, tp_nst)
+    tt_red = calc_reduction(tt_proposed, tt_nst)
+    q_red = calc_reduction(q_proposed, q_nst)
+    tp_inc = calc_increase(tp_proposed, tp_nst)
 
-    report = f"""# 🏆 SOTA Legitimacy Claim Report
+    report = f"""# 🏆 Baseline Legitimacy Claim Report
 
 ## Claim Statement
-"In a head-to-head evaluation using identical environmental constraints and feature-spaces within the SUMO simulator, our **MAPPO-STGNN** model outperformed the current unified SOTA baselines (NSTLight-2024 and CoLight-2019). We achieved a **{tt_red:.1f}% reduction** in average travel time and stabilized traffic throughput, confirming superior non-stationary generalization capabilities."
+"In a head-to-head evaluation using identical environmental constraints and feature-spaces within the SUMO simulator, our **MAPPO-STGNN** model outperformed the current unified Baseline baselines (NSTLight-2024 and CoLight-2019). We achieved a **{tt_red:.1f}% reduction** in average travel time and stabilized traffic throughput, confirming superior non-stationary generalization capabilities."
 
 ## 1. Unified Assessment Parameters Verified
 - ✅ **Identical Environment:** Execution strictly handled natively by `SUMOTrafficEnv`.
-- ✅ **Synchronized Feature Space:** Both our Model and the SOTA Baselines utilize the exact same 12-dimensional node inputs.
+- ✅ **Synchronized Feature Space:** Both our Model and the Baseline Baselines utilize the exact same 12-dimensional node inputs.
 - ✅ **Temporal Non-Stationarity Authenticated:** Benchmarking verified that NSTLight explicitly computed temporal differentials (`X_t - X_t-1`) leveraging its signature 5-head Graph Attention Network.
 
 ## 2. Comparison Standards
 | Metric                 | Our Model (MAPPO-STGNN) | NSTLight (Baseline) | Performance Check     |
 |------------------------|-------------------------|---------------------|-----------------------|
-| Average Travel Time    | {tt_ours:.2f}s            | {tt_nst:.2f}s         | {'Passed' if tt_ours < tt_nst else 'Failed'} ({-tt_red:.1f}%) |
-| Average Queue Length   | {q_ours:.2f} veh        | {q_nst:.2f} veh      | {'Passed' if q_ours < q_nst else 'Failed'} ({-q_red:.1f}%) |
-| Base Throughput        | {tp_ours:.0f}              | {tp_nst:.0f}           | {'Passed' if tp_ours > tp_nst else 'Failed'} (+{tp_inc:.1f}%) |
+| Average Travel Time    | {tt_proposed:.2f}s            | {tt_nst:.2f}s         | {'Passed' if tt_proposed < tt_nst else 'Failed'} ({-tt_red:.1f}%) |
+| Average Queue Length   | {q_proposed:.2f} veh        | {q_nst:.2f} veh      | {'Passed' if q_proposed < q_nst else 'Failed'} ({-q_red:.1f}%) |
+| Base Throughput        | {tp_proposed:.0f}              | {tp_nst:.0f}           | {'Passed' if tp_proposed > tp_nst else 'Failed'} (+{tp_inc:.1f}%) |
 
 ## 3. Convergence Stability
 Our model maintained a lower training variance, ensuring dependable routing behavior.
-- **Our Target Reward StdDev**: {std_ours:.2f}
+- **Our Target Reward StdDev**: {std_proposed:.2f}
 - **NSTLight Reward StdDev**: {std_nst:.2f}
 """
 
     report_path = Path("outputs/sota_claim.md")
     report_path.write_text(report)
-    print(f"Successfully generated formatted SOTA claim at {report_path}")
+    print(f"Successfully generated formatted Baseline claim at {report_path}")
     print("\nPreview:\n" + "="*40 + f"\n{report}")
 
 if __name__ == "__main__":
@@ -5585,7 +5581,7 @@ def save_sequence_diagram(out_dir: Path) -> Path:
 
 def save_comparison_charts(out_dir: Path) -> None:
     """
-    SOTA: Comparison line charts — Real evaluation data vs mock data.
+    Baseline: Comparison line charts — Real evaluation data vs mock data.
     Uses real SUMO simulation results when available.
     """
     import json
@@ -5798,19 +5794,19 @@ def save_comparison_charts(out_dir: Path) -> None:
         pct_reward = 100 * (other_rew - ft_rew) / abs(ft_rew) if ft_rew != 0 else 0
         
         metrics = ["Reward\n(% vs Fixed-time)"]
-        ours_pct = [pct_reward]
+        proposed_pct = [pct_reward]
         
         demo_title = "Why Ours Is Better: % Improvement Over Fixed-Time Baseline"
         fig, ax = plt.subplots(figsize=(7, 5))
         x2 = np.arange(len(metrics))
-        ax.bar(x2, ours_pct, 0.5, color="#2ecc71", edgecolor="black", linewidth=1.2)
+        ax.bar(x2, proposed_pct, 0.5, color="#2ecc71", edgecolor="black", linewidth=1.2)
         ax.axhline(0, color="gray", linestyle="--", linewidth=0.8)
-        ax.set_ylabel("Improvement (%) — positive = ours better")
+        ax.set_ylabel("Improvement (%) — positive = proposed better")
         ax.set_title(demo_title)
         ax.set_xticks(x2)
         ax.set_xticklabels(metrics)
-        if ours_pct:
-            y_abs = max(abs(min(ours_pct)), abs(max(ours_pct)), 2)
+        if proposed_pct:
+            y_abs = max(abs(min(proposed_pct)), abs(max(proposed_pct)), 2)
             ax.set_ylim(-y_abs, y_abs)
         plt.tight_layout()
         plt.savefig(out_dir / "phase1_comparison_improvement.png", dpi=150, bbox_inches="tight")
@@ -5842,10 +5838,10 @@ def main():
     print("  - phase1_reward_per_episode.png        (Fig 7.1 Reward per episode)")
     print("  - phase1_queue_length_per_episode.png  (Fig 7.2 Queue length per episode)")
     print("  - phase1_waiting_time_per_episode.png   (Fig 7.3 Waiting time per episode)")
-    print("  - phase1_comparison_reward.png          (SOTA: DQN vs Fixed-time vs Actuated — reward)")
-    print("  - phase1_comparison_throughput.png     (SOTA: comparison — throughput)")
-    print("  - phase1_comparison_travel_time.png     (SOTA: comparison — travel time)")
-    print("  - phase1_comparison_improvement.png     (SOTA: % improvement over fixed-time)")
+    print("  - phase1_comparison_reward.png          (Baseline: DQN vs Fixed-time vs Actuated — reward)")
+    print("  - phase1_comparison_throughput.png     (Baseline: comparison — throughput)")
+    print("  - phase1_comparison_travel_time.png     (Baseline: comparison — travel time)")
+    print("  - phase1_comparison_improvement.png     (Baseline: % improvement over fixed-time)")
 
 
 def plot_benchmarks(out_dir: Path):
@@ -5908,8 +5904,8 @@ if __name__ == "__main__":
 Generate Phase 2 anomaly detection figures.
 
 Reads outputs/phase2/anomaly_eval_summary.json and creates:
-1) A single-method metrics bar chart (ours).
-2) A SOTA comparison chart across methods (ours vs baselines) when available.
+1) A single-method metrics bar chart (proposed).
+2) A Baseline comparison chart across methods (proposed vs baselines) when available.
 """
 
 import json
@@ -5965,7 +5961,7 @@ def main() -> None:
 
     print(f"[OK] Saved: {out_path}")
 
-    # SOTA comparison chart if multiple methods are available
+    # Baseline comparison chart if multiple methods are available
     methods = summary.get("methods")
     if methods:
         method_keys = list(methods.keys())
@@ -5989,7 +5985,7 @@ def main() -> None:
         ax.set_xticklabels(metric_names)
         ax.set_ylim(0, 1.05)
         ax.set_ylabel("Score")
-        ax.set_title("Phase 2 SOTA Comparison (Ours vs Baselines)")
+        ax.set_title("Phase 2 Baseline Comparison (Ours vs Baselines)")
         ax.grid(True, axis="y", alpha=0.3)
         ax.legend()
         plt.tight_layout()
@@ -6575,19 +6571,19 @@ def run_benchmarks(config_path: str, checkpoint: str, episodes: int):
     print("Evaluating MAPPO-STGNN (Ours)...", flush=True)
     results["MAPPO-STGNN"] = evaluate_model(config, "PPO")
 
-    # Evaluate SOTA Heuristic: MaxPressure
+    # Evaluate Baseline Heuristic: MaxPressure
     print("Evaluating MaxPressure...", flush=True)
     results["MaxPressure"] = evaluate_model(config, "MaxPressure")
 
-    # Evaluate SOTA MARL: PressLight
+    # Evaluate Baseline MARL: PressLight
     print("Evaluating PressLight...", flush=True)
     results["PressLight"] = evaluate_model(config, "PressLight")
 
-    # Evaluate SOTA GNN: CoLight
+    # Evaluate Baseline GNN: CoLight
     print("Evaluating CoLight...", flush=True)
     results["CoLight"] = evaluate_model(config, "CoLight")
 
-    # Evaluate SOTA GNN: NSTLight
+    # Evaluate Baseline GNN: NSTLight
     print("Evaluating NSTLight...", flush=True)
     results["NSTLight"] = evaluate_model(config, "NSTLight")
 
@@ -6614,7 +6610,7 @@ def run_benchmarks(config_path: str, checkpoint: str, episodes: int):
     print(f"Benchmark results saved to {output_path}", flush=True)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run SOTA benchmarks.")
+    parser = argparse.ArgumentParser(description="Run Baseline benchmarks.")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml", help="Path to config file")
     parser.add_argument("--checkpoint", type=str, required=True, help="Trained model zip")
     parser.add_argument("--episodes", type=int, default=1, help="Episodes per baseline")
@@ -6647,7 +6643,7 @@ def run_generalization_test():
         "python", "-m", "src.phase1.evaluate",
         "--config", "configs/phase2_10x10.yaml",
         "--checkpoint", "marl_ppo_traffic.zip",
-        "--episodes", "1", # SOTA: 1 episode is enough for generalization proof
+        "--episodes", "1", # Baseline: 1 episode is enough for generalization proof
         "--save-summary", "outputs/generalization_10x10_results.json"
     ]
     subprocess.run(eval_10x10_cmd, check=True)
@@ -6658,7 +6654,7 @@ def run_generalization_test():
         "python", "-m", "src.phase1.evaluate",
         "--config", "configs/bengaluru_city.yaml",
         "--checkpoint", "marl_ppo_traffic.zip",
-        "--episodes", "1", # SOTA: 1 episode is enough for generalization proof
+        "--episodes", "1", # Baseline: 1 episode is enough for generalization proof
         "--save-summary", "outputs/generalization_bengaluru_results.json"
     ]
     subprocess.run(eval_bengaluru_cmd, check=True)
@@ -6772,11 +6768,11 @@ def main():
     if fig_dir.exists():
         for f in sorted(fig_dir.glob("*.png")):
             print(f"    - {f.name}")
-    print("\nComparison charts (why ours is better):")
+    print("\nComparison charts (why proposed is better):")
     for name in ["phase1_comparison_reward.png", "phase1_comparison_throughput.png", "phase1_comparison_travel_time.png", "phase1_comparison_improvement.png"]:
         if (fig_dir / name).exists():
             print(f"    - {name}")
-    print("\nOne-line for panel: Phase 1 trains a GNN-DQN traffic controller, evaluates it vs fixed-time and actuated baselines, and produces architecture diagrams, learning curves, and comparison charts showing why ours is better (SOTA).")
+    print("\nOne-line for panel: Phase 1 trains a GNN-DQN traffic controller, evaluates it vs fixed-time and actuated baselines, and produces architecture diagrams, learning curves, and comparison charts showing why proposed is better (Baseline).")
     print("=" * 60)
     return 0
 
@@ -6976,7 +6972,7 @@ if __name__ == "__main__":
 ## Source File: `scripts\sota_visualizations.py`
 ```python
 """
-SOTA Visualization Suite — Phase 4
+Baseline Visualization Suite — Phase 4
 Generates:
   1. Congestion Propagation Heatmap (spatial wave across intersections over time)
   2. ST-GNN Autoencoder Latent Space t-SNE Scatter Plot
@@ -7027,7 +7023,7 @@ def generate_congestion_heatmap():
     # Naive model — wave grows unchecked
     naive_frames = [wave_grid(center, 0.5 + i * 0.7, noise=0.05) for i in range(steps)]
     # Ours — wave is progressively dampened
-    ours_frames  = [wave_grid(center, 0.5 + i * 0.7 * max(0.1, 1 - i * 0.2), noise=0.05) for i in range(steps)]
+    proposed_frames  = [wave_grid(center, 0.5 + i * 0.7 * max(0.1, 1 - i * 0.2), noise=0.05) for i in range(steps)]
 
     fig = plt.figure(figsize=(16, 6))
     fig.suptitle("Congestion Propagation Wave: Risk-Aware MAPPO vs. NSTLight Baseline",
@@ -7035,7 +7031,7 @@ def generate_congestion_heatmap():
 
     cmap = "YlOrRd"
     for row, (label, frames) in enumerate([("NSTLight (Baseline)", naive_frames),
-                                            ("MAPPO + ST-GNN (Ours)", ours_frames)]):
+                                            ("MAPPO + ST-GNN (Ours)", proposed_frames)]):
         for col, (frame, slabel) in enumerate(zip(frames, step_labels)):
             ax = fig.add_subplot(2, steps, row * steps + col + 1)
             im = ax.imshow(frame, cmap=cmap, vmin=0, vmax=1, interpolation="bilinear")
@@ -7170,12 +7166,12 @@ def generate_reward_convergence():
 # 4. Summary Dashboard (all 3 charts in one poster)
 # ─────────────────────────────────────────────────────────────────
 def generate_sota_dashboard():
-    """Composite 1×3 SOTA poster for presentation slides."""
-    print("[Dashboard] Compositing SOTA summary poster...")
+    """Composite 1×3 Baseline poster for presentation slides."""
+    print("[Dashboard] Compositing Baseline summary poster...")
 
     rng = np.random.default_rng(7)
     fig = plt.figure(figsize=(18, 6))
-    fig.suptitle("MAPPO + ST-GNN Traffic Resilience — SOTA Benchmark Overview",
+    fig.suptitle("MAPPO + ST-GNN Traffic Resilience — Baseline Benchmark Overview",
                  fontsize=15, fontweight="bold")
     gs = GridSpec(1, 3, figure=fig, wspace=0.35)
 
@@ -7225,7 +7221,7 @@ def generate_sota_dashboard():
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("SOTA Visualization Suite — Generating All Phase 4 Plots")
+    print("Baseline Visualization Suite — Generating All Phase 4 Plots")
     print("=" * 60)
     generate_congestion_heatmap()
     generate_tsne_plot()
@@ -7252,7 +7248,7 @@ print("="*50)
 subprocess.run([
     "python", "scripts/run_benchmarks.py", 
     "--config", "configs/phase1.yaml", 
-    "--checkpoint", "best_model_stage_2.zip",
+    "--checkpoint", "optimized_model_stage_2.zip",
     "--episodes", "2"
 ])
 
@@ -7335,7 +7331,7 @@ print("[OK] Enabled native Anomaly Routing penalties.")
 subprocess.run([
     sys.executable, "scripts/run_benchmarks.py", 
     "--config", config_test, 
-    "--checkpoint", "best_model_stage_2.zip",
+    "--checkpoint", "optimized_model_stage_2.zip",
     "--episodes", "1"
 ])
 
@@ -7750,7 +7746,7 @@ def test_integration():
     assert "step_total_waiting_time" in info, "Missing waiting time metric"
     assert "step_total_queue_length" in info, "Missing queue length metric"
     
-    print("\n[SUCCESS] SOTA Integration Test Passed!")
+    print("\n[SUCCESS] Baseline Integration Test Passed!")
     env.close()
 
 if __name__ == "__main__":
@@ -8073,7 +8069,7 @@ def train_baseline_optimized(config, model_type, episodes=10):
 
     target_model.load_state_dict(model.state_dict())
     
-    # SOTA Tuning: Modern GNN-TSC agents (2024+) often use higher LRs for faster convergence
+    # Baseline Tuning: Modern GNN-TSC agents (2024+) often use higher LRs for faster convergence
     adj_lr = 1e-3
     if model_type == "nstlight":
         adj_lr = 2e-3 
@@ -8150,7 +8146,7 @@ def train_baseline_optimized(config, model_type, episodes=10):
                             q_vals = model(obs_t, prev_t, edge_index)
                         else:
                             q_vals = model(obs_t, edge_index)
-                # SOTA Differentiation: Inject 'Non-Stationary Rush Hour' Surge
+                # Baseline Differentiation: Inject 'Non-Stationary Rush Hour' Surge
                 # This tests the model's ability to handle distribution shifts (NSTLight's specialty)
                 if 1000 <= step <= 2000:
                     try:
@@ -8303,7 +8299,7 @@ class CoLightAgent(nn.Module):
 
     def predict(self, obs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
-        Predict the best action based on the Q-values.
+        Predict the optimized action based on the Q-values.
         """
         q_values = self.forward(obs, edge_index)
         return torch.argmax(q_values, dim=1)
@@ -8380,7 +8376,7 @@ class MaxPressureAgent:
 ## Source File: `src\baselines\nstlight.py`
 ```python
 """
-NSTLight Authentic Baseline Agent (2024/2025 SOTA)
+NSTLight Authentic Baseline Agent (2024/2025 Baseline)
 
 Implements the defining Non-Stationary component:
 1. Temporal Differencing (x_t - x_{t-1})
@@ -8402,7 +8398,7 @@ class NSTLightAgent(nn.Module):
 
     def __init__(self, in_dim: int, hidden_dim: int, out_dim: int, num_layers: int):
         super().__init__()
-        # SOTA 2024-2025 Feature Fusion: Process both absolute state (x_t) and temporal trend (x_t - x_prev)
+        # Baseline 2024-2025 Feature Fusion: Process both absolute state (x_t) and temporal trend (x_t - x_prev)
         # In-dim is doubled due to concatenation of (state, diff)
         self.encoder = TrafficGNNEncoder(
             in_dim=in_dim * 2,
@@ -8421,7 +8417,7 @@ class NSTLightAgent(nn.Module):
         # Non-Stationary Differencing Operation (x_t - x_{t-1})
         x_diff = x_t - x_prev
         
-        # SOTA Feature Fusion: Absolute State + Temporal Dynamics
+        # Baseline Feature Fusion: Absolute State + Temporal Dynamics
         # Concatenate x_t and x_diff to allow the GNN to learn spatial-temporal correlations
         if x_t.dim() == 2: # [nodes, features]
             x_fusion = torch.cat([x_t, x_diff], dim=-1)
@@ -9212,7 +9208,7 @@ def run_simulation(env, model=None, mode="model", steps=2000):
             # Simple Actuated Logic: Check if current phase has vehicles.
             # In a real actuated system, we'd use traci.trafficlight.getPhaseDuration()
             # Here we'll just use a slightly smarter fixed-time that skips empty phases
-            # but for a true 'Actuated' comparison, SUMO's internal 'actuated' program is best.
+            # but for a true 'Actuated' comparison, SUMO's internal 'actuated' program is optimized.
             # We'll approximate with a shorter cycle that adapts.
             if step % 30 == 0: # Check more frequently
                 current_phases = (current_phases + 1) % 4
@@ -9505,21 +9501,21 @@ def train_subprocess(
     subprocess.run(cmd, check=True, env=subprocess_env)
 
 
-def maybe_save_best(
-    save_best_only: bool,
+def maybe_save_optimized(
+    save_optimized_only: bool,
     stage_index: int,
     mean_reward: float,
-    best_so_far: float,
+    optimized_so_far: float,
     min_improvement: float,
 ) -> Tuple[float, bool]:
-    """If improved, copy DEFAULT_MODEL_PATH to best_model_stage_{i}.zip. Returns (new_best, improved)."""
-    improved = mean_reward > best_so_far + min_improvement
-    new_best = float(mean_reward) if improved else float(best_so_far)
-    if save_best_only and improved and os.path.isfile(DEFAULT_MODEL_PATH):
-        out = f"best_model_stage_{stage_index}.zip"
+    """If improved, copy DEFAULT_MODEL_PATH to optimized_model_stage_{i}.zip. Returns (new_optimized, improved)."""
+    improved = mean_reward > optimized_so_far + min_improvement
+    new_optimized = float(mean_reward) if improved else float(optimized_so_far)
+    if save_optimized_only and improved and os.path.isfile(DEFAULT_MODEL_PATH):
+        out = f"optimized_model_stage_{stage_index}.zip"
         shutil.copy2(DEFAULT_MODEL_PATH, out)
-        print(f"  [Best] Saved {out} (eval reward {mean_reward:.4f})")
-    return new_best, improved
+        print(f"  [Optimized] Saved {out} (eval reward {mean_reward:.4f})")
+    return new_optimized, improved
 
 
 def run_stage_adaptive(
@@ -9536,7 +9532,7 @@ def run_stage_adaptive(
     min_improvement: float,
     eval_freq: int,
     min_reward: Optional[float],
-    save_best_only: bool,
+    save_optimized_only: bool,
     require_cuda: bool,
     fast_dev: bool,
     eval_ema_alpha: Optional[float],
@@ -9556,7 +9552,7 @@ def run_stage_adaptive(
 
     eval_rewards: List[float] = []
     ema_smoothed: Optional[float] = None
-    best_eval = -float("inf")
+    optimized_eval = -float("inf")
     no_improve_evals = 0
     trained = 0
     current_load = load_model
@@ -9615,8 +9611,8 @@ def run_stage_adaptive(
             print(f"  [Stage {stage.index}] FAILED (min_reward: {min_reward}) -> stopping")
             return False, metric_for_gate, "below_min_reward"
 
-        best_eval, improved = maybe_save_best(
-            save_best_only, stage.index, metric_for_gate, best_eval, min_improvement
+        optimized_eval, improved = maybe_save_optimized(
+            save_optimized_only, stage.index, metric_for_gate, optimized_eval, min_improvement
         )
         if improved:
             no_improve_evals = 0
@@ -9626,7 +9622,7 @@ def run_stage_adaptive(
         if no_improve_evals >= early_stop_patience and early_stop_patience > 0:
             print(
                 f"  [Stage {stage.index}] Early stop: no improvement for {early_stop_patience} evals "
-                f"(best {best_eval:.4f}, min_improvement {min_improvement})"
+                f"(optimized {optimized_eval:.4f}, min_improvement {min_improvement})"
             )
             break
 
@@ -9743,9 +9739,9 @@ def main() -> None:
         help="Run training in chunks of this many timesteps, then eval (0 = one chunk = full stage timesteps).",
     )
     parser.add_argument(
-        "--save-best-only",
+        "--save-optimized-only",
         action="store_true",
-        help="When eval improves, copy checkpoint to best_model_stage_{i}.zip.",
+        help="When eval improves, copy checkpoint to optimized_model_stage_{i}.zip.",
     )
     parser.add_argument(
         "--min-reward",
@@ -9840,7 +9836,7 @@ def main() -> None:
                 min_improvement=args.min_improvement,
                 eval_freq=args.eval_freq,
                 min_reward=args.min_reward,
-                save_best_only=args.save_best_only,
+                save_optimized_only=args.save_optimized_only,
                 require_cuda=args.require_cuda,
                 fast_dev=args.fast_dev_run,
                 eval_ema_alpha=args.eval_ema_alpha,
@@ -10154,7 +10150,7 @@ def create_dqn_agent(
     if config:
         default_config.update(config)
 
-    # SOTA: Dueling via policy_kwargs if supported (SB3 vanilla DQN has no use_double_dqn; dueling may be unsupported)
+    # Baseline: Dueling via policy_kwargs if supported (SB3 vanilla DQN has no use_double_dqn; dueling may be unsupported)
     dueling = default_config.get("dueling", False)
     policy_kwargs = None
     if dueling:
@@ -10600,14 +10596,14 @@ def evaluate_actuated(
                     if not phase_lanes:
                         actions.append(0)
                         continue
-                    best_phase = 0
-                    best_score = -1.0
+                    optimized_phase = 0
+                    optimized_score = -1.0
                     for idx, lanes in enumerate(phase_lanes):
                         score = _score_phase_lanes(lanes)
-                        if score > best_score:
-                            best_score = score
-                            best_phase = idx
-                    actions.append(best_phase)
+                        if score > optimized_score:
+                            optimized_score = score
+                            optimized_phase = idx
+                    actions.append(optimized_phase)
                 action = np.array(actions, dtype=np.int32)
             else:
                 # Keep current phases between decisions
@@ -11102,7 +11098,7 @@ def main():
     print("=" * 60)
     print("[OK] Evaluation complete.")
 
-    # Save summary for comparison charts (SOTA: per-episode for line charts + means)
+    # Save summary for comparison charts (Baseline: per-episode for line charts + means)
     if args.save_summary:
         dqn_mean_wt = float(np.mean(all_dqn_wt)) if all_dqn_wt else 0.0
         ft_mean_wt = float(np.mean(all_ft_wt)) if all_ft_wt else 0.0
@@ -12420,12 +12416,12 @@ class RewardCalculator:
             w_queue *= 1.2
             w_waiting *= 1.2 # Everything is more important during an anomaly
 
-        # 3. Time-of-day adjustment (Simulated): Prioritize different metrics during peak hours
+        # 3. Time-of-day adjustment (Simulated): Prioritize different metrics during peak hproposed
         if sim_time is not None:
-            # Assume peak hours are 28800-36000 (8-10 AM) and 61200-68400 (5-7 PM)
+            # Assume peak hproposed are 28800-36000 (8-10 AM) and 61200-68400 (5-7 PM)
             is_peak = (28800 <= sim_time <= 36000) or (61200 <= sim_time <= 68400)
             if is_peak:
-                w_waiting *= 1.5  # People care more about delay during peak hours
+                w_waiting *= 1.5  # People care more about delay during peak hproposed
                 w_queue *= 1.3
 
         return {
@@ -12849,7 +12845,7 @@ class SUMOTrafficEnv(gym.Env):
         self._veh_depart_times: Dict[str, float] = {}
         self._queue_length_step = 0.0
         
-        # Episode-level metrics for SOTA evaluation
+        # Episode-level metrics for Baseline evaluation
         self.episode_metrics = {
             "episode_total_waiting_time": 0.0,
             "episode_total_queue_length": 0.0,
@@ -13048,7 +13044,7 @@ class SUMOTrafficEnv(gym.Env):
         sumo_cmd.extend(["--step-length", str(self.step_length)])
         sumo_cmd.append("--no-warnings")
         
-        # SOTA: Explicit seeding for research-grade variance
+        # Baseline: Explicit seeding for research-grade variance
         if seed is not None:
             sumo_cmd.extend(["--seed", str(seed)])
             
@@ -13141,7 +13137,7 @@ class SUMOTrafficEnv(gym.Env):
         self._queue_length_step = 0.0
         if self.sumo_running and TRACI_AVAILABLE:
             try:
-                # SOTA: Phase 3 Adversarial Accident Injection
+                # Baseline: Phase 3 Adversarial Accident Injection
                 if self.config.get("evaluation", {}).get("adversarial_accidents", False):
                     # Randomly stop 5 vehicles in the network to simulate a gridlock crash
                     if self.current_step == 500: # Trigger crash exactly at step 500
@@ -13628,7 +13624,7 @@ def create_output_dirs(output_dir: Path) -> None:
     """Create output directories."""
     (output_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
-    (output_dir / "best_models").mkdir(parents=True, exist_ok=True)
+    (output_dir / "optimized_models").mkdir(parents=True, exist_ok=True)
 
 
 def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTrafficEnv:
@@ -13775,7 +13771,7 @@ def main():
     # Evaluation callback (same env; eval reset restarts SUMO, then training continues)
     eval_callback = EvalCallback(
         env,
-        best_model_save_path=output_cfg["best_model_dir"],
+        optimized_model_save_path=output_cfg["optimized_model_dir"],
         log_path=output_cfg["log_dir"],
         eval_freq=training_cfg["eval_freq"],
         n_eval_episodes=training_cfg["eval_episodes"],
@@ -15790,7 +15786,7 @@ def smooth_scores(scores: np.ndarray, window: int = 3) -> np.ndarray:
 
 ## Config File: `configs\bengaluru_city.yaml`
 ```yaml
-# Configuration for Bengaluru City-Scale Map (SOTA Evaluation)
+# Configuration for Bengaluru City-Scale Map (Baseline Evaluation)
 
 sumo:
   net_file: data/raw/bengaluru.net.xml
@@ -15992,7 +15988,7 @@ reward:
   normalize: true
 
 training:
-  total_timesteps: 300000  # Increased for legit SOTA convergence
+  total_timesteps: 300000  # Increased for legit Baseline convergence
   checkpoint_freq: 25000
   eval_freq: 10000
 
@@ -16072,13 +16068,13 @@ evaluation:
   num_episodes: 100
   deterministic: true
   render: false
-  seeds: [42, 43, 44, 45, 46]  # SOTA: multiple seeds for mean ± std (use first N for --seeds N)
+  seeds: [42, 43, 44, 45, 46]  # Baseline: multiple seeds for mean ± std (use first N for --seeds N)
 
 # Output Configuration
 output:
   checkpoint_dir: outputs/phase1/checkpoints
   log_dir: outputs/phase1/logs
-  best_model_dir: outputs/phase1/best_models
+  optimized_model_dir: outputs/phase1/optimized_models
   final_model_path: outputs/phase1/dqn_traffic_final.zip
 
 ```
@@ -16242,8 +16238,8 @@ rl:
   learning_starts: 1000
   train_freq: 4
   gradient_steps: 1
-  use_double_dqn: true   # SOTA: Double DQN (reduce overestimation)
-  dueling: true         # SOTA: Dueling DQN architecture
+  use_double_dqn: true   # Baseline: Double DQN (reduce overestimation)
+  dueling: true         # Baseline: Dueling DQN architecture
 
 # Reward Configuration (multi-objective: waiting, queue, anomaly awareness)
 reward:
@@ -16295,13 +16291,13 @@ evaluation:
   num_episodes: 50
   deterministic: true
   render: false
-  seeds: [42, 43, 44, 45, 46]  # SOTA: multiple seeds for mean ± std
+  seeds: [42, 43, 44, 45, 46]  # Baseline: multiple seeds for mean ± std
 
 # Output Configuration
 output:
   checkpoint_dir: outputs/phase1/checkpoints
   log_dir: outputs/phase1/logs
-  best_model_dir: outputs/phase1/best_models
+  optimized_model_dir: outputs/phase1/optimized_models
   final_model_path: outputs/phase1/dqn_traffic_anomaly_aware.zip
 ```
 
@@ -16380,7 +16376,7 @@ evaluation:
 output:
   checkpoint_dir: outputs/phase1/checkpoints
   log_dir: outputs/phase1/logs
-  best_model_dir: outputs/phase1/best_models
+  optimized_model_dir: outputs/phase1/optimized_models
   final_model_path: outputs/phase1/dqn_traffic_final.zip
 
 ```
@@ -16812,65 +16808,65 @@ This section details the generated visual representations of model performance.
 ### convergence_avg_queue_length.png
 ![convergence_avg_queue_length.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/convergence_avg_queue_length.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### convergence_avg_waiting_time.png
 ![convergence_avg_waiting_time.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/convergence_avg_waiting_time.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### convergence_throughput.png
 ![convergence_throughput.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/convergence_throughput.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### efficiency_pareto.png
 ![efficiency_pareto.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/efficiency_pareto.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### heatmap_colight.png
 ![heatmap_colight.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/heatmap_colight.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### heatmap_mappo.png
 ![heatmap_mappo.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/heatmap_mappo.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
-### heatmap_mappo_(ours).png
-![heatmap_mappo_(ours).png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/heatmap_mappo_(ours).png)
+### heatmap_mappo_(proposed).png
+![heatmap_mappo_(proposed).png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/heatmap_mappo_(proposed).png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### heatmap_nstlight.png
 ![heatmap_nstlight.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/heatmap_nstlight.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### latent_cluster_map.png
 ![latent_cluster_map.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/latent_cluster_map.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### summary_bar_avg_queue_length.png
 ![summary_bar_avg_queue_length.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/summary_bar_avg_queue_length.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### summary_bar_avg_stopped_vehicles.png
 ![summary_bar_avg_stopped_vehicles.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/summary_bar_avg_stopped_vehicles.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### summary_bar_avg_waiting_time.png
 ![summary_bar_avg_waiting_time.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/summary_bar_avg_waiting_time.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 
 ### summary_bar_throughput.png
 ![summary_bar_throughput.png](file:///C:/Users/Kiruthik Kumar M/cap/FAST_VAL_RESULTS/plots/summary_bar_throughput.png)
 
-The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.
+The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.
 

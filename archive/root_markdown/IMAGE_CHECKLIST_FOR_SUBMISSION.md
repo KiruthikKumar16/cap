@@ -63,7 +63,7 @@
 **Caption:** "Phase 2: Anomaly Detection Metrics - ST-GNN Performance"
 
 **Alternative Options:**
-- `phase2_anomaly_sota_comparison.png` (41 KB) - SOTA comparison
+- `phase2_anomaly_sota_comparison.png` (41 KB) - Baseline comparison
 
 **Action:** ✅ **READY TO ATTACH**
 

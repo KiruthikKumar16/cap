@@ -162,21 +162,21 @@ def train_subprocess(
     subprocess.run(cmd, check=True, env=subprocess_env)
 
 
-def maybe_save_best(
-    save_best_only: bool,
+def maybe_save_optimized(
+    save_optimized_only: bool,
     stage_index: int,
     mean_reward: float,
-    best_so_far: float,
+    optimized_so_far: float,
     min_improvement: float,
 ) -> Tuple[float, bool]:
-    """If improved, copy DEFAULT_MODEL_PATH to best_model_stage_{i}.zip. Returns (new_best, improved)."""
-    improved = mean_reward > best_so_far + min_improvement
-    new_best = float(mean_reward) if improved else float(best_so_far)
-    if save_best_only and improved and os.path.isfile(DEFAULT_MODEL_PATH):
-        out = f"best_model_stage_{stage_index}.zip"
+    """If improved, copy DEFAULT_MODEL_PATH to optimized_model_stage_{i}.zip. Returns (new_optimized, improved)."""
+    improved = mean_reward > optimized_so_far + min_improvement
+    new_optimized = float(mean_reward) if improved else float(optimized_so_far)
+    if save_optimized_only and improved and os.path.isfile(DEFAULT_MODEL_PATH):
+        out = f"optimized_model_stage_{stage_index}.zip"
         shutil.copy2(DEFAULT_MODEL_PATH, out)
-        print(f"  [Best] Saved {out} (eval reward {mean_reward:.4f})")
-    return new_best, improved
+        print(f"  [Optimized] Saved {out} (eval reward {mean_reward:.4f})")
+    return new_optimized, improved
 
 
 def run_stage_adaptive(
@@ -193,7 +193,7 @@ def run_stage_adaptive(
     min_improvement: float,
     eval_freq: int,
     min_reward: Optional[float],
-    save_best_only: bool,
+    save_optimized_only: bool,
     require_cuda: bool,
     fast_dev: bool,
     eval_ema_alpha: Optional[float],
@@ -213,7 +213,7 @@ def run_stage_adaptive(
 
     eval_rewards: List[float] = []
     ema_smoothed: Optional[float] = None
-    best_eval = -float("inf")
+    optimized_eval = -float("inf")
     no_improve_evals = 0
     trained = 0
     current_load = load_model
@@ -272,8 +272,8 @@ def run_stage_adaptive(
             print(f"  [Stage {stage.index}] FAILED (min_reward: {min_reward}) -> stopping")
             return False, metric_for_gate, "below_min_reward"
 
-        best_eval, improved = maybe_save_best(
-            save_best_only, stage.index, metric_for_gate, best_eval, min_improvement
+        optimized_eval, improved = maybe_save_optimized(
+            save_optimized_only, stage.index, metric_for_gate, optimized_eval, min_improvement
         )
         if improved:
             no_improve_evals = 0
@@ -283,7 +283,7 @@ def run_stage_adaptive(
         if no_improve_evals >= early_stop_patience and early_stop_patience > 0:
             print(
                 f"  [Stage {stage.index}] Early stop: no improvement for {early_stop_patience} evals "
-                f"(best {best_eval:.4f}, min_improvement {min_improvement})"
+                f"(optimized {optimized_eval:.4f}, min_improvement {min_improvement})"
             )
             break
 
@@ -400,9 +400,9 @@ def main() -> None:
         help="Run training in chunks of this many timesteps, then eval (0 = one chunk = full stage timesteps).",
     )
     parser.add_argument(
-        "--save-best-only",
+        "--save-optimized-only",
         action="store_true",
-        help="When eval improves, copy checkpoint to best_model_stage_{i}.zip.",
+        help="When eval improves, copy checkpoint to optimized_model_stage_{i}.zip.",
     )
     parser.add_argument(
         "--min-reward",
@@ -497,7 +497,7 @@ def main() -> None:
                 min_improvement=args.min_improvement,
                 eval_freq=args.eval_freq,
                 min_reward=args.min_reward,
-                save_best_only=args.save_best_only,
+                save_optimized_only=args.save_optimized_only,
                 require_cuda=args.require_cuda,
                 fast_dev=args.fast_dev_run,
                 eval_ema_alpha=args.eval_ema_alpha,

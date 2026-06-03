@@ -1,6 +1,6 @@
 # Real-World Perception Stack: Computer Vision for Traffic Control
 
-To transition the MAPPO-STGNN research into a live urban environment, the SUMO simulation is replaced by a **Deep Learning Perception Pipeline**. This document outlines the best-in-class technologies required to generate the 12-dimensional feature vector for our RL agents.
+To transition the MAPPO-STGNN research into a live urban environment, the SUMO simulation is replaced by a **Deep Learning Perception Pipeline**. This document outlines the optimized-in-class technologies required to generate the 12-dimensional feature vector for our RL agents.
 
 ---
 

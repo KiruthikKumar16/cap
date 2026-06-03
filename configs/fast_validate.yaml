@@ -43,7 +43,7 @@ reward:
   normalize: true
 
 training:
-  total_timesteps: 300000  # Increased for legit SOTA convergence
+  total_timesteps: 300000  # Increased for legit Baseline convergence
   checkpoint_freq: 25000
   eval_freq: 10000
 

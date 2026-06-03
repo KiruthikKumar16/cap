@@ -684,7 +684,7 @@ def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
     scored, informative_metrics = _score_models(valid_df)
     leader = scored.iloc[0]
     c1, c2, c3 = st.columns(3)
-    c1.metric("Best Overall Model", leader["model"])
+    c1.metric("Optimized Overall Model", leader["model"])
     c2.metric("Top Overall Score", f"{leader['overall_score']:.3f}")
     c3.metric("Models Compared", int(valid_df.shape[0]))
     if len(informative_metrics) < len(METRICS_META):
@@ -692,19 +692,19 @@ def _render_overview(df: pd.DataFrame, lat_df: pd.DataFrame) -> None:
         st.info("Overall ranking excludes non-informative metrics: " + ", ".join(excluded))
     k1, k2, k3, k4, k5 = st.columns(5)
     for i, metric in enumerate(METRICS_META.keys()):
-        best_row = valid_df.sort_values(metric, ascending=not METRICS_META[metric]["higher_is_better"]).iloc[0]
-        lbl = f"Best {METRICS_META[metric]['label']}"
-        val = f"{best_row[metric]:.2f} {METRICS_META[metric]['unit']}"
+        optimized_row = valid_df.sort_values(metric, ascending=not METRICS_META[metric]["higher_is_better"]).iloc[0]
+        lbl = f"Optimized {METRICS_META[metric]['label']}"
+        val = f"{optimized_row[metric]:.2f} {METRICS_META[metric]['unit']}"
         if i == 0:
-            k1.metric(lbl, val, best_row["model"])
+            k1.metric(lbl, val, optimized_row["model"])
         elif i == 1:
-            k2.metric(lbl, val, best_row["model"])
+            k2.metric(lbl, val, optimized_row["model"])
         elif i == 2:
-            k3.metric(lbl, val, best_row["model"])
+            k3.metric(lbl, val, optimized_row["model"])
         elif i == 3:
-            k4.metric(lbl, val, best_row["model"])
+            k4.metric(lbl, val, optimized_row["model"])
         else:
-            k5.metric(lbl, val, best_row["model"])
+            k5.metric(lbl, val, optimized_row["model"])
 
     st.subheader("Overall Ranking (Normalized Multi-Metric Score)")
     rank_chart_df = scored[["model", "overall_score"]].copy()
@@ -1219,7 +1219,7 @@ def main() -> None:
                 help="Simulation time represented by each SUMO step.",
             )
             gui = st.checkbox("External SUMO GUI popup", value=True)
-            st.caption("Algorithm is fixed to PPO (best model). Baseline comparison includes CoLight and NSTLight. Dashboard playback is rendered in-page from evaluation rollouts.")
+            st.caption("Algorithm is fixed to PPO (final model). Baseline comparison includes CoLight and NSTLight. Dashboard playback is rendered in-page from evaluation rollouts.")
 
             with st.expander("Traffic Demand + Reward Weights"):
                 demand_level = st.selectbox(
@@ -1285,7 +1285,7 @@ def main() -> None:
             run_manual = st.button("Run manual strict flow", use_container_width=True)
             load_latest = st.button("Load Latest Results", use_container_width=True)
         elif dashboard_mode == "Research":
-            st.subheader("Research Grade Pipeline")
+            st.subheader("Research Pipeline")
             st.caption("End-to-end multi-phase training and evaluation.")
             
             run_phase1 = st.checkbox("Phase 1: MARL Training", value=True)

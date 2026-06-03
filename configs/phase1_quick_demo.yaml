@@ -69,5 +69,5 @@ evaluation:
 output:
   checkpoint_dir: outputs/phase1/checkpoints
   log_dir: outputs/phase1/logs
-  best_model_dir: outputs/phase1/best_models
+  optimized_model_dir: outputs/phase1/optimized_models
   final_model_path: outputs/phase1/dqn_traffic_final.zip

@@ -1,4 +1,4 @@
-# Phase 1 — Hyperparameter Table (SOTA)
+# Phase 1 — Hyperparameter Table (Baseline)
 
 Use this table in your report or README for reproducibility. All values are from `configs/phase1.yaml` unless noted.
 
@@ -108,5 +108,5 @@ Use this table in your report or README for reproducibility. All values are from
 |-----------|--------|
 | Checkpoint dir | outputs/phase1/checkpoints |
 | Log dir | outputs/phase1/logs |
-| Best model dir | outputs/phase1/best_models |
+| Optimized model dir | outputs/phase1/optimized_models |
 | Final model path | outputs/phase1/dqn_traffic_final.zip |

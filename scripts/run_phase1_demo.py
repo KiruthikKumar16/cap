@@ -95,11 +95,11 @@ def main():
     if fig_dir.exists():
         for f in sorted(fig_dir.glob("*.png")):
             print(f"    - {f.name}")
-    print("\nComparison charts (why ours is better):")
+    print("\nComparison charts (why proposed is better):")
     for name in ["phase1_comparison_reward.png", "phase1_comparison_throughput.png", "phase1_comparison_travel_time.png", "phase1_comparison_improvement.png"]:
         if (fig_dir / name).exists():
             print(f"    - {name}")
-    print("\nOne-line for panel: Phase 1 trains a GNN-DQN traffic controller, evaluates it vs fixed-time and actuated baselines, and produces architecture diagrams, learning curves, and comparison charts showing why ours is better (SOTA).")
+    print("\nOne-line for panel: Phase 1 trains a GNN-DQN traffic controller, evaluates it vs fixed-time and actuated baselines, and produces architecture diagrams, learning curves, and comparison charts showing why proposed is better (Baseline).")
     print("=" * 60)
     return 0
 

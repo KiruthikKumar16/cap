@@ -94,5 +94,5 @@ graph LR
 
 ### Notes for Usage
 * **White Backgrounds:** The Mermaid configuration block `%%{init: {'theme': 'default', 'themeVariables': { 'background': '#ffffff'}}}%%` explicitly forces these diagrams to render with a pure white background and dark text for contrast.
-* The **Algorithmic Architecture** is best for sections detailing the mathematics and neural network structure of the multi-agent system.
-* The **System Execution** diagram is best for methodology sections explaining how the software interacts with the simulator and how the simulation step loop operates.
+* The **Algorithmic Architecture** is optimized for sections detailing the mathematics and neural network structure of the multi-agent system.
+* The **System Execution** diagram is optimized for methodology sections explaining how the software interacts with the simulator and how the simulation step loop operates.

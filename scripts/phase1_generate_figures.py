@@ -557,7 +557,7 @@ def save_sequence_diagram(out_dir: Path) -> Path:
 
 def save_comparison_charts(out_dir: Path) -> None:
     """
-    SOTA: Comparison line charts — Real evaluation data vs mock data.
+    Baseline: Comparison line charts — Real evaluation data vs mock data.
     Uses real SUMO simulation results when available.
     """
     import json
@@ -770,19 +770,19 @@ def save_comparison_charts(out_dir: Path) -> None:
         pct_reward = 100 * (other_rew - ft_rew) / abs(ft_rew) if ft_rew != 0 else 0
         
         metrics = ["Reward\n(% vs Fixed-time)"]
-        ours_pct = [pct_reward]
+        proposed_pct = [pct_reward]
         
         demo_title = "Why Ours Is Better: % Improvement Over Fixed-Time Baseline"
         fig, ax = plt.subplots(figsize=(7, 5))
         x2 = np.arange(len(metrics))
-        ax.bar(x2, ours_pct, 0.5, color="#2ecc71", edgecolor="black", linewidth=1.2)
+        ax.bar(x2, proposed_pct, 0.5, color="#2ecc71", edgecolor="black", linewidth=1.2)
         ax.axhline(0, color="gray", linestyle="--", linewidth=0.8)
-        ax.set_ylabel("Improvement (%) — positive = ours better")
+        ax.set_ylabel("Improvement (%) — positive = proposed better")
         ax.set_title(demo_title)
         ax.set_xticks(x2)
         ax.set_xticklabels(metrics)
-        if ours_pct:
-            y_abs = max(abs(min(ours_pct)), abs(max(ours_pct)), 2)
+        if proposed_pct:
+            y_abs = max(abs(min(proposed_pct)), abs(max(proposed_pct)), 2)
             ax.set_ylim(-y_abs, y_abs)
         plt.tight_layout()
         plt.savefig(out_dir / "phase1_comparison_improvement.png", dpi=150, bbox_inches="tight")
@@ -814,10 +814,10 @@ def main():
     print("  - phase1_reward_per_episode.png        (Fig 7.1 Reward per episode)")
     print("  - phase1_queue_length_per_episode.png  (Fig 7.2 Queue length per episode)")
     print("  - phase1_waiting_time_per_episode.png   (Fig 7.3 Waiting time per episode)")
-    print("  - phase1_comparison_reward.png          (SOTA: DQN vs Fixed-time vs Actuated — reward)")
-    print("  - phase1_comparison_throughput.png     (SOTA: comparison — throughput)")
-    print("  - phase1_comparison_travel_time.png     (SOTA: comparison — travel time)")
-    print("  - phase1_comparison_improvement.png     (SOTA: % improvement over fixed-time)")
+    print("  - phase1_comparison_reward.png          (Baseline: DQN vs Fixed-time vs Actuated — reward)")
+    print("  - phase1_comparison_throughput.png     (Baseline: comparison — throughput)")
+    print("  - phase1_comparison_travel_time.png     (Baseline: comparison — travel time)")
+    print("  - phase1_comparison_improvement.png     (Baseline: % improvement over fixed-time)")
 
 
 def plot_benchmarks(out_dir: Path):

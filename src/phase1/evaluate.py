@@ -787,14 +787,14 @@ def evaluate_actuated(
                     if not phase_lanes:
                         actions.append(0)
                         continue
-                    best_phase = 0
-                    best_score = -1.0
+                    optimized_phase = 0
+                    optimized_score = -1.0
                     for idx, lanes in enumerate(phase_lanes):
                         score = _score_phase_lanes(lanes)
-                        if score > best_score:
-                            best_score = score
-                            best_phase = idx
-                    actions.append(best_phase)
+                        if score > optimized_score:
+                            optimized_score = score
+                            optimized_phase = idx
+                    actions.append(optimized_phase)
                 action = np.array(actions, dtype=np.int32)
             else:
                 # Keep current phases between decisions
@@ -1349,7 +1349,7 @@ def main():
     print("=" * 60)
     print("[OK] Evaluation complete.")
 
-    # Save summary for comparison charts (SOTA: per-episode for line charts + means)
+    # Save summary for comparison charts (Per-episode for line charts + means)
     if args.save_summary:
         dqn_mean_wt = float(np.mean(all_dqn_wt)) if all_dqn_wt else 0.0
         ft_mean_wt = float(np.mean(all_ft_wt)) if all_ft_wt else 0.0

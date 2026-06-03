@@ -39,7 +39,7 @@ class CoLightAgent(nn.Module):
 
     def predict(self, obs: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
         """
-        Predict the best action based on the Q-values.
+        Predict the optimized action based on the Q-values.
         """
         q_values = self.forward(obs, edge_index)
         return torch.argmax(q_values, dim=1)

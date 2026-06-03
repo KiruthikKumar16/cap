@@ -11,8 +11,8 @@ To achieve publication-quality results, the project implements a rigorous multi-
 
 ### **Phase 1: Foundation & Baselines**
 - **Diverse Topologies**: 10+ procedural maps (Grid, Spider, Random).
-- **SOTA Baselines**: Comparative training of **CoLight**, **NSTLight**, and **MaxPressure**.
-- **MARL Training**: Advanced MAPPO with Regional Hierarchical Critics and GNN State Forecasting.
+- **Comparative Baselines**: Training of **CoLight**, **NSTLight**, and **MaxPressure**.
+- **MARL Training**: MAPPO with Regional Hierarchical Critics and GNN State Forecasting.
 
 ### **Phase 2: Anomaly Intelligence**
 - **ST-GNN Detector**: A spatial-temporal autoencoder that learns the "physics of normal traffic".
@@ -54,7 +54,7 @@ python scripts/generate_publication_artifacts.py --mode full
 
 ## 📊 Results & Artifacts
 
-- **[results/main_tables.csv](file:///home/kk/cap/results/main_tables.csv)**: Final comparison metrics against SOTA.
+- **[results/main_tables.csv](file:///home/kk/cap/results/main_tables.csv)**: Final comparison metrics against baselines.
 - **[results/statistical_summary.csv](file:///home/kk/cap/results/statistical_summary.csv)**: P-values and 95% Confidence Intervals.
 - **[results/summary.md](file:///home/kk/cap/results/summary.md)**: Executive summary for research submission.
 

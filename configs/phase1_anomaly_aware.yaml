@@ -88,11 +88,11 @@ evaluation:
   num_episodes: 50
   deterministic: true
   render: false
-  seeds: [42, 43, 44, 45, 46]  # SOTA: multiple seeds for mean ± std
+  seeds: [42, 43, 44, 45, 46]  # Baseline: multiple seeds for mean ± std
 
 # Output Configuration
 output:
   checkpoint_dir: outputs/phase1/checkpoints
   log_dir: outputs/phase1/logs
-  best_model_dir: outputs/phase1/best_models
+  optimized_model_dir: outputs/phase1/optimized_models
   final_model_path: outputs/phase1/dqn_traffic_anomaly_aware.zip

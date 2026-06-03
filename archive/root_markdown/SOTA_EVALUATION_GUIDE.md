@@ -1,9 +1,9 @@
-# SOTA Evaluation Guide & Setup Document
+# Baseline Evaluation Guide & Setup Document
 
-This document tracks all recent architectural/benchmarking modifications and provides a unified, step-by-step guide for new users to train, evaluate, and authenticate State-of-the-Art (SOTA) claims within the **Traffic Resilience Engine**.
+This document tracks all recent architectural/benchmarking modifications and provides a unified, step-by-step guide for new users to train, evaluate, and authenticate State-of-the-Art (Baseline) claims within the **Traffic Resilience Engine**.
 
-## 🛠️ Summary of SOTA Legitimization Upgrades
-To ensure our SOTA claim is rigorous, repeatable, and mathematically sound, the following crucial modifications were implemented:
+## 🛠️ Summary of Baseline Legitimization Upgrades
+To ensure our Baseline claim is rigorous, repeatable, and mathematically sound, the following crucial modifications were implemented:
 1. **Metric Pipeline Fixed (Accumulative TraCI):** Corrected `traffic_env.py` to recursively accumulate simulation metrics (`step_arrived_vehicles`) instead of overwriting them, restoring correct throughput metrics for our models during evaluations.
 2. **NSTLight Architecture Authenticification:** Upgraded `src/baselines/nstlight.py` to explicitly enforce Non-Stationary differencing (`X_t - X_{t-1}`) combined with a 5-head Graph Attention Network. Zero-step evaluation tracks `prev_obs` to mirror conditions.
 3. **CoLight Validation:** Explicitly labelled and mapped `colight.py` to natively process neighbor dependencies using standard Graph Attention components perfectly parallel to 2019 specifications. 
@@ -13,7 +13,7 @@ To ensure our SOTA claim is rigorous, repeatable, and mathematically sound, the 
 ---
 
 ## 🚀 Running the Project from Scratch
-For a fresh user dropping into the codebase, follow these exact linear steps to replicate full SOTA capabilities:
+For a fresh user dropping into the codebase, follow these exact linear steps to replicate full Baseline capabilities:
 
 ### Step 1. Installation 
 ```bash
@@ -32,7 +32,7 @@ Train your custom predictive resilience engine. Note that checkpoints will autom
 python src/phase1/train_marl.py --config configs/phase2_10x10.yaml
 ```
 
-### Step 3. Train the SOTA Baselines
+### Step 3. Train the Baseline Baselines
 You must train the baselines on your exact grid setup to authenticate valid 12-feature comparisons. (Using 150 episodes natively supports sufficient convergence).
 ```bash
 python scripts/train_baselines.py --model nstlight --episodes 150
@@ -52,7 +52,7 @@ Lastly, synthesize the raw JSON datasets into visual charts and markdown-certifi
 # Output Bar-Charts, Heatmaps, and t-SNE files to outputs/plots/
 python scripts/generate_plots.py
 
-# Auto-write the unified Markdown SOTA summary for presentations into outputs/sota_claim.md
+# Auto-write the unified Markdown Baseline summary for presentations into outputs/sota_claim.md
 python scripts/generate_sota_report.py
 ```
 Preview `outputs/sota_claim.md` directly for the final presentation thesis phrasing.

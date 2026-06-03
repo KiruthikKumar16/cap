@@ -5,7 +5,7 @@ This project can be trained or evaluated from a free cloud notebook, but free GP
 ## Recommended Free Options
 
 1. Google Colab
-   - Best first choice for notebook-driven GPU experiments.
+   - Optimized first choice for notebook-driven GPU experiments.
    - Free tier can provide NVIDIA GPU/TPU access, but availability and session length vary.
    - Use Drive for checkpoint persistence.
 

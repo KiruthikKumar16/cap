@@ -1,4 +1,4 @@
-# Configuration for Bengaluru City-Scale Map (SOTA Evaluation)
+# Configuration for Bengaluru City-Scale Map (Baseline Evaluation)
 
 sumo:
   net_file: data/raw/bengaluru.net.xml

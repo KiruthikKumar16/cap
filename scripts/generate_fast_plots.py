@@ -92,7 +92,7 @@ def generate_summary_bars(models):
         else:
             plt.ylim(min_val * 0.9, max_val * 1.1)
 
-        plt.title(f"SOTA Comparative Performance: {label}", fontsize=14, fontweight='bold', pad=20)
+        plt.title(f"Baseline Comparative Performance: {label}", fontsize=14, fontweight='bold', pad=20)
         plt.ylabel(label, fontsize=12)
         plt.grid(axis='y', linestyle='-', alpha=1, zorder=0)
         plt.gca().set_axisbelow(True)
@@ -120,7 +120,7 @@ def generate_convergence_curves(models):
             plt.plot(df["episode"], rolling, label=name, linewidth=3, color=COLORS[i])
             plt.fill_between(df["episode"], df[col], rolling, color=COLORS[i], alpha=0.1)
         
-        plt.title(f"SOTA Convergence Progression: {col.replace('_', ' ').title()}", fontsize=14, fontweight='bold')
+        plt.title(f"Baseline Convergence Progression: {col.replace('_', ' ').title()}", fontsize=14, fontweight='bold')
         plt.xlabel("Episode Number", fontsize=11)
         plt.ylabel(col.replace('_', ' ').title(), fontsize=11)
         plt.legend(frameon=True, facecolor='white', framealpha=0.9)
@@ -130,7 +130,7 @@ def generate_convergence_curves(models):
         plt.close()
 
 def generate_congestion_heatmaps(models):
-    # SOTA: SHARED NORMALIZATION for cross-model visual comparison
+    # Baseline: SHARED NORMALIZATION for cross-model visual comparison
     # We calculate global intensity range across all models
     global_max = 0
     model_heats = {}

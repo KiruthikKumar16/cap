@@ -38,7 +38,7 @@ def create_output_dirs(output_dir: Path) -> None:
     """Create output directories."""
     (output_dir / "checkpoints").mkdir(parents=True, exist_ok=True)
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
-    (output_dir / "best_models").mkdir(parents=True, exist_ok=True)
+    (output_dir / "optimized_models").mkdir(parents=True, exist_ok=True)
 
 
 def create_environment(config: Dict[str, Any], traci_port: int = 8813) -> SUMOTrafficEnv:
@@ -185,7 +185,7 @@ def main():
     # Evaluation callback (same env; eval reset restarts SUMO, then training continues)
     eval_callback = EvalCallback(
         env,
-        best_model_save_path=output_cfg["best_model_dir"],
+        optimized_model_save_path=output_cfg["optimized_model_dir"],
         log_path=output_cfg["log_dir"],
         eval_freq=training_cfg["eval_freq"],
         n_eval_episodes=training_cfg["eval_episodes"],

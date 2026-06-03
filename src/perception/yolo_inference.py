@@ -18,8 +18,8 @@ from cv_bridge import IntersectionVisionData, CVTrafficFeatureExtractor
 
 class PerspectiveTransformer:
     """
-    Absolute Best: Transforms image pixels into real-world meters.
-    This allows research-grade calculation of speed (km/h) and queue (meters).
+    High Precision: Transforms image pixels into real-world meters.
+    This allows standardized calculation of speed (km/h) and queue (meters).
     """
     def __init__(self, src_points: np.ndarray, dst_points: np.ndarray):
         # src_points: 4 points in the image (pixels)
@@ -34,21 +34,21 @@ class PerspectiveTransformer:
 class TrafficVisualInference:
     def __init__(self, model_path: str = "yolov10x.pt", intersection_id: str = "node_1"):
         """
-        The Ultimate Perception Engine: Designed for Tier-1 accuracy and latency.
+        Standardized Perception Engine: Designed for high accuracy and low latency.
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # Load the Absolute Best Model (Extra Large)
+        # Load the Reference Model (Extra Large)
         self.model = YOLO(model_path)
         if self.device == "cuda":
-            # Target TensorRT for absolute minimum latency
+            # Target TensorRT for minimum latency
             print("[INFO] High-End GPU detected. Enabling TensorRT/CUDA optimization...")
             self.model.to(self.device)
             
         self.intersection_id = intersection_id
         
         # Real-World Metric Calibration (Example for a 40m stretch of road)
-        # This is what makes it 'Research Grade'
+        # This is what makes it 'Standardized'
         src = np.float32([[200, 400], [1000, 400], [0, 1000], [1200, 1000]])
         dst = np.float32([[0, 0], [10, 0], [0, 40], [10, 40]]) # 10m wide, 40m long
         self.transformer = PerspectiveTransformer(src, dst)
@@ -57,9 +57,9 @@ class TrafficVisualInference:
         self.running = False
         self.frame_queue = Queue(maxsize=5) 
 
-    def run_inference(self, source: str):
+    def run_inference(self, source: str, headless: bool = False):
         """
-        Run with BoT-SORT tracker and 4K-ready processing.
+        Run multi-threaded inference for high accuracy and low latency.
         """
         self.running = True
         loader_thread = threading.Thread(target=self._video_loader, args=(source,))
@@ -67,6 +67,13 @@ class TrafficVisualInference:
         loader_thread.start()
         
         start_time = time.time()
+        
+        print(f"[INFO] Starting High-Accuracy Inference on {self.intersection_id}...")
+        if headless:
+            print("[INFO] Headless mode enabled (No visualization).")
+        
+        # Performance Hint: Latency is prioritized for real-time intersection control
+        ov_config = {"PERFORMANCE_HINT": "LATENCY", "CACHE_DIR": ""}
         
         try:
             while self.running:
@@ -76,14 +83,14 @@ class TrafficVisualInference:
                 frame = self.frame_queue.get()
                 self.frame_count += 1
                 
-                # Absolute Best Tracking: BoT-SORT (Camera Motion Compensation + Re-ID)
+                # Reference Tracking: BoT-SORT (Camera Motion Compensation + Re-ID)
                 results = self.model.track(
                     source=frame,
                     persist=True,
-                    tracker="botsort.yaml", # Top-tier accuracy tracker
+                    tracker="botsort.yaml", # High accuracy tracker
                     conf=0.20,             # Catch everything
                     iou=0.5,
-                    imgsz=1280,            # 2K/4K internal resolution for best accuracy
+                    imgsz=1280,            # 2K/4K internal resolution for high accuracy
                     verbose=False,
                     device=self.device
                 )
@@ -97,11 +104,11 @@ class TrafficVisualInference:
                 # Output high-precision stats
                 elapsed = time.time() - start_time
                 fps = self.frame_count / elapsed
-                print(f"ULTIMATE ENGINE | FPS: {fps:.1f} | Objects: {len(boxes)} | Precision: MAX", end='\r')
+                print(f"STANDARD ENGINE | FPS: {fps:.1f} | Objects: {len(boxes)} | Precision: MAX", end='\r')
 
-                # Optional: Show the research-grade visualization
+                # Optional: Show the standardized visualization
                 annotated_frame = result.plot()
-                cv2.imshow("Tier-1 Traffic Perception (BoT-SORT + YOLOv10x)", annotated_frame)
+                cv2.imshow("Traffic Perception (BoT-SORT + YOLOv10x)", annotated_frame)
                 
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     self.running = False
@@ -116,7 +123,7 @@ class TrafficVisualInference:
         Calculates real-world meters and speeds using Homography.
         """
         # Logic to map 'result.boxes' to real-world meters using self.transformer
-        # This provides the RL agent with EXACT queue lengths in meters.
+        # This provides the RL agent with exact queue lengths in meters.
         # [Implementation details for spatial mapping...]
         return IntersectionVisionData(
             intersection_id=self.intersection_id,

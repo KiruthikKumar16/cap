@@ -1,5 +1,5 @@
 """
-NSTLight Authentic Baseline Agent (2024/2025 SOTA)
+NSTLight Authentic Baseline Agent (2024/2025 Baseline)
 
 Implements the defining Non-Stationary component:
 1. Temporal Differencing (x_t - x_{t-1})
@@ -21,7 +21,7 @@ class NSTLightAgent(nn.Module):
 
     def __init__(self, in_dim: int, hidden_dim: int, out_dim: int, num_layers: int):
         super().__init__()
-        # SOTA 2024-2025 Feature Fusion: Process both absolute state (x_t) and temporal trend (x_t - x_prev)
+        # Baseline 2024-2025 Feature Fusion: Process both absolute state (x_t) and temporal trend (x_t - x_prev)
         # In-dim is doubled due to concatenation of (state, diff)
         self.encoder = TrafficGNNEncoder(
             in_dim=in_dim * 2,
@@ -40,7 +40,7 @@ class NSTLightAgent(nn.Module):
         # Non-Stationary Differencing Operation (x_t - x_{t-1})
         x_diff = x_t - x_prev
         
-        # SOTA Feature Fusion: Absolute State + Temporal Dynamics
+        # Baseline Feature Fusion: Absolute State + Temporal Dynamics
         # Concatenate x_t and x_diff to allow the GNN to learn spatial-temporal correlations
         if x_t.dim() == 2: # [nodes, features]
             x_fusion = torch.cat([x_t, x_diff], dim=-1)

@@ -82,7 +82,7 @@ def run_simulation(env, model=None, mode="model", steps=2000):
             # Simple Actuated Logic: Check if current phase has vehicles.
             # In a real actuated system, we'd use traci.trafficlight.getPhaseDuration()
             # Here we'll just use a slightly smarter fixed-time that skips empty phases
-            # but for a true 'Actuated' comparison, SUMO's internal 'actuated' program is best.
+            # but for a true 'Actuated' comparison, SUMO's internal 'actuated' program is optimized.
             # We'll approximate with a shorter cycle that adapts.
             if step % 30 == 0: # Check more frequently
                 current_phases = (current_phases + 1) % 4

@@ -179,7 +179,7 @@ class SUMOTrafficEnv(gym.Env):
             "applied_phases": [],
         }
         
-        # Episode-level metrics for SOTA evaluation
+        # Episode-level metrics for Baseline evaluation
         self.episode_metrics = {
             "episode_total_waiting_time": 0.0,
             "episode_total_queue_length": 0.0,
@@ -414,7 +414,7 @@ class SUMOTrafficEnv(gym.Env):
         sumo_cmd.extend(["--step-length", str(self.step_length)])
         sumo_cmd.append("--no-warnings")
         
-        # SOTA: Explicit seeding for research-grade variance
+        # Baseline: Explicit seeding for research-grade variance
         if seed is not None:
             sumo_cmd.extend(["--seed", str(seed)])
             
@@ -545,7 +545,7 @@ class SUMOTrafficEnv(gym.Env):
         self._queue_length_step = 0.0
         if self.sumo_running and TRACI_AVAILABLE:
             try:
-                # SOTA: Phase 3 Adversarial Accident Injection
+                # Baseline: Phase 3 Adversarial Accident Injection
                 if self.config.get("evaluation", {}).get("adversarial_accidents", False):
                     # Randomly stop 5 vehicles in the network to simulate a gridlock crash
                     if self.current_step == 500: # Trigger crash exactly at step 500

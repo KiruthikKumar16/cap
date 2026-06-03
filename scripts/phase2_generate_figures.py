@@ -2,8 +2,8 @@
 Generate Phase 2 anomaly detection figures.
 
 Reads outputs/phase2/anomaly_eval_summary.json and creates:
-1) A single-method metrics bar chart (ours).
-2) A SOTA comparison chart across methods (ours vs baselines) when available.
+1) A single-method metrics bar chart (proposed).
+2) A Baseline comparison chart across methods (proposed vs baselines) when available.
 """
 
 import json
@@ -59,7 +59,7 @@ def main() -> None:
 
     print(f"[OK] Saved: {out_path}")
 
-    # SOTA comparison chart if multiple methods are available
+    # Baseline comparison chart if multiple methods are available
     methods = summary.get("methods")
     if methods:
         method_keys = list(methods.keys())
@@ -83,7 +83,7 @@ def main() -> None:
         ax.set_xticklabels(metric_names)
         ax.set_ylim(0, 1.05)
         ax.set_ylabel("Score")
-        ax.set_title("Phase 2 SOTA Comparison (Ours vs Baselines)")
+        ax.set_title("Phase 2 Baseline Comparison (Ours vs Baselines)")
         ax.grid(True, axis="y", alpha=0.3)
         ax.legend()
         plt.tight_layout()

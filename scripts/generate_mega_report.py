@@ -128,7 +128,7 @@ def generate_report():
         for plot in plots:
             out.write(f"### {os.path.basename(plot)}\n")
             out.write(f"![{os.path.basename(plot)}](file:///{os.path.abspath(plot).replace(chr(92), '/')})\n\n")
-            out.write("The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust SOTA paradigms.\n\n")
+            out.write("The plot above represents a critical evaluation metric for the system's performance, contrasting our MAPPO-STGNN with robust Baseline paradigms.\n\n")
             
         print(f"Successfully compiled {OUTPUT_FILE}")
 

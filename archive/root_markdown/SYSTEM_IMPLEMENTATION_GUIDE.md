@@ -50,7 +50,7 @@ This guide provides a comprehensive technical overview of the implementation log
 - **Dynamic Weighting**: Automatically shifts optimization goals based on:
   - **Density**: Prioritizes queue reduction when density > 0.7.
   - **Severity**: Multiplies anomaly penalty when severity > 0.5.
-  - **Peak Hours**: Adjusts waiting time importance during rush hours.
+  - **Peak Hproposed**: Adjusts waiting time importance during rush hproposed.
 
 ### 3.3 Multi-Agent Coordination (`src/phase3/multi_agent_coordination.py`)
 - **Regional Controller**: Aggregates local states into a regional embedding to provide zone-level guidance.

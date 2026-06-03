@@ -2,7 +2,7 @@
 
 ## The Core Problem
 
-After 24 hours of fixes, **DQN and Fixed-time still get identical rewards** even though:
+After 24 hproposed of fixes, **DQN and Fixed-time still get identical rewards** even though:
 - ✅ Actions differ (77 vs [0,0,0,0])  
 - ✅ Reward uses real SUMO metrics (speed, pressure, waiting, queue)  
 - ✅ Training completed (100k steps with new reward)  

@@ -20,7 +20,7 @@ def run_generalization_test():
         "python", "-m", "src.phase1.evaluate",
         "--config", "configs/phase2_10x10.yaml",
         "--checkpoint", "marl_ppo_traffic.zip",
-        "--episodes", "1", # SOTA: 1 episode is enough for generalization proof
+        "--episodes", "1", # Baseline: 1 episode is enough for generalization proof
         "--save-summary", "outputs/generalization_10x10_results.json"
     ]
     subprocess.run(eval_10x10_cmd, check=True)
@@ -31,7 +31,7 @@ def run_generalization_test():
         "python", "-m", "src.phase1.evaluate",
         "--config", "configs/bengaluru_city.yaml",
         "--checkpoint", "marl_ppo_traffic.zip",
-        "--episodes", "1", # SOTA: 1 episode is enough for generalization proof
+        "--episodes", "1", # Baseline: 1 episode is enough for generalization proof
         "--save-summary", "outputs/generalization_bengaluru_results.json"
     ]
     subprocess.run(eval_bengaluru_cmd, check=True)

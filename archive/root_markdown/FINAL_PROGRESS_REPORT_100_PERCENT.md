@@ -21,7 +21,7 @@ This project has achieved **100% implementation** of a unified framework for pre
 - ✅ **Graph Construction**: Dynamic building of traffic graphs from SUMO `.net.xml` files.
 - ✅ **GNN Encoder**: Implemented GAT (Graph Attention Networks) for spatial state encoding.
 - ✅ **MARL Environment**: Multi-agent PPO/DQN setup enabling zero-shot generalization.
-- ✅ **Evaluation**: Full comparison against Fixed-Time, Actuated, and SOTA (CoLight/PressLight) baselines.
+- ✅ **Evaluation**: Full comparison against Fixed-Time, Actuated, and Baseline (CoLight/PressLight) baselines.
 
 ### Phase 2: Anomaly Detection (ST-GNN)
 **Status: 100% Complete**
@@ -32,7 +32,7 @@ This project has achieved **100% implementation** of a unified framework for pre
 
 ### Phase 3: Proactive Integration & Advanced Features
 **Status: 100% Complete**
-- ✅ **Self-Adaptive Rewards**: Dynamic reward weighting based on density, anomaly severity, and peak hours.
+- ✅ **Self-Adaptive Rewards**: Dynamic reward weighting based on density, anomaly severity, and peak hproposed.
 - ✅ **Congestion Wave Forecasting**: Graph-based propagation modeling to predict bottlenecks 5-10 steps ahead.
 - ✅ **Hierarchical Coordination**: Regional controllers providing guidance to local intersection agents.
 - ✅ **Risk Modeling**: Probabilistic calculation of Spillback Probability and Accident Likelihood.

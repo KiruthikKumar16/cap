@@ -18,10 +18,10 @@ Generate topologies and train the competitive landscape.
 # Topology Diversity
 python scripts/generate_random_maps.py --count 10 --output_dir data/raw/procedural/
 
-# SOTA Baseline: CoLight
+# Baseline: CoLight
 python scripts/train_baselines.py --model colight --config configs/phase1.yaml --episodes 150
 
-# SOTA Baseline: NSTLight
+# Baseline: NSTLight
 python scripts/train_baselines.py --model nstlight --config configs/phase1.yaml --episodes 150
 ```
 
@@ -52,7 +52,7 @@ python src/phase2/anomaly_trainer.py --epochs 30
 Run the full suite of benchmarks, ablations, and generalization tests.
 
 ```bash
-# SOTA Comparison (multi-seed)
+# Baseline Comparison (multi-seed)
 python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint marl_ppo_traffic.zip --episodes 5 --seeds 3
 
 # Ablation Study (Component Attribution)

@@ -264,7 +264,7 @@ def run_benchmarks(config_path: str, checkpoint: str, episodes: int, seeds: List
     print(f"Benchmark results saved to {output_path}", flush=True)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run SOTA benchmarks.")
+    parser = argparse.ArgumentParser(description="Run Baseline benchmarks.")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml", help="Path to config file")
     parser.add_argument("--checkpoint", type=str, required=True, help="Trained model zip")
     parser.add_argument("--episodes", type=int, default=1, help="Episodes per baseline")

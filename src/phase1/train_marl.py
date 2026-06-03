@@ -115,7 +115,7 @@ def main():
         # Filter out non-PPO kwargs
         ppo_kwargs = {k: v for k, v in config.get("rl", {}).items() if k not in ["algorithm", "policy"]}
         
-        # SOTA: Adjust n_steps to respect total_timesteps and avoid massive overshooting.
+        # Baseline: Adjust n_steps to respect total_timesteps and avoid massive overshooting.
         # SB3 PPO collects n_steps * num_envs per update, and won't stop until rollout is finished.
         num_envs = vec_env.num_envs
         total_timesteps = config["training"]["total_timesteps"]

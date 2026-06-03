@@ -58,17 +58,17 @@ def main() -> None:
                 }
             )
 
-    # Pairwise significance (ours vs fixed_time where available).
-    ours_key = next((k for k in ["dqn", "ppo", "mappo"] if k in model_keys), None)
-    if scipy_stats and ours_key and "fixed_time" in model_keys:
+    # Pairwise significance (Proposed vs fixed_time where available).
+    proposed_key = next((k for k in ["dqn", "ppo", "mappo"] if k in model_keys), None)
+    if scipy_stats and proposed_key and "fixed_time" in model_keys:
         for metric in metric_keys:
-            a = raw.get(ours_key, {}).get(metric, [])
+            a = raw.get(proposed_key, {}).get(metric, [])
             b = raw.get("fixed_time", {}).get(metric, [])
             if len(a) > 1 and len(b) > 1:
                 t_stat, p_val = scipy_stats.ttest_ind(a, b, equal_var=False)
                 rows.append(
                     {
-                        "model": "Ours_vs_FixedTime",
+                        "model": "Proposed_vs_FixedTime",
                         "metric": metric,
                         "mean": "",
                         "std": "",

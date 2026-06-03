@@ -54,7 +54,7 @@ plus Phase 1/2/3 source modules and scripts under `src/` and `scripts/`.
 - Rubric target for Excellent: design with standards, engineering constraints, benchmarking.
 - Evidence: `PHASE1_IMPLEMENTATION_GUIDE.md`, `outputs/phase1/figures/phase1_architecture.png`, `PHASE1_VS_SMARTCITIES.md`, `PHASE1_HYPERPARAMETERS.md`.
 - Current status: architecture and modules are documented; engineering constraints partly described.
-- Gap vs rubric: benchmarking against SOTA baselines and constraints validation are pending.
+- Gap vs rubric: benchmarking against Baseline baselines and constraints validation are pending.
 - Action to align: implement baselines (actuated/CoLight/PressLight) and summarize constraints compliance.
 
 ## Day-by-Day Progress (25 Days)
@@ -146,7 +146,7 @@ plus Phase 1/2/3 source modules and scripts under `src/` and `scripts/`.
 
 ### Day 18
 - Member A: Consolidated hyperparameter documentation (`PHASE1_HYPERPARAMETERS.md`).
-- Member B: SOTA gap analysis and implementation steps (`PHASE1_SOTA_GAP.md`, `PHASE1_SOTA_STEPS.md`).
+- Member B: Baseline gap analysis and implementation steps (`PHASE1_Baseline_GAP.md`, `PHASE1_Baseline_STEPS.md`).
 - Member C: Finalized reviewer demo instructions (`RUN_PHASE1_DEMO.md`).
 
 ### Day 19
@@ -162,7 +162,7 @@ plus Phase 1/2/3 source modules and scripts under `src/` and `scripts/`.
 ### Day 21
 - Member A: ST-GNN model integration scaffolding (`src/models/st_gnn.py`).
 - Member B: Phase 2 anomaly trainer (`src/phase2/anomaly_trainer.py`).
-- Member C: Phase 2 documentation start (`PHASE1_SOTA_GAP.md` references, `PROGRESS_UPDATE.md`).
+- Member C: Phase 2 documentation start (`PHASE1_Baseline_GAP.md` references, `PROGRESS_UPDATE.md`).
 
 ### Day 22
 - Member A: Training pipeline support for Phase 2 (`src/training/train.py`).
@@ -202,7 +202,7 @@ plus Phase 1/2/3 source modules and scripts under `src/` and `scripts/`.
 - Day 15: `src/phase1/evaluate_clean.py`.
 - Day 16: `outputs/phase1/checkpoints/`, `outputs/phase1/dqn_traffic_final.zip`, `configs/phase1.yaml`, `RESULTS_AND_DISCUSSION.md`.
 - Day 17: `scripts/phase1_generate_figures.py`, `outputs/phase1/figures/*`, `PHASE1_VS_SMARTCITIES.md`.
-- Day 18: `PHASE1_HYPERPARAMETERS.md`, `PHASE1_SOTA_GAP.md`, `PHASE1_SOTA_STEPS.md`, `RUN_PHASE1_DEMO.md`.
+- Day 18: `PHASE1_HYPERPARAMETERS.md`, `PHASE1_Baseline_GAP.md`, `PHASE1_Baseline_STEPS.md`, `RUN_PHASE1_DEMO.md`.
 - Day 19: `RESEARCH_DATA_INTEGRITY.md`, `README.md`.
 - Day 20: `PHASE1_CONCLUSION.md`, `PHASE1_FINAL_STEPS.md`, `docs/phase1_run_evaluation.md`.
 - Day 21: `src/models/st_gnn.py`, `src/phase2/anomaly_trainer.py`.

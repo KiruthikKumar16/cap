@@ -1,4 +1,4 @@
-# Phase 1 — Conclusion After 24 Hours
+# Phase 1 — Conclusion After 24 Hproposed
 
 ## What Was the Core Problem?
 
@@ -20,7 +20,7 @@ All code changes are correct. The **only issue**: **DQN needs 100k+ steps to lea
 
 ## For Your Paper/Patent
 
-**Run overnight** (5 hours):
+**Run overnight** (5 hproposed):
 
 ```bash
 # Windows:
@@ -36,7 +36,7 @@ Or manually:
 # 1. Update config
 # In configs/phase1.yaml: set total_timesteps: 100000
 
-# 2. Train (4-5 hours)
+# 2. Train (4-5 hproposed)
 python -m src.phase1.train_rl --config configs/phase1.yaml
 
 # 3. Evaluate (30 min)

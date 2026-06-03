@@ -34,7 +34,7 @@ Patent:  ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅ (100% Complete)
 | **M3: GNN-RL Base** | Week 5 | Week 4 | ✅ Done | Adaptive signal control |
 | **M4: Anomaly Detection** | Week 8 | Week 7 | ✅ Done | ST-GNN with Bayesian Uncertainty |
 | **M5: Integration** | Week 11 | Week 10 | ✅ Done | Proactive Wave Forecasting |
-| **M6: Evaluation** | Week 13 | Week 12 | ✅ Done | SOTA Benchmarks (CoLight/PressLight) |
+| **M6: Evaluation** | Week 13 | Week 12 | ✅ Done | Baseline Benchmarks (CoLight/PressLight) |
 | **M7: Documentation** | Week 15 | Week 14 | ✅ Done | Final Thesis & Guides |
 | **M8: Patent & Submission**| Week 16 | Week 15 | ✅ Done | Provisional Patent & Final Repo |
 

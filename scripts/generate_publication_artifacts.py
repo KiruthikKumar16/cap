@@ -20,7 +20,7 @@ def _load_json(path: Path) -> Any:
 
 def _benchmark_table(raw: Dict[str, Any]) -> pd.DataFrame:
     # REMOVED: Fallback to archive/unverified_evidence. 
-    # For SOTA results, only real 'outputs/' are acceptable.
+    # For Baseline results, only real 'outputs/' are acceptable.
 
     metadata = raw.get("artifact_metadata", {}) if isinstance(raw, dict) else {}
     if metadata.get("artifact_type") == "presentation_demo":
@@ -216,27 +216,27 @@ def _write_summary(
     lines.append("")
     lines.append("## Hard-Nosed Failure Reporting")
     lines.append("")
-    primary_name = "MAPPO-STGNN"
+    primary_name = "Proposed Model"
     baseline_win_line = "- Baseline-win scenario: not available yet."
     
     # Try to find our model even if named differently in the dataframe
-    our_model_row = benchmark_df[benchmark_df["model"].str.contains("MAPPO|Ours|PPO|dqn", case=False, na=False)]
+    our_model_row = benchmark_df[benchmark_df["model"].str.contains("Proposed|PPO|dqn", case=False, na=False)]
     
     if not benchmark_df.empty and not our_model_row.empty:
         actual_name = our_model_row["model"].iloc[0]
-        ours_reward = float(our_model_row["mean_reward"].iloc[0])
+        proposed_reward = float(our_model_row["mean_reward"].iloc[0])
         challengers = benchmark_df[benchmark_df["model"] != actual_name].copy()
         if not challengers.empty:
-            best_ch = challengers.sort_values("mean_reward", ascending=False).iloc[0]
-            if float(best_ch["mean_reward"]) > ours_reward:
+            optimized_ch = challengers.sort_values("mean_reward", ascending=False).iloc[0]
+            if float(optimized_ch["mean_reward"]) > proposed_reward:
                 baseline_win_line = (
-                    f"- Baseline-win scenario: `{best_ch['model']}` exceeds `{primary_name}` "
-                    f"on mean reward ({best_ch['mean_reward']:.3f} vs {ours_reward:.3f})."
+                    f"- Baseline-win scenario: `{optimized_ch['model']}` exceeds `{primary_name}` "
+                    f"on mean reward ({optimized_ch['mean_reward']:.3f} vs {proposed_reward:.3f})."
                 )
             else:
                 baseline_win_line = (
-                    f"- Baseline-win scenario: none observed on mean reward; best baseline "
-                    f"`{best_ch['model']}` remains below `{primary_name}`."
+                    f"- Baseline-win scenario: none observed on mean reward; optimized baseline "
+                    f"`{optimized_ch['model']}` remains below `{primary_name}`."
                 )
     lines.append(baseline_win_line)
 
