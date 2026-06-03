@@ -1,0 +1,11 @@
+Collecting openvino
+  Downloading openvino-2026.1.0-21367-cp314-cp314-manylinux_2_28_x86_64.whl.metadata (12 kB)
+Requirement already satisfied: numpy<2.5.0,>=1.16.6 in ./venv/lib/python3.14/site-packages (from openvino) (2.4.6)
+Collecting openvino-telemetry>=2023.2.1 (from openvino)
+  Downloading openvino_telemetry-2025.2.0-py3-none-any.whl.metadata (2.3 kB)
+Downloading openvino-2026.1.0-21367-cp314-cp314-manylinux_2_28_x86_64.whl (56.8 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 56.8/56.8 MB 2.1 MB/s  0:00:26
+Downloading openvino_telemetry-2025.2.0-py3-none-any.whl (25 kB)
+Installing collected packages: openvino-telemetry, openvino
+
+Successfully installed openvino-2026.1.0 openvino-telemetry-2025.2.0

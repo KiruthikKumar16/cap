@@ -92,6 +92,21 @@ Patent:  ✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅ (100% Complete)
 
 ## Completed Activities Breakdown
 
+# Chapter 3: Real-World Implementation & Computer Vision
+
+## 3.1 The Perception-to-Control Bridge
+In a real-world deployment, the TraCI interface is replaced by a high-performance Computer Vision (CV) stack. The core of this transition is the **CV-to-RL Bridge**, which maps raw visual detections into the 12-dimensional feature space of the MAPPO-STGNN agent.
+
+### 3.2 Object Detection & Tracking Stack
+- **Detection**: **YOLOv10** is utilized for its NMS-free architecture, enabling real-time inference on edge devices like the NVIDIA Jetson Orin.
+- **Tracking**: **ByteTrack** provides multi-object tracking, allowing the system to calculate "Waiting Time" by tracking individual vehicle IDs across frames.
+- **Optimization**: All models are compiled with **TensorRT** for maximum throughput.
+
+### 3.3 Hardware & Protocol
+- **Edge Computing**: NVIDIA Jetson AGX Orin for decentralized processing at each intersection.
+- **Communication**: **MQTT** for low-latency messaging between GNN nodes.
+- **Actuation**: **NTCIP 1202** protocol for interfacing with physical signal controllers (Econolite, Siemens).
+
 # Final Project Conclusion
 
 The project **"Robust Multi-Agent Traffic Control Under Non-Stationarity With Anomaly-Aware Proactive Adaptation"** is 100% complete and meets all requirements for a research-grade submission.

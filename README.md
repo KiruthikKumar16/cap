@@ -60,6 +60,7 @@ python scripts/generate_publication_artifacts.py --mode full
 
 ## 🏗️ Repository Structure
 
+- `src/perception/`: **New** Real-world perception layer (YOLOv10 Bridge & CV logic).
 - `src/`: Core logic (Environments, Models, Dashboard).
 - `scripts/`: Research pipeline, automation, and statistical analysis.
 - `configs/`: Multi-phase experiment configurations.
@@ -69,5 +70,6 @@ python scripts/generate_publication_artifacts.py --mode full
 ## 📜 Documentation
 
 - [Full Mega Report](file:///home/kk/cap/archive/root_markdown/Capstone_Mega_Report.md)
+- [Real-World CV Deployment Guide](file:///home/kk/cap/src/perception/README.md)
 - [System Implementation Guide](file:///home/kk/cap/archive/root_markdown/SYSTEM_IMPLEMENTATION_GUIDE.md)
 - [Research Commands Guide](file:///home/kk/cap/archive/root_markdown/commands.md)

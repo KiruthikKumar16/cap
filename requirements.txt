@@ -22,4 +22,7 @@ matplotlib>=3.8.0
 streamlit>=1.36.0
 uvicorn>=0.29.0
 fastapi>=0.111.0
+ultralytics>=8.2.0
+opencv-python>=4.9.0
+openvino>=2024.0.0
 
