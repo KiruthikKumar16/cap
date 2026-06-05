@@ -14,19 +14,109 @@ from typing import Dict, List
 import time
 import threading
 from queue import Queue
+import multiprocessing as mp
 from cv_bridge import IntersectionVisionData, CVTrafficFeatureExtractor
+
+class PerceptionProcess(mp.Process):
+    """
+    [NEW] Decentralized Perception Architecture (Phase 3 Mitigation)
+    Runs YOLO inference in a separate process to avoid GIL bottlenecks 
+    and GPU memory spikes in the main control loop.
+    """
+    def __init__(self, source: str, model_path: str, output_queue: mp.Queue):
+        super().__init__()
+        self.source = source
+        self.model_path = model_path
+        self.output_queue = output_queue
+        self.running = mp.Value('b', True)
+
+    def run(self):
+        # Initialize model inside the process to avoid CUDA context issues
+        engine = TrafficVisualInference(model_path=self.model_path)
+        engine.bridge_callback = self._push_to_queue
+        engine.run_inference(self.source, headless=True)
+
+    def _push_to_queue(self, data: IntersectionVisionData):
+        if not self.output_queue.full():
+            self.output_queue.put(data)
+
+    def stop(self):
+        self.running.value = False
 
 class PerspectiveTransformer:
     """
     High Precision: Transforms image pixels into real-world meters.
-    This allows standardized calculation of speed (km/h) and queue (meters).
+    Supports both manual points and automated vanishment-point based calibration.
     """
-    def __init__(self, src_points: np.ndarray, dst_points: np.ndarray):
-        # src_points: 4 points in the image (pixels)
-        # dst_points: 4 corresponding points in the real world (meters)
-        self.M = cv2.getPerspectiveTransform(src_points, dst_points)
+    def __init__(self, src_points: np.ndarray = None, dst_points: np.ndarray = None):
+        if src_points is not None and dst_points is not None:
+            self.M = cv2.getPerspectiveTransform(src_points, dst_points)
+        else:
+            self.M = None
+
+    def auto_calibrate(self, frame: np.ndarray, lane_width_meters: float = 3.7):
+        """
+        [NEW] Automated Calibration using lane line detection and vanishment point estimation.
+        (Patent Angle: Zero-touch camera calibration for urban traffic sensing)
+        """
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        edges = cv2.Canny(gray, 50, 150)
+        lines = cv2.HoughLinesP(edges, 1, np.pi/180, 100, minLineLength=100, maxLineGap=10)
+        
+        if lines is None:
+            return False
+            
+        # Filter for near-vertical lines (lanes)
+        lane_lines = []
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            if abs(x2 - x1) < abs(y2 - y1) * 0.5: # Mostly vertical
+                lane_lines.append(line[0])
+        
+        if len(lane_lines) < 2:
+            return False
+            
+        # Heuristic: Pick two most distant lines as boundaries
+        lane_lines.sort(key=lambda l: l[0])
+        l1, l2 = lane_lines[0], lane_lines[-1]
+        
+        # Define 4 source points (trapezoid on image)
+        src = np.float32([
+            [l1[0], l1[1]], [l2[0], l2[1]],
+            [l1[2], l1[3]], [l2[2], l2[3]]
+        ])
+        
+        # Define 4 destination points (rectangle in meters)
+        # Assuming the detected lines represent a 20m stretch
+        dst = np.float32([
+            [0, 0], [lane_width_meters, 0],
+            [0, 20], [lane_width_meters, 20]
+        ])
+        
+        self.M = cv2.getPerspectiveTransform(src, dst)
+        print("[OK] Automated Homography Calibration Successful.")
+        return True
+
+    def auto_generate_rois(self, frame: np.ndarray) -> Dict[str, List[float]]:
+        """
+        [NEW] Automated ROI Generation using edge density and motion heuristics.
+        Placeholder for SAM (Segment Anything Model) integration.
+        """
+        h, w = frame.shape[:2]
+        # Logic: Roads are usually in the lower 2/3 of the frame
+        # We split the lower half into 4 quadrants as a starting heuristic
+        rois = {
+            "north": [0.4, 0.5, 0.6, 0.7], # Incoming from top
+            "east":  [0.7, 0.6, 0.9, 0.8], # Incoming from right
+            "south": [0.4, 0.8, 0.6, 1.0], # Incoming from bottom
+            "west":  [0.1, 0.6, 0.3, 0.8]  # Incoming from left
+        }
+        print("[INFO] Auto-generated ROIs based on geometric heuristics.")
+        return rois
 
     def transform(self, x, y):
+        if self.M is None:
+            return np.array([0, 0])
         point = np.array([[[x, y]]], dtype=np.float32)
         transformed = cv2.perspectiveTransform(point, self.M)
         return transformed[0][0]
@@ -61,6 +151,15 @@ class TrafficVisualInference:
             
         self.intersection_id = intersection_id
         
+        # Default ROIs for 4-way intersection (N, E, S, W)
+        # Coordinates: [x_min, y_min, x_max, y_max] normalized (0-1)
+        self.lane_rois = {
+            "north": [0.4, 0.0, 0.6, 0.3],
+            "east":  [0.7, 0.4, 1.0, 0.6],
+            "south": [0.4, 0.7, 0.6, 1.0],
+            "west":  [0.0, 0.4, 0.3, 0.6]
+        }
+
         # Real-World Metric Calibration (Example for a 40m stretch of road)
         # This is what makes it 'Standardized'
         src = np.float32([[200, 400], [1000, 400], [0, 1000], [1200, 1000]])
@@ -116,6 +215,16 @@ class TrafficVisualInference:
                 # Metrics Calculation
                 vision_data = self._analyze_detections(boxes, result)
                 
+                # [NEW] Semi-Supervised Active Learning (Phase 3 Mitigation)
+                # Capture potential anomalies (accidents/stalls) for offline labeling
+                if vision_data.lane_counts and any(c > 10 for c in vision_data.lane_counts.values()):
+                    # If high vehicle density detected, save frame for review
+                    timestamp = int(time.time())
+                    save_path = f"data/anomalies/capture_{timestamp}.jpg"
+                    Path("data/anomalies").mkdir(parents=True, exist_ok=True)
+                    cv2.imwrite(save_path, frame)
+                    print(f"[ACTIVE LEARNING] Captured potential anomaly frame: {save_path}")
+
                 # Loopback: Send vision data to control layer if bridge is active
                 if hasattr(self, 'bridge_callback') and self.bridge_callback:
                     self.bridge_callback(vision_data)

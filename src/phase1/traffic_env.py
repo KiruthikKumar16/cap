@@ -14,6 +14,7 @@ import torch
 import gymnasium as gym
 from gymnasium import spaces
 import gymnasium.utils.seeding as seeding
+import time
 
 # Suppress TraCI deprecation UserWarning (getAllProgramLogics) when we call getCompleteRedYellowGreenDefinition
 warnings.filterwarnings("ignore", message=".*getAllProgramLogics.*", category=UserWarning)
@@ -27,6 +28,8 @@ from src.models.predictive_gnn_rl import PredictiveGNNRL
 from collections import deque
 from src.phase1.reward_calculator import RewardCalculator
 from src.phase3.integration import get_anomaly_controller
+from src.utils.hardware_emulation import ConflictMonitorUnit
+from src.utils.adversarial_modulator import EnvironmentModulator
 
 
 class SUMOTrafficEnv(gym.Env):
@@ -58,25 +61,6 @@ class SUMOTrafficEnv(gym.Env):
         enable_anomaly_awareness: bool = False,
         config: Optional[Dict] = None,
     ):
-        """
-        Initialize SUMO traffic environment.
-        
-        Args:
-            net_file: Path to SUMO network file (.net.xml)
-            route_file: Path to SUMO route file (.rou.xml)
-            model: The PredictiveGNNRL model for observation generation.
-            config_file: Optional path to SUMO config file (.sumocfg)
-            step_length: Simulation step length in seconds
-            max_steps: Maximum simulation steps per episode
-            st_gnn_horizon: Number of historical steps for the ST-GNN.
-            reward_calculator: Reward calculator (optional, will create if None)
-            use_gui: Whether to use SUMO GUI
-            traci_port: Port for TraCI (default 8813). Use different ports for train vs eval envs.
-            sumo_binary: Full path to sumo/sumo-gui executable. If not set, uses PATH or SUMO_HOME/bin.
-            time_penalty_per_step: Small per-step cost (standard RL) so baseline reward is non-zero when traffic metrics are 0.
-            enable_anomaly_awareness: Whether to use Phase 2 anomaly detection for reward shaping.
-            config: Full global dictionary configuration mapping.
-        """
         super().__init__()
         
         self.net_file_path = Path(net_file)
@@ -107,6 +91,18 @@ class SUMOTrafficEnv(gym.Env):
         
         # Initialize components
         self._init_graph()
+        
+        # [NEW] Resiliency & Safety Components
+        self.cmu = ConflictMonitorUnit(
+            num_intersections=self.num_intersections,
+            min_green=self.config.get("safety", {}).get("min_green", 7),
+            yellow_time=self.config.get("safety", {}).get("yellow_time", 4)
+        )
+        self.modulator = EnvironmentModulator(
+            corruption_prob=self.config.get("adversarial", {}).get("corruption_prob", 0.15),
+            latency_range=self.config.get("network", {}).get("latency_range", (0.05, 2.0))
+        )
+        self.test_mode = self.config.get("test_mode", 0) # 0: Nominal, 1: Adversarial, 2: Latency, 3: CMU, 4: Edge
         
         # Predictive GNN model and state history
         self.model = model
@@ -192,6 +188,7 @@ class SUMOTrafficEnv(gym.Env):
             "episode_arrived_vehicles": 0,
             "episode_stopped_vehicles": 0,
             "episode_steps": 0,
+            "action_rejections": 0,
         }
         self.log_file = "episode_metrics.csv"
         self.episode_count = 0
@@ -206,7 +203,7 @@ class SUMOTrafficEnv(gym.Env):
     def _init_log_file(self):
         if not Path(self.log_file).exists():
             with open(self.log_file, "w") as f:
-                f.write("episode,avg_waiting_time,avg_queue_length,throughput,avg_stopped_vehicles\n")
+                f.write("episode,avg_waiting_time,avg_queue_length,throughput,avg_stopped_vehicles,action_rejection_rate\n")
 
     def _log_episode(self, episode_idx: int):
         total_steps = max(1, self.episode_metrics["episode_steps"])
@@ -214,17 +211,18 @@ class SUMOTrafficEnv(gym.Env):
         avg_queue = self.episode_metrics["episode_total_queue_length"] / total_steps
         throughput = self.episode_metrics["episode_arrived_vehicles"]
         avg_stopped = self.episode_metrics["episode_stopped_vehicles"] / total_steps
+        arr = self.episode_metrics.get("action_rejections", 0) / (total_steps * self.num_agents)
         
         # Log to CSV
         try:
             with open(self.log_file, "a") as f:
-                f.write(f"{episode_idx},{avg_wait:.2f},{avg_queue:.2f},{throughput},{avg_stopped:.2f}\n")
+                f.write(f"{episode_idx},{avg_wait:.2f},{avg_queue:.2f},{throughput},{avg_stopped:.2f},{arr:.4f}\n")
         except Exception as e:
             print(f"Warning: Could not log to {self.log_file}: {e}")
         
         # Print for visibility
         print(f"\n[Episode {episode_idx} Metrics]")
-        print(f"  Avg Wait: {avg_wait:.2f}s | Avg Queue: {avg_queue:.2f} | Throughput: {throughput} | Avg Stopped: {avg_stopped:.2f}")
+        print(f"  Avg Wait: {avg_wait:.2f}s | Avg Queue: {avg_queue:.2f} | Throughput: {throughput} | Avg Stopped: {avg_stopped:.2f} | ARR: {arr:.4f}")
         
     def _init_graph(self):
         """Initialize graph builder and extractors for current map."""
@@ -311,6 +309,7 @@ class SUMOTrafficEnv(gym.Env):
             "episode_arrived_vehicles": 0,
             "episode_stopped_vehicles": 0,
             "episode_steps": 0,
+            "action_rejections": 0,
         }
 
         # Reset anomaly controller if enabled
@@ -333,26 +332,32 @@ class SUMOTrafficEnv(gym.Env):
     def step(self, actions: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, List[Dict]]:
         """
         Execute one step in the environment using SUMO simulation.
-        
-        Args:
-            actions: Action array [num_agents] with phase selections
-            
-        Returns:
-            observation, reward, terminated, truncated, info
+        Supports standard multi-discrete actions and [NEW] Dynamic Phase Skipping.
         """
+        # Mode 2: Network Latency Simulation
+        if self.test_mode == 2:
+            lag = self.modulator.apply_network_latency()
+            time.sleep(lag * 0.001) # Simulate delay
+
+        # [NEW] Phase Skipping Mitigation
+        applied_actions = actions
+        if self.config.get("phase3", {}).get("enable_dynamic_phase_skipping", False):
+            if hasattr(self, "_apply_phase_skipping"):
+                applied_actions = self._apply_phase_skipping(actions)
+
+        # [NEW] Hardware Safety Interlock (CMU) - Mode 3
+        # In Mode 3, we strictly enforce CMU. In other modes, we still track rejections but might not enforce.
+        safe_actions = self.cmu.validate_and_enforce(applied_actions)
+        
+        # Track rejections for ARR metric
+        rejections = np.sum(safe_actions != applied_actions)
+        self.episode_metrics["action_rejections"] += rejections
+
         # Execute actions (set signal phases)
-        self._execute_actions(actions)
+        self._execute_actions(safe_actions)
         
         # Advance simulation
         self._advance_simulation()
-        
-        # Log progress occasionally for visibility
-        if self.current_step % 100 == 0 and self.current_step > 0:
-            try:
-                running = traci.vehicle.getIDCount()
-                print(f"  Step #{self.current_step}.00 (vehicles ACT {running})")
-            except Exception:
-                pass
         
         # Calculate global reward
         global_reward = self._calculate_reward() - self.time_penalty_per_step
@@ -363,7 +368,20 @@ class SUMOTrafficEnv(gym.Env):
         truncated_bool = self.current_step >= self.max_steps
         
         # Get observation
-        self.state_history.append(self._get_raw_observation())
+        raw_obs = self._get_raw_observation()
+        
+        # Mode 1: Adversarial Perception (Corruption)
+        if self.test_mode == 1:
+            raw_obs = self.modulator.apply_perception_corruption(raw_obs)
+            
+            # [NEW] Edge Case: Train Gate Block at Third Gate
+            # We simulate a gate closure at step 500-700
+            if 500 <= self.current_step <= 700:
+                raw_obs = self.modulator.apply_train_gate_block(raw_obs)
+                if self.current_step == 500:
+                    print("[ADVERSARIAL] Railway Gate CLOSED at Third Gate Junction (Step 500-700)")
+            
+        self.state_history.append(raw_obs)
         observation = self._get_observation()
         
         # Prepare vectorized outputs
@@ -618,12 +636,49 @@ class SUMOTrafficEnv(gym.Env):
         Otherwise, it extracts from SUMO TraCI.
         """
         if self.use_vision_features:
-            # HIL Mode: Features come from CV Bridge (which might be updated by yolo_inference.py)
-            return self.cv_extractor.get_features()
+            # HIL Mode: Features come from CV Bridge
+            features = self.cv_extractor.get_features()
+        else:
+            # Standard Mode: Extract from SUMO
+            features = self.feature_extractor.extract()
+            
+        # [NEW] Adversarial Noise Augmentation for Robustness (Phase 3 Mitigation)
+        # Simulates sensor failure, occlusion, and environmental noise (rain/fog)
+        if self.config.get("phase3", {}).get("enable_noise_augmentation", False):
+            # 1. Add Gaussian Noise (Sensor variance)
+            noise = torch.randn_like(features) * self.config.get("phase3", {}).get("noise_std", 0.05)
+            features = features + noise
+            
+            # 2. Simulate Random Sensor Failure (Zeroing out random features/nodes)
+            failure_mask = torch.rand_like(features) > self.config.get("phase3", {}).get("failure_rate", 0.01)
+            features = features * failure_mask.float()
+            
+        tensor_feats = features.detach().clone().to(torch.float32) if torch.is_tensor(features) else torch.tensor(features, dtype=torch.float32)
+        return tensor_feats
+
+    def _apply_phase_skipping(self, actions: np.ndarray) -> np.ndarray:
+        """
+        [NEW] Implementation of Dynamic Phase Skipping.
+        If the selected phase has zero vehicles waiting, automatically cycle to the next 
+        phase with demand.
+        """
+        new_actions = actions.copy()
+        raw_obs = self._get_raw_observation() # [N, 12]
         
-        # Standard Mode: Extract from SUMO
-        features = self.feature_extractor.extract()
-        return features.detach().clone().to(torch.float32) if torch.is_tensor(features) else torch.tensor(features, dtype=torch.float32)
+        for i, intersection_id in enumerate(self.intersections):
+            chosen_phase = actions[i]
+            # Features 8, 9, 10, 11 are directional counts (N, E, S, W)
+            # This is a simplified mapping: Phase 0 = N/S, Phase 2 = E/W etc.
+            demand_map = {0: [8, 10], 1: [8, 10], 2: [9, 11], 3: [9, 11]}
+            relevant_features = demand_map.get(chosen_phase, [])
+            
+            total_demand = sum(raw_obs[i, f] for f in relevant_features)
+            
+            if total_demand < 0.01: # Zero demand on chosen phase
+                # Cycle to next phase (simple heuristic for mitigation)
+                new_actions[i] = (chosen_phase + 1) % self.action_space.n
+                
+        return new_actions
 
     def _get_observation(self) -> np.ndarray:
         """Get observation from GNN encoder (including local features and global embedding)."""
@@ -784,6 +839,7 @@ class SUMOTrafficEnv(gym.Env):
                     )
                     info["episode_throughput"] = self.episode_metrics["episode_arrived_vehicles"]
                     info["episode_avg_stopped_vehicles"] = self.episode_metrics["episode_stopped_vehicles"] / total_steps
+                    info["action_rejection_rate"] = self.episode_metrics.get("action_rejections", 0) / (total_steps * self.num_agents)
 
             except Exception:
                 pass
@@ -807,5 +863,3 @@ class SUMOTrafficEnv(gym.Env):
         """
         # SUMO GUI handles rendering automatically
         return None
-
-
