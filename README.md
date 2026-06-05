@@ -17,31 +17,46 @@ The project is currently in the technical implementation and verification phase:
 - **ST-GNN Detector**: Developing a spatial-temporal autoencoder to learn normal traffic patterns.
 - **Incident Injection**: Tools to simulate accidents and sensor corruption for robust testing.
 
-### **Phase 3: Real-World Perception (Active R&D)**
+### **Phase 3: Real-World Perception & Resiliency**
 - **CV Integration**: YOLOv10-X + BoT-SORT tracker for high-fidelity vehicle detection and tracking.
-- **Spatial Metrics**: Perspective transformation logic for converting pixel coordinates to world metrics.
+- **Hardware Safety**: Conflict Monitor Unit (CMU) enforcing NEMA TS2 standards for production deployment.
+- **Resiliency Matrix**: Exhaustive testing across Adversarial Perception, Network Latency, and Edge Constraints.
 
 ## 🛠️ Setup & Development
 
 ### **1. Environment Setup**
 ```bash
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python scripts/test_setup.py
 ```
 
-### **2. Development Commands**
+### **2. Research & Production Commands**
 ```bash
-# Verify SUMO Connectivity (Thoothukudi Map)
-./venv/bin/python scripts/check_sumo.py --config configs/thoothukudi_verify.yaml
+# 🧪 Run the Multi-Agent Resiliency Testing Matrix (Production Audit)
+python3 scripts/run_resiliency_matrix.py
 
-# Evaluate Generalization (Zero-Shot)
-./venv/bin/python scripts/evaluate_generalization.py --checkpoint marl_ppo_traffic.zip --episodes 1
+# 🛰️ Verify SUMO Connectivity (Thoothukudi Map)
+python3 scripts/check_sumo.py --config configs/thoothukudi_verify.yaml
 
-# Train Anomaly Detector (Experimental)
-python scripts/generate_anomaly_data.py --episodes 3
-python src/phase2/anomaly_trainer.py --epochs 10
+# 🧠 Evaluate Zero-Shot Generalization
+python3 scripts/evaluate_generalization.py --checkpoint checkpoints/marl_ppo_traffic.zip
+
+# 👁️ Smoke Test CV-to-RL Bridge (HIL Mode)
+python3 src/perception/cv_bridge.py
 ```
+
+## 📊 Resiliency Testing Matrix
+
+The project implements a **Multi-Agent Evaluation & Resiliency Testing Matrix** to bridge the gap between simulation and the real world:
+
+| Mode | Title | Audit Focus |
+| :--- | :--- | :--- |
+| **Mode 1** | **Adversarial Perception** | YOLO Occlusion, Sticky Zeros, and Train Gate Blocks. |
+| **Mode 2** | **Network Latency** | NTCIP 1202 SNMP Jitter (50ms - 2000ms packet lag). |
+| **Mode 3** | **Hardware Safety** | Conflict Monitor Unit (CMU) enforcement of min-green/clearance. |
+| **Mode 4** | **Edge Resource** | Jetson AGX Orin VRAM (4.5GB cap) and FPS profiling. |
 
 ## 🏗️ Repository Structure
 
