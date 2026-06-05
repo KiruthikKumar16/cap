@@ -45,11 +45,18 @@ python src/phase2/anomaly_trainer.py --epochs 10
 
 ## 🏗️ Repository Structure
 
-- `src/`: Core logic (Environments, Models, Dashboard).
-- `src/perception/`: Real-world perception layer (YOLOv10 & CV logic).
-- `scripts/`: Development and verification scripts.
-- `configs/`: Experiment configurations.
-- `data/`: Raw and processed simulation data.
+- `src/`: Core implementation logic (Environments, Models, Dashboard).
+- `src/perception/`: Real-world perception layer (YOLOv10, BoT-SORT, and CV Bridge).
+- `scripts/`: Development, training, and verification scripts.
+- `configs/`: Experiment and environment configuration files.
+- `data/`: 
+  - `data/maps/`: OSM and SUMO network files (Thoothukudi, Grid).
+  - `data/signals/`: Traffic signal timing and logic configurations.
+- `checkpoints/`: Trained model weights (.zip, .pt) and metadata.
+- `docs/`: Technical documentation and system diagrams.
+- `papers/`: Reference research papers and background literature.
+- `results/`: Runtime-generated metrics, logs, and evaluation charts.
+- `rubrics/`: Evaluation rubrics and project templates.
 
 ## 📜 Internal Documentation
 
