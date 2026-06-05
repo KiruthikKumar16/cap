@@ -367,37 +367,28 @@ def _create_baseline_agent(model_type: str) -> Tuple[Optional[Any], Dict[str, An
         from src.baselines.nstlight import NSTLightAgent
         agent = NSTLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
         weights = Path("checkpoints/nstlight.pth")
-        diagnostics["weights_path"] = str(weights)
-        diagnostics["weights_loaded"] = False
-        try:
-            if weights.exists():
-                agent.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
-                diagnostics["weights_loaded"] = True
-                print(f"Loaded trained weights for NSTLight from {weights}")
-            else:
-                print(f"[WARN] Trained NSTLight weights not found at {weights}; using randomly initialized weights.")
-        except Exception as e:
-            diagnostics["weights_error"] = str(e)
-            print(f"Failed to load NSTLight weights: {e}")
     elif model_type == "CoLight":
         from src.baselines.colight import CoLightAgent
         agent = CoLightAgent(in_dim=12, hidden_dim=64, out_dim=64, num_layers=2)
         weights = Path("checkpoints/colight.pth")
+    elif model_type == "PressLight":
+        from src.baselines.presslight import PresslightAgent
+        agent = PresslightAgent(num_actions=4)
+        weights = None
+
+    if agent and weights:
         diagnostics["weights_path"] = str(weights)
         diagnostics["weights_loaded"] = False
         try:
             if weights.exists():
                 agent.load_state_dict(torch.load(weights, map_location="cpu", weights_only=True))
                 diagnostics["weights_loaded"] = True
-                print(f"Loaded trained weights for CoLight from {weights}")
+                print(f"Loaded trained weights for {model_type} from {weights}")
             else:
-                print(f"[WARN] Trained CoLight weights not found at {weights}; using randomly initialized weights.")
+                print(f"[WARN] Trained {model_type} weights not found at {weights}; using randomly initialized weights.")
         except Exception as e:
             diagnostics["weights_error"] = str(e)
-            print(f"Failed to load CoLight weights: {e}")
-    elif model_type == "PressLight":
-        from src.baselines.presslight import PresslightAgent
-        agent = PresslightAgent(num_actions=4)
+            print(f"Failed to load {model_type} weights: {e}")
 
     return agent, diagnostics
 
@@ -952,9 +943,6 @@ def _run_single_seed(
 
     return dqn_r, dqn_l, dqn_tput, dqn_tt, dqn_wt, dqn_q, ft_r, ft_l, ft_tput, ft_tt, ft_wt, ft_q, act_r, act_l, act_tput, act_tt, act_wt, act_q, placeholder_mode
 
-
-from src.baselines.presslight import PresslightAgent
-from src.baselines.colight import CoLightAgent
 
 def evaluate_model(config: Dict, model_type: str) -> Dict[str, float]:
     """Evaluates a specific model type and returns mean metrics."""

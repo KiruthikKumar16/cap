@@ -35,6 +35,16 @@ def build_fully_connected_edge_index(num_nodes: int, device: torch.device) -> to
     return edge_index.to(device)
 
 
+def compute_threshold(scores: np.ndarray, method: str = "quantile", quantile: float = 0.98) -> float:
+    """
+    Compute anomaly threshold based on score distribution.
+    """
+    if method == "quantile":
+        return float(np.quantile(scores, quantile))
+    # Fallback to mean + 3*std for other methods if labels are missing
+    return float(np.mean(scores) + 3 * np.std(scores))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate ST-GNN anomaly detector (Phase 2)")
     parser.add_argument("--model", type=str, default="outputs/phase2/st_gnn_anomaly_detector.pt")
@@ -134,6 +144,8 @@ def main() -> None:
         "threshold": float(threshold),
         "mean_combined_score": float(combined_scores.mean()),
         "std_combined_score": float(combined_scores.std()),
+        "max_combined_score": float(combined_scores.max()),
+        "min_combined_score": float(combined_scores.min()),
         "model_path": str(model_path),
         "data_path": str(args.data)
     }
@@ -143,7 +155,7 @@ def main() -> None:
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     print("[OK] Phase 2 evaluation summary saved to:", out_path)
-    print("Metrics:", summary["metrics"])
+    print("Metrics:", summary)
 
 
 if __name__ == "__main__":

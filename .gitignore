@@ -17,6 +17,7 @@ marl_ppo_tensorboard/
 
 # Data and heavy artifacts
 data/
+results/
 *.zip
 *.tar
 *.tar.gz

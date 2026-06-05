@@ -75,16 +75,23 @@ class MARLTrafficEnv(VecEnv):
         )
         
         num_agents = self.env.num_agents
+        
+        # Proposed: Support Map-Agnostic Zero-Shot Generalization
+        # The observation space for each agent is already defined in self.env.observation_space (e.g., 192 dims)
+        # We use this space for each parallel environment in the VecEnv.
         observation_space = self.env.observation_space
         action_space = self.env.action_space
         
-        # Initialize VecEnv
+        # Initialize VecEnv with num_agents parallel environments.
+        # This enables Shared-Weight Decentralized Execution.
         super().__init__(num_envs=num_agents, observation_space=observation_space, action_space=action_space)
         
         self.actions = None
+        self.force_map_agnostic = config["model"].get("force_map_agnostic", False)
 
     def reset(self) -> np.ndarray:
         obs, info = self.env.reset()
+        # obs is already (num_agents, obs_dim) from SUMOTrafficEnv
         return obs
 
     def step_async(self, actions: np.ndarray) -> None:

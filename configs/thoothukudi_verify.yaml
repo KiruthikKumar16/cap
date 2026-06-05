@@ -1,0 +1,21 @@
+experiment:
+  name: thoothukudi_verify
+  seed: 42
+
+sumo:
+  net_file: data/raw/thoothukudi.net.xml
+  route_file: data/raw/thoothukudi.rou.xml
+  simulation_steps: 1000
+  step_length: 1.0
+  gui: true
+
+model:
+  use_gnn: true
+  feature_dim: 12
+  hidden_dim: 64
+  embedding_dim: 32
+  gnn_layers: 2
+  gnn_type: gat
+  gat_heads: 2
+  dropout: 0.1
+  force_map_agnostic: true

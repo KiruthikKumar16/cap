@@ -1,4 +1,0 @@
-criterion,status,evidence
-Same episode budget,CHECK,evaluation summary missing
-Same evaluation horizon,CHECK,evaluation summary missing
-Same observation/reward interface,CHECK,benchmark table missing

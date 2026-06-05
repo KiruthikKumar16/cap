@@ -1,28 +1,27 @@
-# Robust Multi-Agent Traffic Control Under Non-Stationarity (MAPPO-STGNN)
+# Robust Multi-Agent Traffic Control Under Non-Stationarity (MAPPO-STGNN) - R&D Stage
 
-[![Status](https://img.shields.io/badge/Status-100%25_Complete-success)](https://github.com/kk/cap)
-[![Research](https://img.shields.io/badge/Output-Research_Grade-blue)](https://github.com/kk/cap)
+[![Status](https://img.shields.io/badge/Status-R%26D_Active-orange)](https://github.com/kk/cap)
 
-This repository contains the complete implementation of a **Spatial-Temporal Graph Neural Network (ST-GNN) augmented Multi-Agent Reinforcement Learning (MARL)** system for urban traffic control. The project is specifically designed to handle **Non-Stationarity** (accidents, sensor failures, and demand shifts) through an anomaly-aware proactive adaptation framework.
+This repository contains the ongoing R&D for a **Spatial-Temporal Graph Neural Network (ST-GNN) augmented Multi-Agent Reinforcement Learning (MARL)** system for urban traffic control. The project focuses on handling **Non-Stationarity** (accidents, sensor failures, and demand shifts) through an anomaly-aware proactive adaptation framework.
 
-## 🚀 Research-Grade Pipeline
+## 🚧 R&D Development Pipeline
 
-To achieve publication-quality results, the project implements a rigorous multi-phase execution flow:
+The project is currently in the technical implementation and verification phase:
 
 ### **Phase 1: Foundation & Baselines**
-- **Diverse Topologies**: 10+ procedural maps (Grid, Spider, Random).
-- **Comparative Baselines**: Training of **CoLight**, **NSTLight**, and **MaxPressure**.
-- **MARL Training**: MAPPO with Regional Hierarchical Critics and GNN State Forecasting.
+- **Diverse Topologies**: Support for grid networks and real-world OSM data (Thoothukudi).
+- **Map-Agnostic Inference**: Decentralized, shared-weight MAPPO policy for zero-shot generalization.
+- **MARL Training**: Implementation of MAPPO with ST-GNN state forecasting.
 
-### **Phase 2: Anomaly Intelligence**
-- **ST-GNN Detector**: A spatial-temporal autoencoder that learns the "physics of normal traffic".
-- **Risk Sensing**: Real-time identification of accidents and sensor corruption with 90%+ precision.
+### **Phase 2: Anomaly Intelligence (Active R&D)**
+- **ST-GNN Detector**: Developing a spatial-temporal autoencoder to learn normal traffic patterns.
+- **Incident Injection**: Tools to simulate accidents and sensor corruption for robust testing.
 
-### **Phase 3: Anomaly-Aware Integration**
-- **Proactive Adaptation**: Dynamic reward shaping that prevents RL over-reaction during traffic disruptions.
-- **Stress Recovery**: Proven resilience under 20% sensor noise and sudden multi-link failures.
+### **Phase 3: Real-World Perception (Active R&D)**
+- **CV Integration**: YOLOv10-X + BoT-SORT tracker for high-fidelity vehicle detection and tracking.
+- **Spatial Metrics**: Perspective transformation logic for converting pixel coordinates to world metrics.
 
-## 🛠️ Installation & Execution
+## 🛠️ Setup & Development
 
 ### **1. Environment Setup**
 ```bash
@@ -31,45 +30,29 @@ pip install -r requirements.txt
 python scripts/test_setup.py
 ```
 
-### **2. Research Execution Flow**
-Run these in sequence for a full scientific validation:
-
+### **2. Development Commands**
 ```bash
-# 1. Generate Maps & Baselines
-python scripts/generate_random_maps.py --count 10
-python scripts/train_baselines.py --model colight --config configs/phase1.yaml --episodes 150
+# Verify SUMO Connectivity (Thoothukudi Map)
+./venv/bin/python scripts/check_sumo.py --config configs/thoothukudi_verify.yaml
 
-# 2. Train Primary Model
-python src/phase1/train_marl.py --config configs/phase1.yaml --total-timesteps 100000 --use_regional_critics True
+# Evaluate Generalization (Zero-Shot)
+./venv/bin/python scripts/evaluate_generalization.py --checkpoint marl_ppo_traffic.zip --episodes 1
 
-# 3. Train Anomaly Detector
-python scripts/generate_anomaly_data.py --checkpoint marl_ppo_traffic.zip --episodes 10
-python src/phase2/anomaly_trainer.py --epochs 30
-
-# 4. Comprehensive Evaluation
-python scripts/run_benchmarks.py --config configs/phase1.yaml --checkpoint marl_ppo_traffic.zip --episodes 5
-python scripts/run_ablation_study.py
-python scripts/generate_publication_artifacts.py --mode full
+# Train Anomaly Detector (Experimental)
+python scripts/generate_anomaly_data.py --episodes 3
+python src/phase2/anomaly_trainer.py --epochs 10
 ```
-
-## 📊 Results & Artifacts
-
-- **[results/main_tables.csv](file:///home/kk/cap/results/main_tables.csv)**: Final comparison metrics against baselines.
-- **[results/statistical_summary.csv](file:///home/kk/cap/results/statistical_summary.csv)**: P-values and 95% Confidence Intervals.
-- **[results/summary.md](file:///home/kk/cap/results/summary.md)**: Executive summary for research submission.
 
 ## 🏗️ Repository Structure
 
-- `src/perception/`: **New** Real-world perception layer (YOLOv10 Bridge & CV logic).
 - `src/`: Core logic (Environments, Models, Dashboard).
-- `scripts/`: Research pipeline, automation, and statistical analysis.
-- `configs/`: Multi-phase experiment configurations.
-- `results/`: Publication-ready tables and figures.
-- `archive/`: Comprehensive documentation and legacy guides.
+- `src/perception/`: Real-world perception layer (YOLOv10 & CV logic).
+- `scripts/`: Development and verification scripts.
+- `configs/`: Experiment configurations.
+- `data/`: Raw and processed simulation data.
 
-## 📜 Documentation
+## 📜 Internal Documentation
 
-- [Full Mega Report](file:///home/kk/cap/archive/root_markdown/Capstone_Mega_Report.md)
-- [Real-World CV Deployment Guide](file:///home/kk/cap/src/perception/README.md)
-- [System Implementation Guide](file:///home/kk/cap/archive/root_markdown/SYSTEM_IMPLEMENTATION_GUIDE.md)
-- [Research Commands Guide](file:///home/kk/cap/archive/root_markdown/commands.md)
+- [Thoothukudi Map Setup](file:///home/kk/cap/docs/THOOTHUKUDI_SETUP.md)
+- [Architecture System Diagram](file:///home/kk/cap/docs/ARCHITECTURE_SYSTEM_DIAGRAM.md)
+- [Algorithmic Architecture](file:///home/kk/cap/docs/algorithmic_architecture.png)

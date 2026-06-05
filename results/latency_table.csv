@@ -1,4 +1,0 @@
-model,device,n_runs,mean_ms,std_ms,p50_ms,p95_ms,p99_ms,min_ms,max_ms
-MAPPO + ST-GNN (Ours),CPU,200,0.1515,0.0398,0.1377,0.2096,0.2269,0.0977,0.3425
-NSTLight (2025 Baseline),CPU,200,0.1492,0.028,0.1405,0.2141,0.2382,0.1232,0.2559
-Fixed-Time Controller,CPU,200,0.0125,0.0014,0.0123,0.0129,0.0135,0.0121,0.0308

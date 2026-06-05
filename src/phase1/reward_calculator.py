@@ -173,7 +173,21 @@ class RewardCalculator:
         speed_comp = self.speed_reward_weight * norm_speed
         penalty_comp = density_factor * (self.queue_length_weight * norm_queue + self.waiting_time_weight * norm_wait)
         
-        reward = speed_comp - penalty_comp
+        # 4. Anomaly-Aware Penalty (Phase 3 Improvement)
+        anomaly_penalty = 0.0
+        if anomaly_info:
+            # Aggregate anomaly scores across intersections
+            total_anomaly_score = sum(
+                info.get("anomaly_score", 0.0) 
+                for info in anomaly_info.values() 
+                if isinstance(info, dict)
+            )
+            avg_anomaly_score = total_anomaly_score / num_nodes
+            # Dynamic weighting: Use adaptive weights if enabled
+            weights = self._get_adaptive_weights(norm_queue, avg_anomaly_score, sim_time)
+            anomaly_penalty = weights["anomaly"] * avg_anomaly_score
+
+        reward = speed_comp - penalty_comp - anomaly_penalty
 
         # NOTE: Forecasting/Risk-aware penalty is temporarily disabled for stability as requested
         # reward -= risk_penalty

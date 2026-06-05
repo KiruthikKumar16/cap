@@ -32,18 +32,32 @@ class PerspectiveTransformer:
         return transformed[0][0]
 
 class TrafficVisualInference:
-    def __init__(self, model_path: str = "yolov10x.pt", intersection_id: str = "node_1"):
+    def __init__(self, model_path: str = "yolov10x.pt", intersection_id: str = "node_1", use_openvino: bool = True):
         """
         Standardized Perception Engine: Designed for high accuracy and low latency.
         """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         
-        # Load the Reference Model (Extra Large)
-        self.model = YOLO(model_path)
-        if self.device == "cuda":
-            # Target TensorRT for minimum latency
-            print("[INFO] High-End GPU detected. Enabling TensorRT/CUDA optimization...")
-            self.model.to(self.device)
+        # OpenVINO Optimization for CPU
+        if self.device == "cpu" and use_openvino:
+            print("[INFO] CPU detected. Attempting OpenVINO optimization...")
+            # We try to load the OpenVINO exported model if it exists, otherwise we load .pt
+            ov_model_path = model_path.replace(".pt", "_openvino_model")
+            if Path(ov_model_path).exists():
+                print(f"[INFO] Loading OpenVINO model from {ov_model_path}")
+                self.model = YOLO(ov_model_path, task="detect")
+            else:
+                print(f"[INFO] Exporting {model_path} to OpenVINO...")
+                self.model = YOLO(model_path)
+                self.model.export(format="openvino", dynamic=True, imgsz=1280)
+                self.model = YOLO(ov_model_path, task="detect")
+        else:
+            # Load the Reference Model (.pt)
+            self.model = YOLO(model_path)
+            if self.device == "cuda":
+                # Target TensorRT for minimum latency
+                print("[INFO] High-End GPU detected. Enabling TensorRT/CUDA optimization...")
+                self.model.to(self.device)
             
         self.intersection_id = intersection_id
         
@@ -84,6 +98,7 @@ class TrafficVisualInference:
                 self.frame_count += 1
                 
                 # Reference Tracking: BoT-SORT (Camera Motion Compensation + Re-ID)
+                # Pass ov_config if using OpenVINO (YOLOv10 internal handling)
                 results = self.model.track(
                     source=frame,
                     persist=True,
@@ -101,6 +116,10 @@ class TrafficVisualInference:
                 # Metrics Calculation
                 vision_data = self._analyze_detections(boxes, result)
                 
+                # Loopback: Send vision data to control layer if bridge is active
+                if hasattr(self, 'bridge_callback') and self.bridge_callback:
+                    self.bridge_callback(vision_data)
+
                 # Output high-precision stats
                 elapsed = time.time() - start_time
                 fps = self.frame_count / elapsed
@@ -120,30 +139,14 @@ class TrafficVisualInference:
 
     def _analyze_detections(self, boxes, result) -> IntersectionVisionData:
         """
-        Calculates real-world meters and speeds using Homography.
-        """
-        # Logic to map 'result.boxes' to real-world meters using self.transformer
-        # This provides the RL agent with exact queue lengths in meters.
-        # [Implementation details for spatial mapping...]
-        return IntersectionVisionData(
-            intersection_id=self.intersection_id,
-            lane_counts={"north": 0}, 
-            lane_queues={"north": 0},
-            lane_waiting_times={"north": 0.0},
-            current_signal_phase=0,
-            phase_elapsed_time=0.0
-        )
-
-    def _analyze_detections(self, boxes, frame_w, frame_h) -> IntersectionVisionData:
-        """
-        High-precision detection logic.
+        Calculates real-world meters and speeds using Homography and detects vehicles.
         """
         lane_counts = {l: 0 for l in self.lane_rois}
         lane_queues = {l: 0 for l in self.lane_rois}
         lane_waits = {l: 0.0 for l in self.lane_rois}
 
-        # Target classes: car, motorcycle, bus, truck
-        target_classes = [2, 3, 5, 7] 
+        h, w = result.orig_shape if result.orig_shape else (1, 1)
+        target_classes = [2, 3, 5, 7] # car, motorcycle, bus, truck
 
         if boxes is not None and len(boxes) > 0:
             for box in boxes:
@@ -151,12 +154,25 @@ class TrafficVisualInference:
                 if cls not in target_classes:
                     continue
 
+                # Get normalized center coordinates
                 xywh = box.xywh[0].cpu().numpy()
-                x_norm, y_norm = xywh[0] / frame_w, xywh[1] / frame_h
+                x_px, y_px = xywh[0], xywh[1]
+                x_norm, y_norm = x_px / w, y_px / h
+                
+                # High Precision: Transform to real-world meters if in ROI
+                # For this implementation, we use the transformer to calculate distance to stopline
+                real_pos = self.transformer.transform(x_px, y_px)
+                # real_pos[1] is the distance along the road (Y-axis in our dst_points)
                 
                 for lane_name, roi in self.lane_rois.items():
                     if roi[0] <= x_norm <= roi[2] and roi[1] <= y_norm <= roi[3]:
                         lane_counts[lane_name] += 1
+                        
+                        # Logic for queue: If vehicle is in the ROI and its tracked velocity is low
+                        # For this demo, we use a simplified threshold on the 'y' coordinate
+                        # (e.g., if it's close to the stop line at dst_points [0,0])
+                        if real_pos[1] < 5.0: # Within 5 meters of stop line
+                             lane_queues[lane_name] += 1
         
         return IntersectionVisionData(
             intersection_id=self.intersection_id,

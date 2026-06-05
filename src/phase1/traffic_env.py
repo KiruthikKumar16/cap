@@ -123,6 +123,11 @@ class SUMOTrafficEnv(gym.Env):
             )
         else:
             self.reward_calculator = reward_calculator
+
+        # CV Bridge for Hardware-in-the-Loop (HIL)
+        from src.perception.cv_bridge import CVTrafficFeatureExtractor
+        self.cv_extractor = CVTrafficFeatureExtractor(self.intersections)
+        self.use_vision_features = self.config.get("phase3", {}).get("use_vision_features", False)
             
         # Each agent (intersection) observation is a concatenation of:
         #   [self_embedding] + [neighbor_embeddings (max_neighbors)] + [global_embedding]
@@ -607,10 +612,18 @@ class SUMOTrafficEnv(gym.Env):
         return 3
     
     def _get_raw_observation(self) -> torch.Tensor:
-        """Get the raw feature observation from the feature extractor."""
+        """
+        Get raw features for all intersections.
+        If use_vision_features is enabled, it uses CV-derived metrics.
+        Otherwise, it extracts from SUMO TraCI.
+        """
+        if self.use_vision_features:
+            # HIL Mode: Features come from CV Bridge (which might be updated by yolo_inference.py)
+            return self.cv_extractor.get_features()
+        
+        # Standard Mode: Extract from SUMO
         features = self.feature_extractor.extract()
-        tensor_feats = features.detach().clone().to(torch.float32) if torch.is_tensor(features) else torch.tensor(features, dtype=torch.float32)
-        return tensor_feats
+        return features.detach().clone().to(torch.float32) if torch.is_tensor(features) else torch.tensor(features, dtype=torch.float32)
 
     def _get_observation(self) -> np.ndarray:
         """Get observation from GNN encoder (including local features and global embedding)."""

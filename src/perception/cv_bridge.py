@@ -38,6 +38,18 @@ class CVTrafficFeatureExtractor:
         self.max_waiting = max_waiting
         self.num_phases = 4
         self.feature_dim = 12
+        self.latest_vision_data = {} # intersection_id -> IntersectionVisionData
+
+    def update_vision_data(self, data: IntersectionVisionData):
+        """Update the internal state with new vision data from a camera."""
+        self.latest_vision_data[data.intersection_id] = data
+
+    def get_features(self) -> torch.Tensor:
+        """
+        Transforms the latest cached vision metrics into the RL feature tensor.
+        """
+        vision_data_batch = list(self.latest_vision_data.values())
+        return self.transform_vision_to_features(vision_data_batch)
 
     def transform_vision_to_features(self, vision_data_batch: List[IntersectionVisionData]) -> torch.Tensor:
         """
@@ -138,8 +150,12 @@ if __name__ == "__main__":
     # Simulate real-world perception data
     sim_data = CVDataSimulator.generate_random_vision_data(intersections)
     
-    # Transform to RL Features
-    rl_features = extractor.transform_vision_to_features(sim_data)
+    # Update extractor with vision data
+    for data in sim_data:
+        extractor.update_vision_data(data)
+    
+    # Transform to RL Features using the new loopback interface
+    rl_features = extractor.get_features()
     
     print(f"Vision-to-RL Feature Vector Shape: {rl_features.shape}")
     print(f"Sample Intersection Features:\n{rl_features[0]}")

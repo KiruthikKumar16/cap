@@ -25,11 +25,10 @@ def map_generalization(config_path: str, checkpoint: str, episodes: int):
     
     config = load_config(project_root / config_path)
     
-    # Formal Bengaluru zero-shot protocol: Map A (train distribution) vs Map B (Bengaluru OSM).
-    geometries = {
-        "Map_A_Training_Grid_5x5": "data/raw/grid_5x5",
-        "Map_B_Large_Grid_10x10": "data/raw/grid_10x10",
-    }
+    # Define test scenarios
+    scenarios = [
+        {"name": "Real_World_Thoothukudi_Smart_City", "net": "data/raw/thoothukudi.net.xml", "rou": "data/raw/thoothukudi.rou.xml"},
+    ]
     
     # Use user-provided checkpoint/config.
     cp_path = Path(checkpoint)
@@ -38,18 +37,24 @@ def map_generalization(config_path: str, checkpoint: str, episodes: int):
     config["output"] = {"final_model_path": str(cp_path)}
     config["evaluation"] = {"num_episodes": episodes, "adversarial_accidents": False, "sensor_noise": False}
     
+    # CRITICAL: Force map-agnostic observation for Zero-Shot
+    # This prevents the 'Box(192,) vs Box(384,)' error
+    config["model"]["force_map_agnostic"] = True
+    
     results = {}
     
-    for map_name, map_prefix in geometries.items():
+    for sc in scenarios:
+        map_name = sc["name"]
         print(f"\n[Validation] Targeting Zero-Shot execution on {map_name} ...")
         
-        net_path = project_root / f"{map_prefix}.net.xml"
-        rou_path = project_root / f"{map_prefix}.rou.xml"
+        net_path = project_root / sc["net"]
+        rou_path = project_root / sc["rou"]
         
         if not net_path.exists():
-            print(f"  [!] Missing Geometry Array: {net_path}")
-            print(f"      (For Bengaluru test, please run osmWebWizard.py and drop bengaluru_osm.net.xml into data/raw/)")
-            continue
+             print(f"[SKIP] Scenario {map_name} skipped: {net_path} not found.")
+             if "thoothukudi" in str(net_path):
+                 print("      Tip: Thoothukudi map not found. Follow docs/THOOTHUKUDI_SETUP.md to generate it.")
+             continue
             
         # Hook maps to active environment configuration
         map_cfg = copy.deepcopy(config)
@@ -92,9 +97,9 @@ def map_generalization(config_path: str, checkpoint: str, episodes: int):
     print("="*60)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Map-transfer generalization benchmark")
+    parser = argparse.ArgumentParser(description="Zero-Shot Generalization Test")
     parser.add_argument("--config", type=str, default="configs/phase1.yaml")
-    parser.add_argument("--checkpoint", type=str, default="outputs/phase1/dqn_traffic_final.zip")
-    parser.add_argument("--episodes", type=int, default=1)
+    parser.add_argument("--checkpoint", type=str, default="marl_ppo_traffic.zip")
+    parser.add_argument("--episodes", type=int, default=5)
     args = parser.parse_args()
     map_generalization(args.config, args.checkpoint, args.episodes)

@@ -1,0 +1,9 @@
+[out:json][timeout:60]; 
+area["name:en"="Thoothukkudi"]->.searchArea; 
+( 
+  node["highway"="traffic_signals"](area.searchArea); 
+  way["highway"="traffic_signals"](area.searchArea); 
+); 
+out body; 
+>; 
+out skel qt;

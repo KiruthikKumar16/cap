@@ -1,3 +1,0 @@
-intersections,training_wallclock_s,inference_ms_per_step,gpu_memory_mb,ctde_comm_estimate_kb_per_step,evidence_status
-25,,,,,not_run
-100,,,,,not_run
