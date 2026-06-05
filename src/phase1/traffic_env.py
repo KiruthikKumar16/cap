@@ -199,6 +199,8 @@ class SUMOTrafficEnv(gym.Env):
         }
         self.log_file = "episode_metrics.csv"
         self.episode_count = 0
+        self.base_seed = self.config.get("experiment", {}).get("seed", 42)
+        self.current_episode_seed = self.base_seed
         self._init_log_file()
 
     @staticmethod
@@ -254,9 +256,16 @@ class SUMOTrafficEnv(gym.Env):
         Returns:
             Observation and info dict
         """
-        # Set seed if provided
+        # Set seed if provided, otherwise use incrementing episode seed for variance
         if seed is not None:
             self.np_random, seed = seeding.np_random(seed)
+            self.current_episode_seed = seed
+        else:
+            # Use incrementing seed to ensure each episode is different (research-grade variance)
+            seed = self.current_episode_seed
+            self.np_random, _ = seeding.np_random(seed)
+            self.current_episode_seed += 1
+            print(f"[ENV] Resetting with auto-increment seed: {seed}")
             
         if self.is_procedural and self.np_random:
             # Pick a random procedural map
@@ -414,6 +423,18 @@ class SUMOTrafficEnv(gym.Env):
         terminated = np.full(self.num_agents, terminated_bool, dtype=bool)
         truncated = np.full(self.num_agents, truncated_bool, dtype=bool)
         
+        # Accumulate metrics for the episode
+        if self.sumo_running and TRACI_AVAILABLE:
+            try:
+                self.episode_metrics["episode_total_waiting_time"] += self._get_waiting_time_step()
+                self.episode_metrics["episode_total_queue_length"] += self._get_queue_length_step()
+                self.episode_metrics["episode_total_travel_time"] += self._travel_time_step
+                self.episode_metrics["episode_stopped_vehicles"] += self._get_stopped_vehicles_count()
+                self.episode_metrics["episode_arrived_vehicles"] += traci.simulation.getArrivedNumber()
+                self.episode_metrics["episode_steps"] += 1
+            except Exception:
+                pass
+
         # Base info
         base_info = self._get_info()
         # Vectorized info
@@ -926,14 +947,6 @@ class SUMOTrafficEnv(gym.Env):
                 info["step_mean_speed"] = self._get_mean_speed()
                 info["step_stopped_vehicles"] = self._get_stopped_vehicles_count()
                 info["step_arrived_vehicles"] = traci.simulation.getArrivedNumber()
-
-                # Update episode-level metrics
-                self.episode_metrics["episode_total_waiting_time"] += info["step_total_waiting_time"]
-                self.episode_metrics["episode_total_queue_length"] += info["step_total_queue_length"]
-                self.episode_metrics["episode_total_travel_time"] += info["step_travel_time"]
-                self.episode_metrics["episode_stopped_vehicles"] += info["step_stopped_vehicles"]
-                self.episode_metrics["episode_arrived_vehicles"] += traci.simulation.getArrivedNumber()
-                self.episode_metrics["episode_steps"] += 1
 
                 # Final episode metrics (averages)
                 terminated_bool = self._is_terminated()
