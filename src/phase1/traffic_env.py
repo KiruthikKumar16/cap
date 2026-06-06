@@ -32,11 +32,21 @@ from src.utils.hardware_emulation import ConflictMonitorUnit
 from src.utils.adversarial_modulator import EnvironmentModulator
 
 
-# Realistic GPS for Thoothukudi
+# Realistic GPS and Names for Thoothukudi TLS Junctions
 JUNCTIONS = {
     "node_1": {"name": "Third Gate", "lat": 8.8101, "lon": 78.1462, "is_rail": True},
     "node_2": {"name": "VVD Signal", "lat": 8.8038, "lon": 78.1413, "is_rail": False},
-    "node_3": {"name": "Cruz Puram", "lat": 8.7965, "lon": 78.1350, "is_rail": False}
+    "node_3": {"name": "Cruz Puram", "lat": 8.7965, "lon": 78.1350, "is_rail": False},
+    "11360674073": {"name": "Old Bus Stand", "lat": 8.8105, "lon": 78.1450},
+    "2410598674": {"name": "Anna Nagar", "lat": 8.8010, "lon": 78.1380},
+    "9772329681": {"name": "Palayamkottai Rd", "lat": 8.8055, "lon": 78.1425},
+    "cluster_10706057058_10706057062_10706057067": {"name": "Beach Rd Crossing", "lat": 8.7940, "lon": 78.1320},
+    "cluster_11355416599_9772430985": {"name": "George Rd", "lat": 8.7980, "lon": 78.1360},
+    "cluster_11355416605_4592275001": {"name": "Collectorate Rd", "lat": 8.8080, "lon": 78.1440},
+    "cluster_1992971612_5110413815_5443775360": {"name": "Tuticorin Port Rd", "lat": 8.7910, "lon": 78.1300},
+    "cluster_5312725036_5312725037": {"name": "WGC Rd Junction", "lat": 8.8120, "lon": 78.1470},
+    "cluster_9772371653_9772372986": {"name": "Millerpuram", "lat": 8.8025, "lon": 78.1395},
+    "cluster_9772429957_9772429958_9772429960": {"name": "St. Peter Rd", "lat": 8.7995, "lon": 78.1375}
 }
 
 class SUMOTrafficEnv(gym.Env):
@@ -468,6 +478,9 @@ class SUMOTrafficEnv(gym.Env):
                 elif info[i].get("status") == "ANOMALY":
                     status = "ANOMALY: SENSOR DRIFT"
                 
+                # Use standard name if available, otherwise use nid
+                info_name = JUNCTIONS[nid]["name"] if nid in JUNCTIONS else nid
+                
                 node_data[nid] = {
                     "phase": int(torch.argmax(raw_feats[0:4])),
                     "queue": raw_feats[8:12].tolist(),
@@ -476,7 +489,7 @@ class SUMOTrafficEnv(gym.Env):
                     "status": status,
                     "lat": JUNCTIONS[nid]["lat"] if nid in JUNCTIONS else 0.0,
                     "lon": JUNCTIONS[nid]["lon"] if nid in JUNCTIONS else 0.0,
-                    "name": JUNCTIONS[nid]["name"] if nid in JUNCTIONS else nid
+                    "name": info_name
                 }
             
             # 2. Edge Stats (Jetson Orin Emulation)

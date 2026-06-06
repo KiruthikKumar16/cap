@@ -84,9 +84,18 @@ def main() -> int:
         raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
     _run([sys.executable, "-m", "compileall", "-q", "src", "scripts"])
+    
+    # 0. Data Integrity Audit (Heterogeneity & Junction Verification)
+    print("\n" + "=" * 60)
+    print("Step 0/4: Data Integrity Audit (Mixed Traffic & Junctions)")
+    print("=" * 60)
+    _run([sys.executable, "-c", "import xml.etree.ElementTree as ET; tree = ET.parse('data/raw/thoothukudi.rou.xml'); root = tree.getroot(); vehs = root.findall('vehicle'); total = len(vehs); mixed = len([v for v in vehs if v.get('type') in ['rickshaw', 'bicycle']]); print(f'[AUDIT] Total Vehicles: {total} | Mixed: {mixed} ({mixed/total*100:.1f}%)')"])
+    _run([sys.executable, "-c", "import xml.etree.ElementTree as ET; tree = ET.parse('data/raw/thoothukudi.net.xml'); root = tree.getroot(); tlss = root.findall('tlLogic'); print(f'[AUDIT] Verified {len(tlss)} TLS Junctions in Thoothukudi Map.')"])
+
     _run([sys.executable, "scripts/ci_validate_evidence.py"])
 
     if not args.skip_benchmark:
+        # 1. Standard Benchmarks
         _run(
             [
                 sys.executable,
@@ -101,11 +110,30 @@ def main() -> int:
                 str(args.seeds),
             ]
         )
+        
+        # 2. Resiliency Matrix (Adversarial, Latency, CMU)
+        print("\n" + "=" * 60)
+        print("Step 2/4: Executing Resiliency Testing Matrix")
+        print("=" * 60)
+        _run([sys.executable, "scripts/run_resiliency_matrix.py"])
+
+    # 3. Generate Dashboard Demo Artifacts
+    print("\n" + "=" * 60)
+    print("Step 3/4: Generating Dashboard Demo Artifacts")
+    print("=" * 60)
+    _run([sys.executable, "scripts/generate_dashboard_demo_artifacts.py"])
+
+    # 4. Compile Mega Report
+    print("\n" + "=" * 60)
+    print("Step 4/4: Compiling Research Mega Report")
+    print("=" * 60)
+    _run([sys.executable, "scripts/generate_mega_report.py"])
 
     _run([sys.executable, "scripts/generate_publication_artifacts.py", "--mode", "quick"])
     _run([sys.executable, "scripts/audit_proof_results.py"])
+    
     manifest_path = _write_manifest(args)
-    print(f"[OK] Proof manifest written to {manifest_path}")
+    print(f"[OK] Proof Experiment Complete. Manifest: {manifest_path}")
     return 0
 
 

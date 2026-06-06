@@ -17,11 +17,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Realistic GPS for Thoothukudi
+# Realistic GPS and Names for Thoothukudi TLS Junctions
 JUNCTIONS = {
     "node_1": {"name": "Third Gate", "lat": 8.8101, "lon": 78.1462, "is_rail": True},
     "node_2": {"name": "VVD Signal", "lat": 8.8038, "lon": 78.1413, "is_rail": False},
-    "node_3": {"name": "Cruz Puram", "lat": 8.7965, "lon": 78.1350, "is_rail": False}
+    "node_3": {"name": "Cruz Puram", "lat": 8.7965, "lon": 78.1350, "is_rail": False},
+    "11360674073": {"name": "Old Bus Stand", "lat": 8.8105, "lon": 78.1450},
+    "2410598674": {"name": "Anna Nagar", "lat": 8.8010, "lon": 78.1380},
+    "9772329681": {"name": "Palayamkottai Rd", "lat": 8.8055, "lon": 78.1425},
+    "cluster_10706057058_10706057062_10706057067": {"name": "Beach Rd Crossing", "lat": 8.7940, "lon": 78.1320},
+    "cluster_11355416599_9772430985": {"name": "George Rd", "lat": 8.7980, "lon": 78.1360},
+    "cluster_11355416605_4592275001": {"name": "Collectorate Rd", "lat": 8.8080, "lon": 78.1440},
+    "cluster_1992971612_5110413815_5443775360": {"name": "Tuticorin Port Rd", "lat": 8.7910, "lon": 78.1300},
+    "cluster_5312725036_5312725037": {"name": "WGC Rd Junction", "lat": 8.8120, "lon": 78.1470},
+    "cluster_9772371653_9772372986": {"name": "Millerpuram", "lat": 8.8025, "lon": 78.1395},
+    "cluster_9772429957_9772429958_9772429960": {"name": "St. Peter Rd", "lat": 8.7995, "lon": 78.1375}
 }
 
 # --- STYLING ---
@@ -216,13 +226,14 @@ def render_diagnostics_suite(data):
 
 def render_edge_stack(data):
     st.subheader("🖥️ EDGE COMPUTE & NETWORK TELEMETRY")
+    st.info("💡 Terminology: All hardware metrics below represent **Design Targets** for Jetson AGX Orin deployment.")
     e = data.get("edge", {})
     hw = e.get("hardware", {})
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("GPU LOAD", f"{hw.get('gpu_util', 0):.1f}%")
-    col2.metric("VRAM USAGE", f"{hw.get('vram_gb', 0):.2f} GB")
-    col3.metric("TEMP", f"{hw.get('temp_c', 0):.1f} °C", delta="HOT" if hw.get('temp_c', 0) > 55 else None)
-    col4.metric("INFERENCE FPS", f"{hw.get('fps', 0):.1f}")
+    col1.metric("TARGET GPU LOAD", f"{hw.get('gpu_util', 0):.1f}%")
+    col2.metric("TARGET VRAM USAGE", f"{hw.get('vram_gb', 0):.2f} GB")
+    col3.metric("TARGET TEMP", f"{hw.get('temp_c', 0):.1f} °C")
+    col4.metric("TARGET INFERENCE FPS", f"{hw.get('fps', 0):.1f}")
     
     st.markdown("⏱️ **LATENCY COMPONENT STACK (ms)**")
     lat = e.get("latency_breakdown", {})
