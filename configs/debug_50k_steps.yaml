@@ -1,0 +1,25 @@
+# 50000-Step PoC Config
+sumo:
+  net_file: data/raw/grid_3x3.net.xml
+  route_file: data/raw/grid_3x3.rou.xml
+  simulation_steps: 300  
+  step_length: 1.0
+  gui: false
+
+model:
+  feature_dim: 12
+  hidden_dim: 32
+  embedding_dim: 16
+  gnn_layers: 1
+  dropout: 0.0
+
+reward:
+  waiting_time_weight: 0.2
+  queue_length_weight: 0.1
+  normalize: true
+
+training:
+  total_timesteps: 50000
+
+rl:
+  n_steps: 1000

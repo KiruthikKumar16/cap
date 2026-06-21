@@ -180,6 +180,11 @@ class SUMOTrafficEnv(gym.Env):
         # Internal multi-agent tracking
         self.num_agents = self.num_intersections
         
+        # [PoC] Track action history and last actions for diagnostics
+        self.action_history = []
+        self._last_actions = np.zeros(self.num_agents, dtype=np.int32)
+        self._last_observations = None
+        
         # State
         self.current_step = 0
         self.sumo_running = False
@@ -374,6 +379,13 @@ class SUMOTrafficEnv(gym.Env):
         if self.config.get("phase3", {}).get("enable_dynamic_phase_skipping", False):
             if hasattr(self, "_apply_phase_skipping"):
                 applied_actions = self._apply_phase_skipping(actions)
+        
+        # [PoC] Store last actions for diagnostics
+        self._last_actions = applied_actions
+        self.action_history.append(applied_actions.copy())
+        # Keep only last 1000 actions in history
+        if len(self.action_history) > 1000:
+            self.action_history.pop(0)
 
         # [NEW] Hardware Safety Interlock (CMU) - Mode 3
         # In Mode 3, we strictly enforce CMU. In other modes, we still track rejections but might not enforce.

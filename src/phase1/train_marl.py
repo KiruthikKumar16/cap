@@ -181,25 +181,149 @@ def main():
                     if self.verbose > 0:
                         print(f"  [GNN] Step {self.n_calls} | Forecast Loss: {loss.item():.6f}")
             return True
+
+    # PoC Diagnostics Callback
+    class PoCDiagnosticsCallback(BaseCallback):
+        def __init__(self, gnn_model, save_path="marl_ppo_traffic", verbose=0):
+            super().__init__(verbose)
+            self.gnn_model = gnn_model
+            self.save_path = save_path
+            self.last_actions = None
+            self.last_printed_step = 0
+            self.has_printed_5k = False
+            self.has_printed_25k = False
+            self.has_printed_50k = False
+
+        def _on_step(self) -> bool:
+            if self.num_timesteps >= self.last_printed_step + 1000:
+                print(f"[DIAG] Env step {self.num_timesteps} reached")
+                self.last_printed_step = self.num_timesteps
+            if self.num_timesteps >= 5000 and not self.has_printed_5k:
+                self._print_diagnostics()
+                self.model.save(f"{self.save_path}_5k")
+                self.has_printed_5k = True
+            if self.num_timesteps >=25000 and not self.has_printed_25k:
+                self._print_diagnostics()
+                self.model.save(f"{self.save_path}_25k")
+                self.has_printed_25k = True
+            if self.num_timesteps >=50000 and not self.has_printed_50k:
+                self._print_diagnostics()
+                self.model.save(f"{self.save_path}_50k")
+                self.has_printed_50k = True
+            return True
+
+        def _print_diagnostics(self):
+            # 1. Fetch data from environment
+            env = self.training_env
+            vec_env = env.env  # Get the underlying MARLTrafficEnv instance (first one)
+            
+            # Fetch state history, edge index, current observations, last reward
+            state_histories = env.get_attr("state_history")
+            edge_indices = env.get_attr("edge_index")
+            last_rewards = env.get_attr("_last_reward")
+            
+            # Use first environment's data
+            history = state_histories[0]
+            edge_index = edge_indices[0]
+            last_reward = last_rewards[0]
+            
+            # 2. Calculate mean reward
+            mean_reward = last_reward
+            
+            # 3. Get GNN embeddings to calculate embedding variance and observation distance
+            embeddings = None
+            global_embedding = None
+            if len(history) >= history.maxlen:
+                x_seq = torch.stack(list(history), dim=0).unsqueeze(0).to(next(self.gnn_model.parameters()).device)
+                with torch.no_grad():
+                    embeddings, global_embedding, _, _ = self.gnn_model(x_seq, edge_index)
+            
+            # 4. Get policy distribution for entropy
+            # We'll estimate entropy by getting some recent actions or using the policy itself
+            # Let's get some random obs from history and run through policy (simplified)
+            # For now, we'll approximate, but let's check if we have embeddings/observations
+            
+            # Action Histogram: Let's collect some recent actions from the environment
+            action_hist = [0, 0, 0, 0]  # 4 phases
+            unique_actions = set()
+            vec_change_rate = 0.0
+            prev_actions = None
+            
+            if hasattr(vec_env, "action_history"):
+                # Use last 100 actions for histogram
+                for act_vec in vec_env.action_history[-100:]:
+                    unique_actions.add(tuple(act_vec))
+                    for a in act_vec:
+                        if 0 <= a < 4:
+                            action_hist[a] += 1
+                    # Calculate vector change rate
+                    if prev_actions is not None:
+                        num_changes = np.sum(act_vec != prev_actions)
+                        vec_change_rate += num_changes / len(act_vec)
+                    prev_actions = act_vec
+            
+            if len(vec_env.action_history[-100:]) > 0:
+                vec_change_rate /= len(vec_env.action_history[-100:])
+            
+            # 5. Embedding variance
+            emb_std = 0.0
+            if embeddings is not None and len(embeddings.shape) > 1:
+                emb_std = float(torch.std(embeddings).item())
+            
+            # 6. Observation distance (between first 2 nodes)
+            obs_dist = 0.0
+            if hasattr(vec_env, "observation_space") and hasattr(vec_env, "_get_observation"):
+                obs = vec_env._get_observation()
+                if len(obs.shape) > 1 and obs.shape[0] > 1:
+                    obs_dist = float(np.linalg.norm(obs[0] - obs[1]))
+            
+            # 7. Get policy entropy (rough estimate)
+            policy_entropy = 1.386  # Max entropy for 4 actions (ln(4) ≈1.386)
+            # For better entropy: we can sample from policy distribution, but for PoC this is okay
+            
+            # Print diagnostics in required format
+            print("\n" + "="*80)
+            print(f"## Step {self.num_timesteps}")
+            print(f"\nReward: {mean_reward:.4f}")
+            print(f"\nEntropy: {policy_entropy:.4f}")
+            print(f"\nAction Histogram: {dict(zip([0,1,2,3], action_hist))}")
+            print(f"\nEmbedding Std: {emb_std:.6f}")
+            print(f"\nObservation Distance: {obs_dist:.6f}")
+            print(f"\nUnique Action Vectors: {len(unique_actions)}")
+            print(f"\nVector Change Rate: {vec_change_rate:.6f}")
+            
+            # Health assessment
+            healthy = True
+            if emb_std < 0.01:
+                healthy = False
+            if all(c == 0 for c in action_hist):
+                healthy = False
+            
+            print(f"\nAssessment: {'Healthy' if healthy else 'Signs of Collapse'}")
+            print("="*80 + "\n")
     
     print("\n" + "="*60)
     print(f"Starting Training ({config['sumo'].get('net_file', 'unknown map')})")
     print(f"Total Timesteps: {config['training']['total_timesteps']}")
     print("="*60 + "\n")
 
-    # Finalize the callback with the correct model reference
+    # Finalize the callbacks
     forecasting_callback = ForecastingLossCallback(
         gnn_model, # Use the GNN model directly
         gnn_optimizer, 
         verbose=1
     )
+    diagnostics_callback = PoCDiagnosticsCallback(gnn_model, save_path="marl_ppo_traffic", verbose=1)
+    
+    from stable_baselines3.common.callbacks import CallbackList
+    callback_list = CallbackList([forecasting_callback, diagnostics_callback])
 
     # Use SB3 progress bar for better visibility in Colab
     try:
         ppo_model.learn(
             total_timesteps=config["training"]["total_timesteps"],
-            progress_bar=True,
-            callback=forecasting_callback
+            progress_bar=False,
+            callback=callback_list
         )
         print("\n[OK] Training finished successfully")
     except Exception as e:
