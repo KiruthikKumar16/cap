@@ -39,6 +39,10 @@ def main():
         script_dir = os.path.dirname(os.path.abspath(__file__))
         yolo_script = os.path.join(script_dir, "yolo_inference.py")
         
+        # Change working directory to script_dir for correct relative paths
+        original_cwd = os.getcwd()
+        os.chdir(script_dir)
+        
         # Build the command
         cmd = f'python "{yolo_script}" --source "{selected_video}" --output "{args.output}" --imgsz {args.imgsz} --skip-frames {args.skip_frames}'
         if args.headless:
@@ -46,6 +50,9 @@ def main():
         
         print(f"\nExecuting: {cmd}")
         os.system(cmd)
+        
+        # Restore original working directory
+        os.chdir(original_cwd)
     else:
         print(f"\n❌ Video index {args.video_index} out of range (only {len(video_files)} videos found)")
 

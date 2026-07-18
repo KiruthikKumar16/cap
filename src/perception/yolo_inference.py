@@ -242,14 +242,20 @@ class TrafficVisualInference:
         if self.device == "cpu" and use_openvino:
             print("[INFO] CPU detected. Attempting OpenVINO optimization...")
             ov_model_path = model_path.replace(".pt", "_openvino_model")
-            if Path(ov_model_path).exists():
+            # Check if all OpenVINO files exist (.xml, .bin, metadata.yaml)
+            ov_xml = Path(ov_model_path) / Path(model_path).stem + ".xml"
+            ov_bin = Path(ov_model_path) / Path(model_path).stem + ".bin"
+            if Path(ov_model_path).exists() and ov_xml.exists() and ov_bin.exists():
                 print(f"[INFO] Loading OpenVINO model from {ov_model_path}")
-                self.model = YOLO(ov_model_path, task="detect")
+                try:
+                    self.model = YOLO(ov_model_path, task="detect")
+                except Exception as e:
+                    print(f"[WARN] Failed to load OpenVINO model: {e}")
+                    print("[INFO] Falling back to PyTorch model")
+                    self.model = YOLO(model_path)
             else:
-                print(f"[INFO] Exporting {model_path} to OpenVINO...")
+                print(f"[INFO] OpenVINO model not found or incomplete. Falling back to PyTorch model")
                 self.model = YOLO(model_path)
-                self.model.export(format="openvino", dynamic=True, imgsz=1280)
-                self.model = YOLO(ov_model_path, task="detect")
         else:
             self.model = YOLO(model_path)
             if self.device == "cuda":
