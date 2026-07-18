@@ -1,0 +1,5 @@
+opencv-python>=4.13.0
+ultralytics>=8.4.53
+openvino>=2026.1.0
+numpy>=2.4.0
+torch>=2.12.0
