@@ -243,8 +243,9 @@ class TrafficVisualInference:
             print("[INFO] CPU detected. Attempting OpenVINO optimization...")
             ov_model_path = model_path.replace(".pt", "_openvino_model")
             # Check if all OpenVINO files exist (.xml, .bin, metadata.yaml)
-            ov_xml = Path(ov_model_path) / Path(model_path).stem + ".xml"
-            ov_bin = Path(ov_model_path) / Path(model_path).stem + ".bin"
+            model_stem = Path(model_path).stem
+            ov_xml = Path(ov_model_path) / f"{model_stem}.xml"
+            ov_bin = Path(ov_model_path) / f"{model_stem}.bin"
             if Path(ov_model_path).exists() and ov_xml.exists() and ov_bin.exists():
                 print(f"[INFO] Loading OpenVINO model from {ov_model_path}")
                 try:
