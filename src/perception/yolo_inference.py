@@ -29,8 +29,18 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from queue import Queue, Empty
 from typing import Dict, List, Optional
+import os
 
-import cv2
+# Set OpenCV to headless mode to avoid GUI issues in Colab/servers
+os.environ["OPENCV_IO_ENABLE_OPENEXR"] = "0"  # Disable unused EXR for speed
+try:
+    import cv2
+    # Try to set headless backend if available
+    if cv2.ocl.haveOpenCL():
+        cv2.ocl.setUseOpenCL(False)
+except ImportError:
+    pass
+
 import numpy as np
 import torch
 from ultralytics import YOLO
@@ -368,7 +378,11 @@ class TrafficVisualInference:
         finally:
             self.running[0] = False
             out_file.close()
-            cv2.destroyAllWindows()
+            if not headless:
+                try:
+                    cv2.destroyAllWindows()
+                except Exception:
+                    pass  # Ignore any GUI cleanup errors in headless environments
             loader_thread.join(timeout=2.0)
 
     # ----------------- detection analysis -----------------
